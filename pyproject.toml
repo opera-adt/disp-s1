@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=64.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dolphin"
+description = "OPERA surface displacement workflows"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+license = { file = "LICENSE.txt" }
+
+# The version will be written into a version.py upon install, auto-generated
+# see section: setuptools_scm
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html#dynamic-metadata
+# dependencies will be read from text files
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/opera-adt/disp-s1"
+"Bug Tracker" = "https://github.com/opera-adt/disp-s1/issues"
+
+# Entry points for the command line interface
+[project.scripts]
+disp-s1 = "disp_s1.cli:main"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+# extra requirements: `pip install disp_s1[docs]` or `pip install .[docs]`
+[tool.setuptools.dynamic.optional-dependencies.docs]
+file = ["docs/requirements.txt"]
+[tool.setuptools.dynamic.optional-dependencies.test]
+file = ["tests/requirements.txt"]
+
+[tool.setuptools_scm]
+# https://github.com/pypa/setuptools_scm#configuration-parameters
+write_to = "src/disp_s1/_version.py"
+# https://github.com/pypa/setuptools_scm#version-number-construction
+version_scheme = "no-guess-dev" # Will not guess the next version
+
+
+[tool.black]
+target-version = ["py39", "py310", "py311"]
+preview = true
+
+[tool.isort]
+profile = "black"
+known_first_party = ["dolphin"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+
+[tool.pydocstyle]
+ignore = "D100,D102,D104,D105,D106,D107,D203,D204,D213,D413"
+
+[tool.pytest.ini_options]
+doctest_optionflags = "NORMALIZE_WHITESPACE NUMBER"
+addopts = " -n auto --maxprocesses=8 --doctest-modules --randomly-seed=1234 --ignore=scripts --ignore=docs --ignore=data"
+filterwarnings = [
+  "error",
+  # DeprecationWarning thrown in pkg_resources for older numba verions and llvmlite
+  "ignore:.*pkg_resources.*",
+]

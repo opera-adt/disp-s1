@@ -16,7 +16,7 @@ from dolphin.workflows import stitch_and_unwrap, wrapped_phase
 from dolphin.workflows._utils import group_by_burst
 from dolphin.workflows.config import Workflow
 
-from .pge_runconfig import RunConfig
+from disp_s1.pge_runconfig import RunConfig
 
 
 @log_runtime

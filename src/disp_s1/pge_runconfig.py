@@ -4,8 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, List, Optional
 
-from pydantic import ConfigDict, Extra, Field
-
 from dolphin.workflows.config import (
     OPERA_DATASET_NAME,
     InterferogramNetwork,
@@ -17,6 +15,7 @@ from dolphin.workflows.config import (
     Workflow,
     YamlModel,
 )
+from pydantic import ConfigDict, Field
 
 
 class InputFileGroup(YamlModel):
@@ -32,7 +31,7 @@ class InputFileGroup(YamlModel):
         description="Frame ID of the bursts contained in `cslc_file_list`.",
     )
     model_config = ConfigDict(
-        extra=Extra.forbid, schema_extra={"required": ["cslc_file_list", "frame_id"]}
+        extra="forbid", json_schema_extra={"required": ["cslc_file_list", "frame_id"]}
     )
 
 
@@ -96,7 +95,7 @@ class DynamicAncillaryFileGroup(YamlModel):
             " provided, troposphere corrections are skipped."
         ),
     )
-    model_config = ConfigDict(extra=Extra.forbid)
+    model_config = ConfigDict(extra="forbid")
 
 
 class PrimaryExecutable(YamlModel):
@@ -106,7 +105,7 @@ class PrimaryExecutable(YamlModel):
         default="DISP_S1_SINGLE",
         description="Product type of the PGE.",
     )
-    model_config = ConfigDict(extra=Extra.forbid)
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProductPathGroup(YamlModel):
@@ -139,7 +138,7 @@ class ProductPathGroup(YamlModel):
             " the standard product output."
         ),
     )
-    model_config = ConfigDict(extra=Extra.forbid)
+    model_config = ConfigDict(extra="forbid")
 
 
 class AlgorithmParameters(YamlModel):
@@ -157,7 +156,7 @@ class AlgorithmParameters(YamlModel):
         default=OPERA_DATASET_NAME,
         description="Name of the subdataset to use in the input NetCDF files.",
     )
-    model_config = ConfigDict(extra=Extra.forbid)
+    model_config = ConfigDict(extra="forbid")
 
 
 class RunConfig(YamlModel):
@@ -178,7 +177,7 @@ class RunConfig(YamlModel):
         default=Path("output/disp_s1_workflow.log"),
         description="Path to the output log file in addition to logging to stderr.",
     )
-    model_config = ConfigDict(extra=Extra.forbid)
+    model_config = ConfigDict(extra="forbid")
 
     @classmethod
     def model_construct(cls, **kwargs):

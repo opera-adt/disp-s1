@@ -209,7 +209,6 @@ class RunConfig(YamlModel):
             "DISP_S1_", ""
         ).lower()
         cslc_file_list = self.input_file_group.cslc_file_list
-        output_directory = self.product_path_group.output_directory
         scratch_directory = self.product_path_group.scratch_path
         mask_file = self.dynamic_ancillary_file_group.mask_file
         amplitude_mean_files = self.dynamic_ancillary_file_group.amplitude_mean_files
@@ -230,8 +229,7 @@ class RunConfig(YamlModel):
             cslc_file_list=cslc_file_list,
             input_options=input_options,
             mask_file=mask_file,
-            output_directory=output_directory,
-            scratch_directory=scratch_directory,
+            work_directory=scratch_directory,
             save_compressed_slc=self.product_path_group.save_compressed_slc,
             amplitude_mean_files=amplitude_mean_files,
             amplitude_dispersion_files=amplitude_dispersion_files,
@@ -263,6 +261,8 @@ class RunConfig(YamlModel):
         AlgorithmParameters(**alg_param_dict).to_yaml(algorithm_parameters_file)
         # This get's unpacked to load the rest of the parameters for the Workflow
 
+        # Form the output as one up from the scratch
+        output_directory = workflow.work_directory.parent / "output"
         return cls(
             input_file_group=InputFileGroup(
                 cslc_file_list=workflow.cslc_file_list,
@@ -280,9 +280,9 @@ class RunConfig(YamlModel):
                 product_type=f"DISP_S1_{str(workflow.workflow_name.upper())}",
             ),
             product_path_group=ProductPathGroup(
-                product_path=workflow.output_directory,
-                scratch_path=workflow.scratch_directory,
-                sas_output_path=workflow.output_directory,
+                product_path=output_directory,
+                scratch_path=workflow.work_directory,
+                sas_output_path=output_directory,
             ),
             worker_settings=workflow.worker_settings,
             log_file=workflow.log_file,

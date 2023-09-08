@@ -13,7 +13,11 @@ from dolphin._background import DummyProcessPoolExecutor
 from dolphin._log import get_log, log_runtime
 from dolphin.utils import get_max_memory_usage, set_num_threads
 from dolphin.workflows import stitch_and_unwrap, wrapped_phase
-from dolphin.workflows._utils import group_by_burst
+from dolphin.workflows._utils import (
+    _create_burst_cfg,
+    _remove_dir_if_empty,
+    group_by_burst,
+)
 from dolphin.workflows.config import Workflow
 
 from disp_s1.pge_runconfig import RunConfig
@@ -174,28 +178,3 @@ def run(
     logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
     logger.info(f"Config file dolphin version: {cfg._dolphin_version}")
     logger.info(f"Current running dolphin version: {dolphin_version}")
-
-
-def _create_burst_cfg(
-    cfg: Workflow,
-    burst_id: str,
-    grouped_slc_files: dict[str, list[Path]],
-    grouped_amp_mean_files: dict[str, list[Path]],
-    grouped_amp_dispersion_files: dict[str, list[Path]],
-) -> Workflow:
-    cfg_temp_dict = cfg.model_dump(exclude={"cslc_file_list"})
-
-    # Just update the inputs and the scratch directory
-    top_level_scratch = cfg_temp_dict["scratch_directory"]
-    cfg_temp_dict.update({"scratch_directory": top_level_scratch / burst_id})
-    cfg_temp_dict["cslc_file_list"] = grouped_slc_files[burst_id]
-    cfg_temp_dict["amplitude_mean_files"] = grouped_amp_mean_files[burst_id]
-    cfg_temp_dict["amplitude_dispersion_files"] = grouped_amp_dispersion_files[burst_id]
-    return Workflow(**cfg_temp_dict)
-
-
-def _remove_dir_if_empty(d: Path) -> None:
-    try:
-        d.rmdir()
-    except OSError:
-        pass

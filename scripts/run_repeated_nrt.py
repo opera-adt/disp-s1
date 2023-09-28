@@ -10,15 +10,9 @@ from typing import Any, Mapping, Sequence
 from dolphin import io, ps, stack, utils
 from dolphin._log import get_log, log_runtime
 from dolphin._types import Filename
+from dolphin.opera_utils import OPERA_DATASET_NAME, group_by_burst, make_nodata_mask
 from dolphin.workflows import s1_disp
-from dolphin.workflows._utils import group_by_burst, make_nodata_mask
-from dolphin.workflows.config import (
-    OPERA_DATASET_NAME,
-    InterferogramNetworkType,
-    ShpMethod,
-    Workflow,
-    WorkflowName,
-)
+from dolphin.workflows.config import InterferogramNetworkType, ShpMethod, Workflow
 
 logger = get_log("dolphin.run_repeated_nrt")
 
@@ -42,17 +36,16 @@ def _create_cfg(
         interferogram_network = dict(
             network_type=InterferogramNetworkType.SINGLE_REFERENCE
         )
-        workflow_name = WorkflowName.STACK
     else:
         interferogram_network = dict(
             network_type=InterferogramNetworkType.MANUAL_INDEX,
             indexes=[(0, -1)],
         )
-        workflow_name = WorkflowName.SINGLE
 
     cfg = Workflow(
         # Things that change with each workflow run
         cslc_file_list=slc_files,
+        input_options=dict(subdataset=OPERA_DATASET_NAME),
         interferogram_network=interferogram_network,
         amplitude_mean_files=amplitude_mean_files,
         amplitude_dispersion_files=amplitude_dispersion_files,
@@ -81,10 +74,12 @@ def _create_cfg(
         unwrap_options=dict(
             unwrap_method="snaphu",
             run_unwrap=run_unwrap,
+            ntiles=(2, 2),
+            downsample_factor=(3, 3),
             # CHANGEME: or else run in background somehow?
         ),
         save_compressed_slc=True,  # always save, and only sometimes will we grab it
-        workflow_name=workflow_name,
+        # workflow_name=workflow_name,
     )
     return cfg
 
@@ -352,15 +347,20 @@ def _run_one_stack(
     cfg.to_yaml(cur_path / "dolphin_config.yaml")
     s1_disp.run(cfg)
 
-    # On the step before we hit double `ministack_size`,
-    # archive, shrink, and pull another compressed SLC to replace.
-    stack_size = slc_idx_end - slc_idx_start
-    max_stack_size = 2 * ministack_size - 1  # Size at which we archive/shrink
-    if stack_size == max_stack_size:
-        # time to shrink!
-        # Get the compressed SLC that was output
-        comp_slc_path = (cur_path / "output/compressed_slcs/").resolve()
-        new_comp_slcs = list(comp_slc_path.glob("*.h5"))
+    # # On the step before we hit double `ministack_size`,
+    # # archive, shrink, and pull another compressed SLC to replace.
+    # stack_size = slc_idx_end - slc_idx_start
+    # max_stack_size = 2 * ministack_size - 1  # Size at which we archive/shrink
+    # if stack_size == max_stack_size:
+    #     # time to shrink!
+    #     # Get the compressed SLC that was output
+    #     comp_slc_path = (cur_path / "output/compressed_slcs/").resolve()
+    #     new_comp_slcs = list(comp_slc_path.glob("*.h5"))
+    # else:
+    #     new_comp_slcs = []
+    if slc_idx_start % ministack_size == 0:
+        # Get the compressed SLCs that were created
+        new_comp_slcs = [p.resolve() for p in cur_path.rglob("compressed_*tif")]
     else:
         new_comp_slcs = []
 
@@ -420,9 +420,36 @@ def main(arg_dict: dict) -> None:
     cfg.to_yaml(cur_path / "dolphin_config.yaml")
     s1_disp.run(cfg)
 
-    # Rest of mini stacks in incremental-mode
-    comp_slc_files: list[Path] = []
-    slc_idx_end = ministack_size + 1
+    # # Rest of mini stacks in incremental-mode
+    # comp_slc_files: list[Path] = []
+    # slc_idx_end = ministack_size + 1
+
+    # while slc_idx_end <= num_dates:
+    #     # we have to wait for the shrink-and-archive jobs before continuing
+    #     new_comp_slcs = _run_one_stack(
+    #         slc_idx_start,
+    #         slc_idx_end,
+    #         ministack_size,
+    #         burst_to_file_list,
+    #         comp_slc_files,
+    #         all_amp_files,
+    #         all_disp_files,
+    #     )
+    #     logger.info(
+    #         f"{len(new_comp_slcs)} comp slcs from stack_{slc_idx_start}_{slc_idx_end}"
+    #     )
+    #     comp_slc_files.extend(new_comp_slcs)
+    #     slc_idx_end += 1
+    #     if len(new_comp_slcs) > 0:
+    #         # Move the front idx up by one ministack
+    #         slc_idx_start += ministack_size
+
+    # comp_slc_path = (cur_path / "output/compressed_slcs/").resolve()
+    # comp_slc_files = list(comp_slc_path.glob("*.h5"))
+    comp_slc_files = [p.resolve() for p in cur_path.rglob("compressed_*tif")]
+    # TESTING: ALTERNATE FIXED-K Rest of mini stacks in incremental-mode
+    slc_idx_start += 1
+    slc_idx_end += 1
 
     while slc_idx_end <= num_dates:
         # we have to wait for the shrink-and-archive jobs before continuing
@@ -439,10 +466,8 @@ def main(arg_dict: dict) -> None:
             f"{len(new_comp_slcs)} comp slcs from stack_{slc_idx_start}_{slc_idx_end}"
         )
         comp_slc_files.extend(new_comp_slcs)
+        slc_idx_start += 1
         slc_idx_end += 1
-        if len(new_comp_slcs) > 0:
-            # Move the front idx up by one ministack
-            slc_idx_start += ministack_size
 
 
 if __name__ == "__main__":

@@ -22,7 +22,6 @@ from disp_s1.pge_runconfig import RunConfig
 
 logger = get_log(__name__)
 
-
 CORRECTIONS_GROUP_NAME = "corrections"
 IDENTIFICATION_GROUP_NAME = "identification"
 GLOBAL_ATTRS = dict(
@@ -31,7 +30,7 @@ GLOBAL_ATTRS = dict(
     institution="NASA JPL",
     mission_name="OPERA",
     reference_document="TBD",
-    title="OPERA L3_DISP_S1 Product",
+    title="OPERA L3_DISP-S1 Product",
 )
 
 # Convert chunks to a tuple or h5py errors

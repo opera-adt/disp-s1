@@ -26,9 +26,9 @@ def run(
     from disp_s1.main import run
     from disp_s1.pge_runconfig import RunConfig
 
-    pge_rc = RunConfig.from_yaml(config_file)
-    cfg = pge_rc.to_workflow()
-    run(cfg, debug=debug)
+    pge_runconfig = RunConfig.from_yaml(config_file)
+    cfg = pge_runconfig.to_workflow()
+    run(cfg, pge_runconfig=pge_runconfig, debug=debug)
 
 
 def get_parser(

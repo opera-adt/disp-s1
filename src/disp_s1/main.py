@@ -5,7 +5,6 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from pprint import pformat
-from typing import Optional
 
 from dolphin import __version__ as dolphin_version
 from dolphin._background import DummyProcessPoolExecutor
@@ -23,8 +22,8 @@ from disp_s1.pge_runconfig import RunConfig
 @log_runtime
 def run(
     cfg: Workflow,
+    pge_runconfig: RunConfig,
     debug: bool = False,
-    pge_runconfig: Optional[RunConfig] = None,
 ):
     """Run the displacement workflow on a stack of SLCs.
 
@@ -36,8 +35,7 @@ def run(
     debug : bool, optional
         Enable debug logging, by default False.
     pge_runconfig : RunConfig, optional
-        If provided, adds PGE-specific metadata to the output product.
-        Not used by the workflow itself, only for extra metadata.
+        PGE-specific metadata for the output product.
     """
     # Set the logging level for all `dolphin.` modules
     logger = get_log(name="disp_s1", debug=debug, filename=cfg.log_file)
@@ -144,13 +142,15 @@ def run(
     # ######################################
     # 3. Finalize the output as an HDF5 product
     # ######################################
-    logger.info(f"Creating {len(unwrapped_paths)} outputs in {cfg.output_directory}")
+    out_dir = pge_runconfig.product_path_group.output_directory
+    out_dir.mkdir(exist_ok=True, parents=True)
+    logger.info(f"Creating {len(unwrapped_paths)} outputs in {out_dir}")
     for unw_p, cc_p, s_corr_p in zip(
         unwrapped_paths,
         conncomp_paths,
         spatial_corr_paths,
     ):
-        output_name = cfg.output_directory / unw_p.with_suffix(".nc").name
+        output_name = out_dir / unw_p.with_suffix(".nc").name
         product.create_output_product(
             unw_filename=unw_p,
             conncomp_filename=cc_p,
@@ -161,9 +161,9 @@ def run(
             pge_runconfig=pge_runconfig,
         )
 
-    if cfg.save_compressed_slc:
+    if pge_runconfig.product_path_group.save_compressed_slc:
         logger.info(f"Saving {len(comp_slc_dict.items())} compressed SLCs")
-        output_dir = cfg.output_directory / "compressed_slcs"
+        output_dir = out_dir / "compressed_slcs"
         output_dir.mkdir(exist_ok=True)
         product.create_compressed_products(
             comp_slc_dict=comp_slc_dict,
@@ -175,3 +175,5 @@ def run(
     logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
     logger.info(f"Config file dolphin version: {cfg._dolphin_version}")
     logger.info(f"Current running dolphin version: {dolphin_version}")
+    logger.info(f"Product type: {pge_runconfig.primary_executable.product_type}")
+    logger.info(f"Product version: {pge_runconfig.product_path_group.product_version}")

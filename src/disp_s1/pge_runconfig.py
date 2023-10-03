@@ -264,7 +264,7 @@ class RunConfig(YamlModel):
         # This get's unpacked to load the rest of the parameters for the Workflow
 
         # Form the output as one up from the scratch
-        output_directory = workflow.work_directory.parent / "output"
+        output_directory = workflow.work_directory / "output"
         return cls(
             input_file_group=InputFileGroup(
                 cslc_file_list=workflow.cslc_file_list,

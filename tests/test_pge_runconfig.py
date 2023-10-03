@@ -10,6 +10,7 @@ from disp_s1.pge_runconfig import (
     PrimaryExecutable,
     ProductPathGroup,
     RunConfig,
+    StaticAncillaryFileGroup,
 )
 
 
@@ -45,6 +46,12 @@ def dynamic_ancillary_file_group(algorithm_parameters_file):
 
 
 @pytest.fixture
+def static_ancillary_file_group(tmp_path):
+    frame_to_burst_json = tmp_path / "opera-s1-disp-frame-to-burst.json.zip"
+    return StaticAncillaryFileGroup(frame_to_burst_json=frame_to_burst_json)
+
+
+@pytest.fixture
 def product_path_group(tmp_path):
     product_path = tmp_path / "product_path"
     product_path.mkdir()
@@ -55,12 +62,14 @@ def product_path_group(tmp_path):
 def runconfig_minimum(
     input_file_group,
     dynamic_ancillary_file_group,
+    static_ancillary_file_group,
     product_path_group,
 ):
     c = RunConfig(
         input_file_group=input_file_group,
         primary_executable=PrimaryExecutable(),
         dynamic_ancillary_file_group=dynamic_ancillary_file_group,
+        static_ancillary_file_group=static_ancillary_file_group,
         product_path_group=product_path_group,
     )
     return c
@@ -78,7 +87,15 @@ def test_runconfig_from_workflow(tmp_path, runconfig_minimum):
     w = runconfig_minimum.to_workflow()
     frame_id = runconfig_minimum.input_file_group.frame_id
     algo_file = tmp_path / "algo_params.yaml"
-    w2 = RunConfig.from_workflow(w, frame_id, algo_file).to_workflow()
+    frame_to_burst_json = tmp_path / "opera-s1-disp-frame-to-burst.json.zip"
+    proc_mode = "forward"
+    w2 = RunConfig.from_workflow(
+        w,
+        frame_id=frame_id,
+        frame_to_burst_json=frame_to_burst_json,
+        processing_mode=proc_mode,
+        algorithm_parameters_file=algo_file,
+    ).to_workflow()
 
     # these will be slightly different
     w2.creation_time_utc = w.creation_time_utc

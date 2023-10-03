@@ -7,19 +7,16 @@ from pathlib import Path
 from pprint import pformat
 from typing import Optional
 
-import product
 from dolphin import __version__ as dolphin_version
 from dolphin._background import DummyProcessPoolExecutor
 from dolphin._log import get_log, log_runtime
+from dolphin.opera_utils import group_by_burst
 from dolphin.utils import get_max_memory_usage, set_num_threads
 from dolphin.workflows import stitch_and_unwrap, wrapped_phase
-from dolphin.workflows._utils import (
-    _create_burst_cfg,
-    _remove_dir_if_empty,
-    group_by_burst,
-)
+from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
 from dolphin.workflows.config import Workflow
 
+from disp_s1 import product
 from disp_s1.pge_runconfig import RunConfig
 
 
@@ -43,7 +40,7 @@ def run(
         Not used by the workflow itself, only for extra metadata.
     """
     # Set the logging level for all `dolphin.` modules
-    logger = get_log(name="disp-s1", debug=debug, filename=cfg.log_file)
+    logger = get_log(name="disp_s1", debug=debug, filename=cfg.log_file)
     logger.debug(pformat(cfg.model_dump()))
     cfg.create_dir_tree(debug=debug)
 

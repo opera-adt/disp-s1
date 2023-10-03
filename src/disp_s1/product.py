@@ -13,8 +13,8 @@ from dolphin import __version__ as dolphin_version
 from dolphin import io
 from dolphin._log import get_log
 from dolphin._types import Filename
+from dolphin.opera_utils import OPERA_DATASET_NAME
 from dolphin.utils import get_dates
-from dolphin.workflows.config import OPERA_DATASET_NAME
 from numpy.typing import ArrayLike, DTypeLike
 from PIL import Image
 

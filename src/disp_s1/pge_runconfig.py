@@ -245,16 +245,13 @@ class RunConfig(YamlModel):
         bounds_epsg, bounds = get_frame_bbox(
             frame_id=frame_id, json_file=frame_to_burst_file
         )
-        output_options = dict(
-            bounds=bounds,
-            bounds_epsg=bounds_epsg,
-        )
+        param_dict["output_options"]["bounds"] = bounds
+        param_dict["output_options"]["bounds_epsg"] = bounds_epsg
 
         # This get's unpacked to load the rest of the parameters for the Workflow
         return Workflow(
             cslc_file_list=cslc_file_list,
             input_options=input_options,
-            output_options=output_options,
             mask_file=mask_file,
             work_directory=scratch_directory,
             save_compressed_slc=self.product_path_group.save_compressed_slc,

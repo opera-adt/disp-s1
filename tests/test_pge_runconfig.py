@@ -3,6 +3,7 @@ import warnings
 
 import pytest
 
+from disp_s1 import utils
 from disp_s1.pge_runconfig import (
     AlgorithmParameters,
     DynamicAncillaryFileGroup,
@@ -46,9 +47,8 @@ def dynamic_ancillary_file_group(algorithm_parameters_file):
 
 
 @pytest.fixture
-def static_ancillary_file_group(tmp_path):
-    frame_to_burst_json = tmp_path / "opera-s1-disp-frame-to-burst.json.zip"
-    return StaticAncillaryFileGroup(frame_to_burst_json=frame_to_burst_json)
+def static_ancillary_file_group():
+    return StaticAncillaryFileGroup(frame_to_burst_json=utils.FRAME_TO_BURST_JSON_FILE)
 
 
 @pytest.fixture
@@ -87,7 +87,7 @@ def test_runconfig_from_workflow(tmp_path, runconfig_minimum):
     w = runconfig_minimum.to_workflow()
     frame_id = runconfig_minimum.input_file_group.frame_id
     algo_file = tmp_path / "algo_params.yaml"
-    frame_to_burst_json = tmp_path / "opera-s1-disp-frame-to-burst.json.zip"
+    frame_to_burst_json = utils.FRAME_TO_BURST_JSON_FILE
     proc_mode = "forward"
     w2 = RunConfig.from_workflow(
         w,

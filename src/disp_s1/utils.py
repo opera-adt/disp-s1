@@ -6,7 +6,7 @@ from typing import Optional
 from dolphin._types import Bbox, Filename
 
 FRAME_TO_BURST_JSON_FILE = (
-    Path(__file__) / "data" / "opera-s1-disp-frame-to-burst.json.zip"
+    Path(__file__).parent / "data" / "opera-s1-disp-frame-to-burst.json.zip"
 )
 
 

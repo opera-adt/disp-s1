@@ -4,8 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, List, Optional
 
+from dolphin.opera_utils import OPERA_DATASET_NAME
 from dolphin.workflows.config import (
-    OPERA_DATASET_NAME,
     InterferogramNetwork,
     OutputOptions,
     PhaseLinkingOptions,
@@ -16,6 +16,8 @@ from dolphin.workflows.config import (
     YamlModel,
 )
 from pydantic import ConfigDict, Field
+
+from .enums import ProcessingMode
 
 
 class InputFileGroup(YamlModel):
@@ -102,7 +104,7 @@ class PrimaryExecutable(YamlModel):
     """Group describing the primary executable."""
 
     product_type: str = Field(
-        default="DISP_S1_SINGLE",
+        default="DISP_S1_FORWARD",
         description="Product type of the PGE.",
     )
     model_config = ConfigDict(extra="forbid")
@@ -205,9 +207,6 @@ class RunConfig(YamlModel):
         # the output directory, and the scratch directory.
         # All the other things come from the AlgorithmParameters.
 
-        workflow_name = self.primary_executable.product_type.replace(
-            "DISP_S1_", ""
-        ).lower()
         cslc_file_list = self.input_file_group.cslc_file_list
         scratch_directory = self.product_path_group.scratch_path
         mask_file = self.dynamic_ancillary_file_group.mask_file
@@ -225,7 +224,6 @@ class RunConfig(YamlModel):
 
         # This get's unpacked to load the rest of the parameters for the Workflow
         return Workflow(
-            workflow_name=workflow_name,
             cslc_file_list=cslc_file_list,
             input_options=input_options,
             mask_file=mask_file,
@@ -242,7 +240,11 @@ class RunConfig(YamlModel):
 
     @classmethod
     def from_workflow(
-        cls, workflow: Workflow, frame_id: int, algorithm_parameters_file: Path
+        cls,
+        workflow: Workflow,
+        frame_id: int,
+        algorithm_parameters_file: Path,
+        processing_mode: ProcessingMode,
     ):
         """Convert from a [`Workflow`][dolphin.workflows.config.Workflow] object.
 
@@ -277,7 +279,7 @@ class RunConfig(YamlModel):
                 # weather_model_file=workflow.weather_model_file,
             ),
             primary_executable=PrimaryExecutable(
-                product_type=f"DISP_S1_{str(workflow.workflow_name.upper())}",
+                product_type=f"DISP_S1_{processing_mode.upper()}",
             ),
             product_path_group=ProductPathGroup(
                 product_path=output_directory,

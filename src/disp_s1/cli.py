@@ -23,12 +23,12 @@ def run(
     """
     # rest of imports here so --help doesn't take forever
 
-    from dolphin.workflows.config import Workflow
+    from disp_s1.main import run
+    from disp_s1.pge_runconfig import RunConfig
 
-    from .main import s1_disp
-
-    cfg = Workflow.from_yaml(config_file)
-    s1_disp.run(cfg, debug=debug)
+    pge_rc = RunConfig.from_yaml(config_file)
+    cfg = pge_rc.to_workflow()
+    run(cfg, debug=debug)
 
 
 def get_parser(

@@ -49,7 +49,9 @@ jobs:
             channels:
               - conda-forge
       - name: Install
+        # Overwrite dolphin install with latest
         run: |
+          pip install --no-deps git+https://github.com/opera-adt/dolphin@main
           pip install --no-deps .
       - name: Install test dependencies
         run: |

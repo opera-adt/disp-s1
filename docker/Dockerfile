@@ -63,6 +63,7 @@ SHELL ["/usr/local/bin/_dockerfile_shell.sh"]
 # https://github.com/mamba-org/micromamba-docker#quick-start
 COPY --chown=$MAMBA_USER:$MAMBA_USER docker/specfile.txt /tmp/specfile.txt
 RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt && \
+    pip install --no-deps git+https://github.com/opera-adt/dolphin@main && \
     micromamba clean --all --yes
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .

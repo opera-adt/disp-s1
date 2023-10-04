@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+from pathlib import Path
 
 from dolphin.workflows.config import Workflow
 
@@ -21,9 +22,15 @@ def main():
         "-o", "--outfile", type=str, default="runconfig.yaml", help="Output file path."
     )
     parser.add_argument(
+        "--frame-to-burst-json",
+        type=Path,
+        default="algorithm_parameters.yaml",
+        help="Path to algorithm parameters file.",
+    )
+    parser.add_argument(
         "-a",
         "--algorithm-parameters-file",
-        type=str,
+        type=Path,
         default="algorithm_parameters.yaml",
         help="Path to algorithm parameters file.",
     )
@@ -34,6 +41,7 @@ def main():
     rc = RunConfig.from_workflow(
         workflow,
         frame_id=args.frame_id,
+        frame_to_burst_json=args.frame_to_burst_json,
         algorithm_parameters_file=args.algorithm_parameters_file,
         processing_mode=args.processing_mode,
     )

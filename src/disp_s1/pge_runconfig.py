@@ -18,10 +18,11 @@ from dolphin.workflows.config import (
 from pydantic import ConfigDict, Field
 
 from .enums import ProcessingMode
+from .utils import get_frame_bbox
 
 
 class InputFileGroup(YamlModel):
-    """A group of input files."""
+    """Inputs for A group of input files."""
 
     cslc_file_list: List[Path] = Field(
         default_factory=list,
@@ -100,6 +101,17 @@ class DynamicAncillaryFileGroup(YamlModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class StaticAncillaryFileGroup(YamlModel):
+    """Group for files which remain static over time."""
+
+    frame_to_burst_json: Path = Field(
+        ...,
+        description=(
+            "JSON file containing the mapping from frame_id to frame/burst information"
+        ),
+    )
+
+
 class PrimaryExecutable(YamlModel):
     """Group describing the primary executable."""
 
@@ -169,6 +181,7 @@ class RunConfig(YamlModel):
 
     input_file_group: InputFileGroup
     dynamic_ancillary_file_group: DynamicAncillaryFileGroup
+    static_ancillary_file_group: StaticAncillaryFileGroup
     primary_executable: PrimaryExecutable = Field(default_factory=PrimaryExecutable)
     product_path_group: ProductPathGroup
 
@@ -189,6 +202,10 @@ class RunConfig(YamlModel):
         if "dynamic_ancillary_file_group" not in kwargs:
             kwargs["dynamic_ancillary_file_group"] = (
                 DynamicAncillaryFileGroup._construct_empty()
+            )
+        if "static_ancillary_file_group" not in kwargs:
+            kwargs["static_ancillary_file_group"] = (
+                StaticAncillaryFileGroup._construct_empty()
             )
         if "product_path_group" not in kwargs:
             kwargs["product_path_group"] = ProductPathGroup._construct_empty()
@@ -222,6 +239,15 @@ class RunConfig(YamlModel):
         param_dict = algorithm_parameters.model_dump()
         input_options = dict(subdataset=param_dict.pop("subdataset"))
 
+        # Convert the frame_id into an output bounding box
+        frame_to_burst_file = self.static_ancillary_file_group.frame_to_burst_json
+        frame_id = self.input_file_group.frame_id
+        bounds_epsg, bounds = get_frame_bbox(
+            frame_id=frame_id, json_file=frame_to_burst_file
+        )
+        param_dict["output_options"]["bounds"] = bounds
+        param_dict["output_options"]["bounds_epsg"] = bounds_epsg
+
         # This get's unpacked to load the rest of the parameters for the Workflow
         return Workflow(
             cslc_file_list=cslc_file_list,
@@ -243,8 +269,9 @@ class RunConfig(YamlModel):
         cls,
         workflow: Workflow,
         frame_id: int,
-        algorithm_parameters_file: Path,
+        frame_to_burst_json: Path,
         processing_mode: ProcessingMode,
+        algorithm_parameters_file: Path,
     ):
         """Convert from a [`Workflow`][dolphin.workflows.config.Workflow] object.
 
@@ -277,6 +304,9 @@ class RunConfig(YamlModel):
                 mask_file=workflow.mask_file,
                 # tec_file=workflow.tec_file,
                 # weather_model_file=workflow.weather_model_file,
+            ),
+            static_ancillary_file_group=StaticAncillaryFileGroup(
+                frame_to_burst_json=frame_to_burst_json,
             ),
             primary_executable=PrimaryExecutable(
                 product_type=f"DISP_S1_{processing_mode.upper()}",

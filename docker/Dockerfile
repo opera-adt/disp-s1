@@ -71,7 +71,8 @@ COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 # https://github.com/mamba-org/micromamba-docker#running-commands-in-dockerfile-within-the-conda-environment
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 # --no-deps because they are installed with conda
-RUN python -m pip install --no-deps .
+RUN python -m pip install --no-deps . && \
+    pip install --no-deps git+https://github.com/opera-adt/dolphin@main
 
 # Run the entrypoint from the /work directory
 # This means if they mount a volume to /work, we won't be mixing in the repository code

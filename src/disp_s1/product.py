@@ -15,6 +15,7 @@ from dolphin._log import get_log
 from dolphin._types import Filename
 from dolphin.opera_utils import OPERA_DATASET_NAME
 from dolphin.utils import get_dates
+from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
 from PIL import Image
 
@@ -45,6 +46,8 @@ HDF5_OPTS["chunks"] = tuple(HDF5_OPTS["chunks"])  # type: ignore
 # used by other libraries, such as rioxarray:
 # https://github.com/corteva/rioxarray/blob/5783693895b4b055909c5758a72a5d40a365ef11/rioxarray/rioxarray.py#L34 # noqa
 GRID_MAPPING_DSET = "spatial_ref"
+
+COMPRESSED_SLC_TEMPLATE = "compressed_{burst}_{date_str}.h5"
 
 
 def create_output_product(
@@ -87,9 +90,11 @@ def create_output_product(
     unw_arr = np.ma.filled(unw_arr_ma, 0)
 
     conncomp_arr = io.load_gdal(conncomp_filename)
-    tcorr_arr = _zero_mantissa(io.load_gdal(tcorr_filename))
+    tcorr_arr = io.load_gdal(tcorr_filename)
+    truncate_mantissa(tcorr_arr)
     # TODO: add spatial correlation, pass through to function
-    spatial_corr_arr = _zero_mantissa(io.load_gdal(spatial_corr_filename))
+    spatial_corr_arr = io.load_gdal(spatial_corr_filename)
+    truncate_mantissa(spatial_corr_arr)
 
     # Get the nodata mask (which for snaphu is 0)
     mask = unw_arr == 0
@@ -386,7 +391,7 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
     def form_name(filename: Path, burst: str):
         # filename: compressed_20180222_20180716.tif
         date_str = io._format_date_pair(*get_dates(filename.stem))
-        return f"compressed_slc_{burst}_{date_str}.h5"
+        return COMPRESSED_SLC_TEMPLATE.format(burst=burst, date_str=date_str)
 
     attrs = GLOBAL_ATTRS.copy()
     attrs["title"] = "Compressed SLC"
@@ -401,7 +406,8 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
 
         crs = io.get_raster_crs(comp_slc_file)
         gt = io.get_raster_gt(comp_slc_file)
-        data = _zero_mantissa(io.load_gdal(comp_slc_file))
+        data = io.load_gdal(comp_slc_file)
+        truncate_mantissa(data)
 
         logger.info(f"Writing {outname}")
         with h5py.File(outname, "w") as hf:
@@ -423,34 +429,6 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
                 fillvalue=np.nan + 0j,
                 attrs=dict(units="unitless"),
             )
-
-
-def _zero_mantissa(data: np.ndarray, bits_to_keep: int = 10):
-    """Zero out 23-`bits_to_keep` bits of the mantissa of a float32 array.
-
-    This is used to make the data more compressible when we don't need the
-    full precision (e.g. for correlation estimates).
-
-    By default, this will zero out 13 bits, which (for data between 0 and 1)
-    is `1 / 2**13 ~= 0.0001` of precision.
-    """
-    float32_mantissa_bits = 23
-    nzero = float32_mantissa_bits - bits_to_keep
-
-    # Start with 0b11111111111111111111111111111111
-    allbits = (1 << 32) - 1
-    # Shift it to the left by `nzero` bits
-    bitmask = (allbits << nzero) & allbits
-    # Mask out the least significant `nzero` bits
-    if np.iscomplexobj(data):
-        dr = data.real.view(np.uint32)
-        dr &= bitmask
-        di = data.imag.view(np.uint32)
-        di &= bitmask
-    else:
-        dr = data.view(np.uint32)
-        dr &= bitmask
-    return data
 
 
 def make_browse_image(

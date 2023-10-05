@@ -1,8 +1,9 @@
+import h5py
 import numpy as np
 import pytest
-
-from disp_s1.product import create_output_product
 from dolphin import io
+
+from disp_s1.product import create_compressed_products, create_output_product
 
 # random place in hawaii
 GEOTRANSFORM = [204500.0, 5.0, 0.0, 2151300.0, 0.0, -10.0]
@@ -67,3 +68,31 @@ def test_create_output_product(
         output_name=output_name,
         corrections={},
     )
+
+
+@pytest.fixture
+def comp_slc(tmp_path) -> str:
+    data = np.random.randn(*SHAPE).astype(np.complex64)
+    date_pair = "20220101_20220102"
+    filename = tmp_path / f"compressed_{date_pair}.tif"
+    io.write_arr(
+        arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
+    )
+    return filename
+
+
+def test_create_compressed_slc(
+    tmp_path,
+    comp_slc,
+):
+    burst = "t123_123456_iw1"
+    date_pair = "20220101_20220102"
+    comp_slc_dict = {burst: comp_slc}
+
+    create_compressed_products(comp_slc_dict, output_dir=tmp_path)
+
+    expected_name = tmp_path / f"compressed_{burst}_{date_pair}.h5"
+    assert expected_name.exists()
+    # Check product structure
+    with h5py.File(expected_name) as hf:
+        assert hf["/data/VV"].size > 0

@@ -5,6 +5,7 @@ from pathlib import Path
 from dolphin.workflows.config import Workflow
 
 from disp_s1.pge_runconfig import RunConfig
+from disp_s1.utils import FRAME_TO_BURST_JSON_FILE
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
     parser.add_argument(
         "--frame-to-burst-json",
         type=Path,
-        default="algorithm_parameters.yaml",
+        default=FRAME_TO_BURST_JSON_FILE,
         help="Path to algorithm parameters file.",
     )
     parser.add_argument(

@@ -409,6 +409,11 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
         data = io.load_gdal(comp_slc_file)
         truncate_mantissa(data)
 
+        # Input metadata is stored within the GDAL "DOLPHIN" domain
+        metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
+        attrs = dict(units="unitless")
+        attrs.update(metadata_dict)
+
         logger.info(f"Writing {outname}")
         with h5py.File(outname, "w") as hf:
             # add type to root for GDAL recognition of complex datasets in NetCDF
@@ -427,7 +432,7 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
                 data=data,
                 description="Compressed SLC product",
                 fillvalue=np.nan + 0j,
-                attrs=dict(units="unitless"),
+                attrs=attrs,
             )
 
 

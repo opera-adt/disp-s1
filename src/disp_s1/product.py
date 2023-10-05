@@ -83,7 +83,8 @@ def create_output_product(
     # Read the Geotiff file and its metadata
     crs = io.get_raster_crs(unw_filename)
     gt = io.get_raster_gt(unw_filename)
-    unw_arr = io.load_gdal(unw_filename)
+    unw_arr_ma = io.load_gdal(unw_filename, masked=True)
+    unw_arr = np.ma.filled(unw_arr_ma, 0)
 
     conncomp_arr = io.load_gdal(conncomp_filename)
     tcorr_arr = _zero_mantissa(io.load_gdal(tcorr_filename))

@@ -4,6 +4,7 @@ from datetime import date
 from pathlib import Path
 from typing import Sequence
 
+from dolphin._types import Filename
 from dolphin.utils import group_by_date
 
 logger = logging.getLogger(__name__)
@@ -11,8 +12,8 @@ logging.basicConfig(level=logging.INFO)
 
 
 def download_ionex_for_slcs(
-    input_files: Sequence[Path],
-    dest_dir: Path,
+    input_files: Sequence[Filename],
+    dest_dir: Filename,
     verbose: bool = False,
 ) -> list[Path]:
     """Download IONEX files for a list of SLC files.
@@ -36,9 +37,8 @@ def download_ionex_for_slcs(
 
     output_files = []
     for input_date_tuple, file_list in date_to_file_list.items():
-        if len(input_date_tuple) != 1:
-            raise ValueError("More than one date in the input file: ", file_list)
         input_date = input_date_tuple[0]
+        logger.info("Downloading for %s", input_date)
         f = download_ionex_for_date(input_date, dest_dir=dest_dir, verbose=verbose)
         output_files.append(f)
 
@@ -47,7 +47,7 @@ def download_ionex_for_slcs(
 
 def download_ionex_for_date(
     input_date: date,
-    dest_dir: Path,
+    dest_dir: Filename,
     solution_code: str = "jpl",
     verbose: bool = False,
 ) -> Path:
@@ -70,7 +70,7 @@ def download_ionex_for_date(
         Path to the local IONEX text file.
     """
     source_url = _generate_ionex_filename(input_date, solution_code=solution_code)
-    dest_file = dest_dir / Path(source_url).name
+    dest_file = Path(dest_dir) / Path(source_url).name
 
     wget_cmd = ["wget", "--continue", "--auth-no-challenge", source_url]
 

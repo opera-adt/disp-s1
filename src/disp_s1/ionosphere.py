@@ -1,21 +1,62 @@
+import logging
 import subprocess
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from typing import Sequence
 
+from dolphin.utils import group_by_date
 
-def download_ionex(
-    date_list: Sequence[datetime],
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+
+def download_ionex_for_slcs(
+    input_files: Sequence[Path],
     dest_dir: Path,
-    solution_code: str = "jpl",
     verbose: bool = False,
 ) -> list[Path]:
-    """Download IONEX file.
+    """Download IONEX files for a list of SLC files.
 
     Parameters
     ----------
-    date_list : list[datetime]
-        The dates to download.
+    input_files : Sequence[Path]
+        List of SLC files.
+    dest_dir : Path
+        Directory to save the downloaded files.
+    verbose : bool, optional
+        Print messages, by default False.
+
+    Returns
+    -------
+    list[Path]
+        List of downloaded IONEX files.
+    """
+    date_to_file_list = group_by_date(input_files)
+    logger.info(f"Found {len(date_to_file_list)} dates in the input files.")
+
+    output_files = []
+    for input_date_tuple, file_list in date_to_file_list.items():
+        if len(input_date_tuple) != 1:
+            raise ValueError("More than one date in the input file: ", file_list)
+        input_date = input_date_tuple[0]
+        f = download_ionex_for_date(input_date, dest_dir=dest_dir, verbose=verbose)
+        output_files.append(f)
+
+    return output_files
+
+
+def download_ionex_for_date(
+    input_date: date,
+    dest_dir: Path,
+    solution_code: str = "jpl",
+    verbose: bool = False,
+) -> Path:
+    """Download one IONEX file for a given date.
+
+    Parameters
+    ----------
+    input_date: date
+        The date to download.
     dest_dir : Path
         Directory to save the downloaded files.
     solution_code : str, optional
@@ -25,26 +66,23 @@ def download_ionex(
 
     Returns
     -------
-    list[Path]
-        Paths to the local uncompressed IONEX files.
+    Path
+        Path to the local IONEX text file.
     """
-    out_paths = []
-    for date in date_list:
-        source_url = _generate_ionex_filename(date, solution_code=solution_code)
-        dest_file = dest_dir / Path(source_url).name
-        out_paths.append(dest_file)
+    source_url = _generate_ionex_filename(input_date, solution_code=solution_code)
+    dest_file = dest_dir / Path(source_url).name
 
-        wget_cmd = ["wget", "--continue", "--auth-no-challenge", source_url]
+    wget_cmd = ["wget", "--continue", "--auth-no-challenge", source_url]
 
-        if not verbose:
-            wget_cmd.append("--quiet")
+    if not verbose:
+        wget_cmd.append("--quiet")
 
-        print(wget_cmd)
-        subprocess.run(wget_cmd, cwd=dest_dir)
-    return out_paths
+    logger.info('Running command: "%s"', " ".join(wget_cmd))
+    subprocess.run(wget_cmd, cwd=dest_dir)
+    return dest_file
 
 
-def _generate_ionex_filename(input_date: datetime, solution_code: str = "jpl") -> str:
+def _generate_ionex_filename(input_date: date, solution_code: str = "jpl") -> str:
     """Generate the IONEX file name.
 
     Parameters

@@ -3,6 +3,14 @@ from pathlib import Path
 
 from disp_s1.enums import ProcessingMode
 
+# Note on ionosphere/troposphere files:
+# The ionosphere file download is working for a list of SLC files.
+# see `ionosphere.download_ionex_for_slcs`.
+# The troposphere file download is missing. Dummy files were created.
+# for d in `ls input_slcs/t042_088905_iw1* | awk -F'_' '{print $5}' | cut -d'.' -f1`; do
+#     touch dynamic_ancillary_files/troposphere_files/ERA5_N30_N40_W120_W110_${d}_14.grb;
+# done
+
 
 def setup_delivery(out_dir: Path, mode: ProcessingMode):
     """Set up the dolphin config file for the delivery for one mode."""
@@ -46,6 +54,8 @@ def setup_delivery(out_dir: Path, mode: ProcessingMode):
 
 if __name__ == "__main__":
     out_dir = Path("config_files")
+    # California, track 42, bay area:
+    frame_id = 11114
     # Creates one file for the forward mode and one for the historical mode.
     for mode in ProcessingMode:
         # TODO: adjust the number of
@@ -57,7 +67,7 @@ if __name__ == "__main__":
         this_dir = Path(__file__).parent
         convert_config = this_dir / "convert_config.py"
         arg_string = (
-            f" --frame-id 11114 --processing-mode {mode.value} -o"
+            f" --frame-id {frame_id} --processing-mode {mode.value} -o"
             f" {out_dir}/runconfig_{mode.value}.yaml -a"
             f" {out_dir}/algorithm_parameters_{mode.value}.yaml"
         )

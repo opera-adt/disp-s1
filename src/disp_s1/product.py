@@ -69,9 +69,9 @@ def create_output_product(
     conncomp_filename : Filename
         The path to the input connected components image.
     tcorr_filename : Filename
-        The path to the input temporal correlation image.
+        The path to the input temporal coherence image.
     spatial_corr_filename : Filename
-        The path to the input spatial correlation image.
+        The path to the input interferometric correlation image.
     output_name : Filename, optional
         The path to the output NetCDF file, by default "output.nc"
     corrections : dict[str, ArrayLike], optional
@@ -92,7 +92,6 @@ def create_output_product(
     conncomp_arr = io.load_gdal(conncomp_filename)
     tcorr_arr = io.load_gdal(tcorr_filename)
     truncate_mantissa(tcorr_arr)
-    # TODO: add spatial correlation, pass through to function
     spatial_corr_arr = io.load_gdal(spatial_corr_filename)
     truncate_mantissa(spatial_corr_arr)
 
@@ -135,15 +134,15 @@ def create_output_product(
         )
         _create_geo_dataset(
             group=f,
-            name="temporal_correlation",
+            name="temporal_coherence",
             data=tcorr_arr,
-            description="Temporal correlation of phase inversion",
+            description="Temporal coherence of phase inversion",
             fillvalue=np.nan,
             attrs=dict(units="unitless"),
         )
         _create_geo_dataset(
             group=f,
-            name="spatial_correlation",
+            name="interferometric_correlation",
             data=spatial_corr_arr,
             description="Multilooked sample interferometric correlation",
             fillvalue=np.nan,

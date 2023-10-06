@@ -36,7 +36,7 @@ def setup_delivery(out_dir: Path, mode: ProcessingMode):
         # Unwrapping stuff
         " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5"
         # Worker stuff
-        " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 3"
+        " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 3 --no-gpu"
         f" -o {outfile}"
     )
     print(cmd)

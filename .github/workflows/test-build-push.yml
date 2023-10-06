@@ -21,8 +21,7 @@ jobs:
           - label: Minimum
             spec: >-
               python=3.9
-              isce3=0.14.0
-              dolphin=0.4.0
+              isce3=0.16.0
               h5netcdf=1.0
               pydantic=2.1
         exclude:  # TODO: Remove this once pymp is gone

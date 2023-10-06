@@ -320,8 +320,8 @@ class RunConfig(YamlModel):
                 product_path=output_directory,
                 scratch_path=workflow.work_directory,
                 sas_output_path=output_directory,
+                save_compressed_slc=save_compressed_slc,
             ),
             worker_settings=workflow.worker_settings,
             log_file=workflow.log_file,
-            save_compressed_slc=save_compressed_slc,
         )

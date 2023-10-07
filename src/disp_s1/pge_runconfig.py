@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, List, Optional
+from typing import ClassVar, List, Optional, Union
 
 from dolphin.opera_utils import OPERA_DATASET_NAME
 from dolphin.workflows.config import (
@@ -61,9 +61,11 @@ class DynamicAncillaryFileGroup(YamlModel):
     )
     geometry_files: List[Path] = Field(
         default_factory=list,
+        alias="static_layers_files",
         description=(
-            "Paths to the incidence/azimuth-angle files (1 per burst). If none"
-            " provided, corrections using incidence/azimuth-angle are skipped."
+            "Paths to the CSLC static_layer files (1 per burst) with line-of-sight"
+            " unit vectors. If none provided, corrections using CSLC static_layer are"
+            " skipped."
         ),
     )
     mask_file: Optional[Path] = Field(
@@ -82,7 +84,7 @@ class DynamicAncillaryFileGroup(YamlModel):
         ),
     )
     # TEC file in IONEX format for ionosphere correction
-    tec_files: Optional[List[Path]] = Field(
+    ionosphere_files: Optional[List[Path]] = Field(
         default=None,
         description=(
             "List of paths to TEC files (1 per date) in IONEX format for ionosphere"
@@ -91,7 +93,7 @@ class DynamicAncillaryFileGroup(YamlModel):
     )
 
     # Troposphere weather model
-    weather_model_files: Optional[List[Path]] = Field(
+    troposphere_files: Optional[List[Path]] = Field(
         default=None,
         description=(
             "List of paths to troposphere weather model files (1 per date). If none"
@@ -104,8 +106,8 @@ class DynamicAncillaryFileGroup(YamlModel):
 class StaticAncillaryFileGroup(YamlModel):
     """Group for files which remain static over time."""
 
-    frame_to_burst_json: Path = Field(
-        ...,
+    frame_to_burst_json: Union[Path, None] = Field(
+        None,
         description=(
             "JSON file containing the mapping from frame_id to frame/burst information"
         ),
@@ -142,7 +144,7 @@ class ProductPathGroup(YamlModel):
         alias="sas_output_path",
     )
     product_version: str = Field(
-        default="0.1",
+        default="0.2",
         description="Version of the product, in <major>.<minor> format.",
     )
     save_compressed_slc: bool = Field(
@@ -254,7 +256,6 @@ class RunConfig(YamlModel):
             input_options=input_options,
             mask_file=mask_file,
             work_directory=scratch_directory,
-            save_compressed_slc=self.product_path_group.save_compressed_slc,
             amplitude_mean_files=amplitude_mean_files,
             amplitude_dispersion_files=amplitude_dispersion_files,
             # These ones directly translate
@@ -269,29 +270,34 @@ class RunConfig(YamlModel):
         cls,
         workflow: Workflow,
         frame_id: int,
-        frame_to_burst_json: Path,
         processing_mode: ProcessingMode,
         algorithm_parameters_file: Path,
+        frame_to_burst_json: Optional[Path] = None,
+        save_compressed_slc: bool = False,
+        output_directory: Optional[Path] = None,
     ):
         """Convert from a [`Workflow`][dolphin.workflows.config.Workflow] object.
 
         This is the inverse of the to_workflow method, although there are more
         fields in the PGE version, so it's not a 1-1 mapping.
 
-        Since there's no `frame_id` or `algorithm_parameters_file` in the
-        [`Workflow`][dolphin.workflows.config.Workflow] object, we need to pass
+        The arguments, like `frame_id` or `algorithm_parameters_file`, are not in the
+        [`Workflow`][dolphin.workflows.config.Workflow] object, so we need to pass
         those in as arguments.
 
-        This is mostly used as preliminary setup to further edit the fields.
+        This is can be used as preliminary setup to further edit the fields, or as a
+        complete conversion.
         """
+        if output_directory is None:
+            # Take the output as one above the scratch
+            output_directory = workflow.work_directory.parent / "output"
+
         # Load the algorithm parameters from the file
         algo_keys = set(AlgorithmParameters.model_fields.keys())
         alg_param_dict = workflow.model_dump(include=algo_keys)
         AlgorithmParameters(**alg_param_dict).to_yaml(algorithm_parameters_file)
-        # This get's unpacked to load the rest of the parameters for the Workflow
+        # This gets unpacked to load the rest of the parameters for the Workflow
 
-        # Form the output as one up from the scratch
-        output_directory = workflow.work_directory / "output"
         return cls(
             input_file_group=InputFileGroup(
                 cslc_file_list=workflow.cslc_file_list,
@@ -299,11 +305,13 @@ class RunConfig(YamlModel):
             ),
             dynamic_ancillary_file_group=DynamicAncillaryFileGroup(
                 algorithm_parameters_file=algorithm_parameters_file,
-                # amplitude_dispersion_files=workflow.amplitude_dispersion_files,
-                # amplitude_mean_files=workflow.amplitude_mean_files,
+                amplitude_dispersion_files=workflow.amplitude_dispersion_files,
+                amplitude_mean_files=workflow.amplitude_mean_files,
                 mask_file=workflow.mask_file,
-                # tec_file=workflow.tec_file,
-                # weather_model_file=workflow.weather_model_file,
+                ionosphere_files=workflow.correction_options.ionosphere_files,
+                troposphere_files=workflow.correction_options.troposphere_files,
+                dem_file=workflow.correction_options.dem_file,
+                static_layers_files=workflow.correction_options.geometry_files,
             ),
             static_ancillary_file_group=StaticAncillaryFileGroup(
                 frame_to_burst_json=frame_to_burst_json,
@@ -315,6 +323,7 @@ class RunConfig(YamlModel):
                 product_path=output_directory,
                 scratch_path=workflow.work_directory,
                 sas_output_path=output_directory,
+                save_compressed_slc=save_compressed_slc,
             ),
             worker_settings=workflow.worker_settings,
             log_file=workflow.log_file,

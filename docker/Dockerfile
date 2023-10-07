@@ -65,14 +65,15 @@ COPY --chown=$MAMBA_USER:$MAMBA_USER docker/specfile.txt /tmp/specfile.txt
 RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt && \
     micromamba clean --all --yes
 
-COPY --chown=$MAMBA_USER:$MAMBA_USER . .
-
 # Activate, otherwise python will not be found
 # https://github.com/mamba-org/micromamba-docker#running-commands-in-dockerfile-within-the-conda-environment
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 # --no-deps because they are installed with conda
-RUN python -m pip install --no-deps . && \
-    pip install --no-deps git+https://github.com/opera-adt/dolphin@main
+RUN pip install --no-deps git+https://github.com/opera-adt/tophu@main
+RUN pip install --no-deps git+https://github.com/opera-adt/dolphin@main
+
+COPY --chown=$MAMBA_USER:$MAMBA_USER . .
+RUN python -m pip install --no-deps .
 
 # Run the entrypoint from the /work directory
 # This means if they mount a volume to /work, we won't be mixing in the repository code

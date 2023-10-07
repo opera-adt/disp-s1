@@ -506,8 +506,10 @@ def get_parser(
     else:
         parser = argparse.ArgumentParser(**metadata)  # type: ignore
 
-    parser.add_argument("golden", help="The golden HDF5 file.")
-    parser.add_argument("test", help="The test HDF5 file to be compared.")
+    parser.add_argument("--golden", help="The golden HDF5 file.", required=True)
+    parser.add_argument(
+        "--test", help="The test HDF5 file to be compared.", required=True
+    )
     parser.add_argument("--data-dset", default=DSET_DEFAULT)
     parser.set_defaults(run_func=compare)
     return parser

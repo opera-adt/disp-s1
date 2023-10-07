@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, List, Optional
+from typing import ClassVar, List, Optional, Union
 
 from dolphin.opera_utils import OPERA_DATASET_NAME
 from dolphin.workflows.config import (
@@ -106,8 +106,8 @@ class DynamicAncillaryFileGroup(YamlModel):
 class StaticAncillaryFileGroup(YamlModel):
     """Group for files which remain static over time."""
 
-    frame_to_burst_json: Path = Field(
-        ...,
+    frame_to_burst_json: Union[Path, None] = Field(
+        None,
         description=(
             "JSON file containing the mapping from frame_id to frame/burst information"
         ),
@@ -270,10 +270,11 @@ class RunConfig(YamlModel):
         cls,
         workflow: Workflow,
         frame_id: int,
-        frame_to_burst_json: Path,
         processing_mode: ProcessingMode,
         algorithm_parameters_file: Path,
+        frame_to_burst_json: Optional[Path] = None,
         save_compressed_slc: bool = False,
+        output_directory: Optional[Path] = None,
     ):
         """Convert from a [`Workflow`][dolphin.workflows.config.Workflow] object.
 
@@ -287,14 +288,16 @@ class RunConfig(YamlModel):
         This is can be used as preliminary setup to further edit the fields, or as a
         complete conversion.
         """
+        if output_directory is None:
+            # Take the output as one above the scratch
+            output_directory = workflow.work_directory.parent / "output"
+
         # Load the algorithm parameters from the file
         algo_keys = set(AlgorithmParameters.model_fields.keys())
         alg_param_dict = workflow.model_dump(include=algo_keys)
         AlgorithmParameters(**alg_param_dict).to_yaml(algorithm_parameters_file)
         # This gets unpacked to load the rest of the parameters for the Workflow
 
-        # Form the output as one up from the scratch
-        output_directory = workflow.work_directory / "output"
         return cls(
             input_file_group=InputFileGroup(
                 cslc_file_list=workflow.cslc_file_list,

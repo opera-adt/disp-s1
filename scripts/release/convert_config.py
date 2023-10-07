@@ -1,18 +1,19 @@
 #!/usr/bin/env python
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
 from dolphin.workflows.config import Workflow
 
 from disp_s1.pge_runconfig import RunConfig
-from disp_s1.utils import FRAME_TO_BURST_JSON_FILE
 
 
 def convert_to_runconfig(
     dolphin_config_file: str,
     frame_id: str,
     processing_mode: str,
-    frame_to_burst_json: str = FRAME_TO_BURST_JSON_FILE,
+    frame_to_burst_json: str | None = None,
     algorithm_parameters_file: str = "algorithm_parameters.yaml",
     save_compressed_slc: bool = False,
     outfile: str = "runconfig.yaml",
@@ -49,8 +50,9 @@ def main():
     parser.add_argument(
         "--frame-to-burst-json",
         type=Path,
-        default=FRAME_TO_BURST_JSON_FILE,
-        help="Path to algorithm parameters file.",
+        help=(
+            "Path to frame-to-burst mapping JSON file, summarizing DISP frame database."
+        ),
     )
     parser.add_argument(
         "-a",

@@ -6,9 +6,10 @@ dependencies:
   - pip>=21.3  # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#editable-installation
   - git  # for pip install, due to setuptools_scm
   - isce3>=0.16.0
-  - dolphin>=0.3.0
+  - dolphin>=0.5.0
   - h5netcdf>=1.0
   - pillow>=7.0
   - pydantic>=2.1
   - ruamel.yaml>=0.15
+  - tophu>=0.2.0
   - yamale

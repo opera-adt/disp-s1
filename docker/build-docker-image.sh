@@ -6,6 +6,18 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+readonly USAGE="usage: $0 [-t TAG] [-u MAMBA_USER_ID] [-b BASE]"
+readonly HELP="$USAGE
+
+Build the docker image for disp-s1.
+
+options:
+-t, --tag TAG           Specify a tag for the docker image. Default: latest
+-u, --user-id USER_ID   Specify the user id to use in the docker image. Default: 1000
+-b, --base BASE         Specify the base image to use. Default: ubuntu:22.04
+-h, --help              Show this help message and exit
+"
+
 # Parse input arguments
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -27,8 +39,13 @@ while [[ $# -gt 0 ]]; do
         shift
         shift
         ;;
+    -h | --help)
+        echo "$HELP"
+        exit 0
+        ;;
     *)
         echo "Unknown option: $key"
+        echo "$USAGE"
         exit 1
         ;;
     esac

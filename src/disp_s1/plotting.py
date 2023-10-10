@@ -41,7 +41,7 @@ def plot_product(
         "unwrapped_phase",
         "connected_component_labels",
         "temporal_correlation",
-        "spatial_correlation",
+        "interferometric_correlation",
     ]
     cmaps = [unwrapped_phase_cmap, "jet", "viridis", "plasma"]
 

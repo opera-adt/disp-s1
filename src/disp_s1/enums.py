@@ -6,7 +6,7 @@ __all__ = [
 
 
 class ProcessingMode(str, Enum):
-    """Method for finding SHPs during phase linking."""
+    """Workflow processing modes for SDS operation."""
 
     FORWARD = "forward"
     """New data: only output one incremental result."""

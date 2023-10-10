@@ -132,7 +132,7 @@ def run(
     # ###################################
     # 2. Stitch and unwrap interferograms
     # ###################################
-    unwrapped_paths, conncomp_paths, spatial_corr_paths, stitched_tcorr_file = (
+    unwrapped_paths, conncomp_paths, ifg_corr_paths, stitched_tcorr_file = (
         stitch_and_unwrap.run(
             ifg_file_list=ifg_file_list,
             tcorr_file_list=tcorr_file_list,
@@ -151,14 +151,14 @@ def run(
     for unw_p, cc_p, s_corr_p in zip(
         unwrapped_paths,
         conncomp_paths,
-        spatial_corr_paths,
+        ifg_corr_paths,
     ):
         output_name = out_dir / unw_p.with_suffix(".nc").name
         product.create_output_product(
             unw_filename=unw_p,
             conncomp_filename=cc_p,
             tcorr_filename=stitched_tcorr_file,
-            spatial_corr_filename=s_corr_p,
+            ifg_corr_filename=s_corr_p,
             output_name=output_name,
             corrections={},
             pge_runconfig=pge_runconfig,

@@ -54,7 +54,7 @@ def create_output_product(
     unw_filename: Filename,
     conncomp_filename: Filename,
     tcorr_filename: Filename,
-    spatial_corr_filename: Filename,
+    ifg_corr_filename: Filename,
     output_name: Filename,
     corrections: dict[str, ArrayLike] = {},
     pge_runconfig: Optional[RunConfig] = None,
@@ -70,7 +70,7 @@ def create_output_product(
         The path to the input connected components image.
     tcorr_filename : Filename
         The path to the input temporal coherence image.
-    spatial_corr_filename : Filename
+    ifg_corr_filename : Filename
         The path to the input interferometric correlation image.
     output_name : Filename, optional
         The path to the output NetCDF file, by default "output.nc"
@@ -92,8 +92,8 @@ def create_output_product(
     conncomp_arr = io.load_gdal(conncomp_filename)
     tcorr_arr = io.load_gdal(tcorr_filename)
     truncate_mantissa(tcorr_arr)
-    spatial_corr_arr = io.load_gdal(spatial_corr_filename)
-    truncate_mantissa(spatial_corr_arr)
+    ifg_corr_arr = io.load_gdal(ifg_corr_filename)
+    truncate_mantissa(ifg_corr_arr)
 
     # Get the nodata mask (which for snaphu is 0)
     mask = unw_arr == 0
@@ -143,7 +143,7 @@ def create_output_product(
         _create_geo_dataset(
             group=f,
             name="interferometric_correlation",
-            data=spatial_corr_arr,
+            data=ifg_corr_arr,
             description="Multilooked sample interferometric correlation",
             fillvalue=np.nan,
             attrs=dict(units="unitless"),

@@ -347,7 +347,12 @@ def _create_geo_dataset(
     attrs: Optional[dict[str, Any]],
     include_time: bool = False,
 ) -> h5netcdf.Variable:
-    dimensions = ["y", "x"] if not include_time else ["time", "y", "x"]
+    if include_time:
+        dimensions = ["time", "y", "x"]
+        if data.ndim == 2:
+            data = data[np.newaxis, :, :]
+    else:
+        dimensions = ["y", "x"]
     dset = _create_dataset(
         group=group,
         name=name,

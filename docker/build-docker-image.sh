@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-TAG=latest
 
 # Enable common error handling options.
 set -o errexit
@@ -51,39 +50,37 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ -z "$TAG" ]; then
-    TAG="opera-adt/disp-s1:latest"
-fi
+image_name=${TAG:-"opera-adt/disp-s1:latest"}
 
 # Build the Docker image
-CMD_BASE="docker build --network=host --tag $TAG --file docker/Dockerfile"
+cmd_base="docker build --network=host --tag $image_name --file docker/Dockerfile"
 
 # append --build-arg if specified:
 if [ -z "${BASE+x}" ]; then
-    CMD_BASE="$CMD_BASE"
+    cmd_base="$cmd_base"
 else
-    CMD_BASE="$CMD_BASE --build-arg BASE=$BASE"
+    cmd_base="$cmd_base --build-arg BASE=$BASE"
 fi
 
 # append MAMBA_USER_ID if specified:
 if [ -z "${MAMBA_USER_ID+x}" ]; then
-    CMD_BASE="$CMD_BASE"
+    cmd_base="$cmd_base"
 else
-    CMD_BASE="$CMD_BASE --build-arg MAMBA_USER_ID=$MAMBA_USER_ID"
+    cmd_base="$cmd_base --build-arg MAMBA_USER_ID=$MAMBA_USER_ID"
 fi
 
 # finish with ".":
-CMD_BASE="$CMD_BASE ."
-echo $CMD_BASE
+cmd_base="$cmd_base ."
+echo $cmd_base
 # Run the command
-eval $CMD_BASE
+eval $cmd_base
 
 # To run the image and see the help message....
 echo "To run the image and see the help message:"
-echo "docker run --rm -it $TAG disp-s1 --help"
+echo "docker run --rm -it $image_name disp-s1 --help"
 #
 echo "To run on a PGE runconfig:"
-echo "docker run --user \$(id -u):\$(id -g) -v \$PWD:/work --rm -it $TAG disp-s1 runconfig.yaml"
+echo "docker run --user \$(id -u):\$(id -g) -v \$PWD:/work --rm -it $image_name disp-s1 runconfig.yaml"
 # where...
 #     --user $(id -u):$(id -g)  # Needed to avoid permission issues when writing to the mounted volume.
 #     -v $PWD:/work  # Mounts the current directory to the /work directory in the container.

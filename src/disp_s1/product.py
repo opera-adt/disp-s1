@@ -62,6 +62,7 @@ def create_output_product(
     conncomp_filename: Filename,
     tcorr_filename: Filename,
     ifg_corr_filename: Filename,
+    ps_mask_filename: Filename,
     pge_runconfig: RunConfig,
     cslc_files: Sequence[Filename],
     corrections: dict[str, ArrayLike] = {},
@@ -78,6 +79,8 @@ def create_output_product(
         The path to the input temporal coherence image.
     ifg_corr_filename : Filename
         The path to the input interferometric correlation image.
+    ps_mask_filename : Filename
+        The path to the input persistent scatterer mask image.
     output_name : Filename, optional
         The path to the output NetCDF file, by default "output.nc"
     corrections : dict[str, ArrayLike], optional
@@ -155,6 +158,17 @@ def create_output_product(
             data=ifg_corr_arr,
             description="Multilooked sample interferometric correlation",
             fillvalue=np.nan,
+            attrs=dict(units="unitless"),
+        )
+        _create_geo_dataset(
+            group=f,
+            name="persistent_scatterer_mask",
+            data=io.load_gdal(ps_mask_filename),
+            description=(
+                "Mask of persistent scatterers downsampled to the multilooked output"
+                " grid."
+            ),
+            fillvalue=255,
             attrs=dict(units="unitless"),
         )
 

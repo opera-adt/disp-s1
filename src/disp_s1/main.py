@@ -132,14 +132,19 @@ def run(
     # ###################################
     # 2. Stitch and unwrap interferograms
     # ###################################
-    unwrapped_paths, conncomp_paths, ifg_corr_paths, stitched_tcorr_file = (
-        stitch_and_unwrap.run(
-            ifg_file_list=ifg_file_list,
-            tcorr_file_list=tcorr_file_list,
-            ps_file_list=ps_file_list,
-            cfg=cfg,
-            debug=debug,
-        )
+
+    (
+        unwrapped_paths,
+        conncomp_paths,
+        ifg_corr_paths,
+        stitched_tcorr_file,
+        stitched_ps_file,
+    ) = stitch_and_unwrap.run(
+        ifg_file_list=ifg_file_list,
+        tcorr_file_list=tcorr_file_list,
+        ps_file_list=ps_file_list,
+        cfg=cfg,
+        debug=debug,
     )
 
     # ######################################
@@ -170,6 +175,7 @@ def run(
             conncomp_filename=cc_p,
             tcorr_filename=stitched_tcorr_file,
             ifg_corr_filename=s_corr_p,
+            ps_mask_filename=stitched_ps_file,
             pge_runconfig=pge_runconfig,
             cslc_files=cur_slc_list,
             corrections={},

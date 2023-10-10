@@ -12,7 +12,7 @@ readonly HELP="$USAGE
 Build the docker image for disp-s1.
 
 options:
--t, --tag TAG           Specify a tag for the docker image. Default: latest
+-t, --tag TAG           Specify a name/tag for the docker image. Default: opera-adt/disp-s1:latest
 -u, --user-id USER_ID   Specify the user id to use in the docker image. Default: 1000
 -b, --base BASE         Specify the base image to use. Default: ubuntu:22.04
 -h, --help              Show this help message and exit
@@ -51,13 +51,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Use 'latest' as the default tag if not specified
 if [ -z "$TAG" ]; then
-    TAG="latest"
+    TAG="opera-adt/disp-s1:latest"
 fi
 
 # Build the Docker image
-CMD_BASE="docker build --network=host --tag opera-adt/disp-s1:$TAG --file docker/Dockerfile"
+CMD_BASE="docker build --network=host --tag $TAG --file docker/Dockerfile"
 
 # append --build-arg if specified:
 if [ -z "${BASE+x}" ]; then
@@ -81,10 +80,10 @@ eval $CMD_BASE
 
 # To run the image and see the help message....
 echo "To run the image and see the help message:"
-echo "docker run --rm -it opera-adt/disp-s1:$TAG disp-s1 --help"
+echo "docker run --rm -it $TAG disp-s1 --help"
 #
 echo "To run on a PGE runconfig:"
-echo "docker run --user \$(id -u):\$(id -g) -v \$PWD:/work --rm -it opera-adt/disp-s1:$TAG disp-s1 runconfig.yaml"
+echo "docker run --user \$(id -u):\$(id -g) -v \$PWD:/work --rm -it $TAG disp-s1 runconfig.yaml"
 # where...
 #     --user $(id -u):$(id -g)  # Needed to avoid permission issues when writing to the mounted volume.
 #     -v $PWD:/work  # Mounts the current directory to the /work directory in the container.

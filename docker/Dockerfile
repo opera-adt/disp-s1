@@ -69,6 +69,7 @@ RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt 
 # https://github.com/mamba-org/micromamba-docker#running-commands-in-dockerfile-within-the-conda-environment
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 # --no-deps because they are installed with conda
+RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.5.0
 RUN pip install --no-deps git+https://github.com/opera-adt/tophu@36f87d8ce6dee3f48f922718552471e52179dfe1
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .

@@ -15,7 +15,7 @@ def convert_to_runconfig(
     processing_mode: str,
     frame_to_burst_json: str | None = None,
     algorithm_parameters_file: str = "algorithm_parameters.yaml",
-    save_compressed_slc: bool = False,
+    save_compressed_slc: bool = True,
     outfile: str = "runconfig.yaml",
 ):
     """Run the conversion CLI."""
@@ -78,6 +78,7 @@ def main():
         processing_mode=args.processing_mode,
         frame_to_burst_json=args.frame_to_burst_json,
         algorithm_parameters_file=args.algorithm_parameters_file,
+        save_compressed_slc=args.save_compressed_slc,
         outfile=args.outfile,
     )
 

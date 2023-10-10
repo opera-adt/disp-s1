@@ -14,7 +14,7 @@ jobs:
   pytest:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         deps:
           - label: Latest
             spec: ""
@@ -24,10 +24,6 @@ jobs:
               isce3=0.16.0
               h5netcdf=1.0
               pydantic=2.1
-        exclude:  # TODO: Remove this once pymp is gone
-          - os: macos-latest
-            deps:
-              label: Latest
 
       fail-fast: false
     name: ${{ matrix.os }} • ${{ matrix.deps.label }}
@@ -49,9 +45,9 @@ jobs:
             channels:
               - conda-forge
       - name: Install
-        # Overwrite dolphin install with latest
+        # Install tophu from git (Change v0.2.0 is up)
         run: |
-          pip install --no-deps git+https://github.com/opera-adt/dolphin@main
+          pip install --no-deps git+https://github.com/opera-adt/tophu@36f87d8ce6dee3f48f922718552471e52179dfe1
           pip install --no-deps .
       - name: Install test dependencies
         run: |

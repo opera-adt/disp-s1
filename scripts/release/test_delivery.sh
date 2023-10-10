@@ -3,7 +3,7 @@
 set -e
 set -x # echo on
 
-readonly HELP='usage: ./test_delivery.sh [small|large] [forward|historical]
+readonly HELP='usage: ./test_delivery.sh [small|large] [forward|historical] [test_location]
 
 Run the SAS workflow on a small or large dataset and compare the output against
 a golden dataset.
@@ -27,25 +27,21 @@ test_location="${3:-/tmp/test_delivery}"
 test_location=$(realpath $test_location)
 mkdir -p $test_location
 
-# # Clone the source.
-# git clone git@github.com:opera-adt/disp-s1.git
-# cd disp-s1
+# Clone the source.
+git clone git@github.com:opera-adt/disp-s1.git
+cd disp-s1
 # git checkout v0.1
 
 # # Build the docker image.
-# BASE="cae-artifactory.jpl.nasa.gov:16003/gov/nasa/jpl/iems/sds/infrastructure/base/jplsds-oraclelinux:8.4.230101"
+BASE="cae-artifactory.jpl.nasa.gov:16003/gov/nasa/jpl/iems/sds/infrastructure/base/jplsds-oraclelinux:8.4.230101"
 TAG=${TAG:-"$(whoami)/disp-s1:0.2"}
-# TAG="$(whoami)/disp-s1:0.2"
-# docker build --network=host \
-#     --build-arg="BASE=$BASE" \
-#     --tag="$TAG" \
-#     --file docker/Dockerfile .
-#
-# # untar the test data.
-# # Pick the small or large one
-# # $ lsh *tar
-# # -rw-r--r-- 1 staniewi users 144G Oct  6 16:36 delivery_data_full.tar
-# # -rw-r--r-- 1 staniewi users 3.1G Oct  6 17:08 delivery_data_small.tar
+./docker/build-docker-image.sh --tag "$TAG" --base "$BASE"
+
+# untar the test data.
+# Pick the small or large one
+# $ lsh *tar
+# -rw-r--r-- 1 staniewi users 144G Oct  6 16:36 delivery_data_full.tar
+# -rw-r--r-- 1 staniewi users 3.1G Oct  6 17:08 delivery_data_small.tar
 
 if [ "$1" == "small" ]; then
     tar -xf /home/staniewi/dev/beta-delivery/delivery_data_small.tar -C $test_location

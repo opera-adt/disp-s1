@@ -25,7 +25,7 @@ install_packages() {
     if [[ -n "$PACKAGES" ]]; then
         PKGS_ARGS=(${PACKAGES[@]})
     else
-        PKGS_ARGS=()
+        PKGS_ARGS=""
     fi
     echo "$PKGS_ARGS"
 

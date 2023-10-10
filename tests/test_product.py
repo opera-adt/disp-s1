@@ -14,7 +14,7 @@ SHAPE = (256, 256)
 @pytest.fixture
 def unw_filename(tmp_path) -> str:
     data = np.random.randn(*SHAPE).astype(np.float32)
-    filename = tmp_path / "unw.tif"
+    filename = tmp_path / "20200101_20200113.tif"
     io.write_arr(
         arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
     )
@@ -42,9 +42,9 @@ def tcorr_filename(tmp_path) -> str:
 
 
 @pytest.fixture
-def spatial_corr_filename(tmp_path) -> str:
+def ifg_corr_filename(tmp_path) -> str:
     data = np.random.randn(*SHAPE).astype(np.float32)
-    filename = tmp_path / "spatial_corr.tif"
+    filename = tmp_path / "ifg_corr.tif"
     io.write_arr(
         arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
     )
@@ -56,7 +56,7 @@ def test_create_output_product(
     unw_filename,
     conncomp_filename,
     tcorr_filename,
-    spatial_corr_filename,
+    ifg_corr_filename,
 ):
     output_name = tmp_path / "output_product.nc"
 
@@ -64,7 +64,7 @@ def test_create_output_product(
         unw_filename=unw_filename,
         conncomp_filename=conncomp_filename,
         tcorr_filename=tcorr_filename,
-        spatial_corr_filename=spatial_corr_filename,
+        ifg_corr_filename=ifg_corr_filename,
         output_name=output_name,
         corrections={},
     )

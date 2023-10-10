@@ -1,6 +1,7 @@
 """Module for creating the OPERA output product in NetCDF format."""
 from __future__ import annotations
 
+import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any, Optional, Sequence, Union
@@ -13,18 +14,22 @@ from dolphin import __version__ as dolphin_version
 from dolphin import io
 from dolphin._log import get_log
 from dolphin._types import Filename
-from dolphin.opera_utils import OPERA_DATASET_NAME
+from dolphin.opera_utils import OPERA_DATASET_NAME, get_union_polygon
 from dolphin.utils import get_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
-from PIL import Image
 
-from disp_s1.pge_runconfig import RunConfig
+from . import __version__ as disp_s1_version
+from . import _parse_cslc_product
+from ._common import DATETIME_FORMAT
+from .browse_image import make_browse_image
+from .pge_runconfig import RunConfig
 
 logger = get_log(__name__)
 
 CORRECTIONS_GROUP_NAME = "corrections"
 IDENTIFICATION_GROUP_NAME = "identification"
+METADATA_GROUP_NAME = "metadata"
 GLOBAL_ATTRS = dict(
     Conventions="CF-1.8",
     contact="operaops@jpl.nasa.gov",
@@ -51,14 +56,15 @@ COMPRESSED_SLC_TEMPLATE = "compressed_{burst}_{date_str}.h5"
 
 
 def create_output_product(
+    output_name: Filename,
     unw_filename: Filename,
     conncomp_filename: Filename,
     tcorr_filename: Filename,
-    spatial_corr_filename: Filename,
-    output_name: Filename,
+    ifg_corr_filename: Filename,
+    ps_mask_filename: Filename,
+    pge_runconfig: RunConfig,
+    cslc_files: Sequence[Filename],
     corrections: dict[str, ArrayLike] = {},
-    pge_runconfig: Optional[RunConfig] = None,
-    create_browse_image: bool = True,
 ):
     """Create the OPERA output product in NetCDF format.
 
@@ -70,18 +76,19 @@ def create_output_product(
         The path to the input connected components image.
     tcorr_filename : Filename
         The path to the input temporal coherence image.
-    spatial_corr_filename : Filename
+    ifg_corr_filename : Filename
         The path to the input interferometric correlation image.
+    ps_mask_filename : Filename
+        The path to the input persistent scatterer mask image.
     output_name : Filename, optional
         The path to the output NetCDF file, by default "output.nc"
     corrections : dict[str, ArrayLike], optional
         A dictionary of corrections to write to the output file, by default None
+    cslc_files : Sequence[Filename]
+        The list of input CSLC products used to generate the output product.
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
-    create_browse_image : bool
-        If true, creates a PNG browse image of the unwrapped phase
-        with filename as `output_name`.png
     """
     # Read the Geotiff file and its metadata
     crs = io.get_raster_crs(unw_filename)
@@ -92,8 +99,8 @@ def create_output_product(
     conncomp_arr = io.load_gdal(conncomp_filename)
     tcorr_arr = io.load_gdal(tcorr_filename)
     truncate_mantissa(tcorr_arr)
-    spatial_corr_arr = io.load_gdal(spatial_corr_filename)
-    truncate_mantissa(spatial_corr_arr)
+    ifg_corr_arr = io.load_gdal(ifg_corr_filename)
+    truncate_mantissa(ifg_corr_arr)
 
     # Get the nodata mask (which for snaphu is 0)
     mask = unw_arr == 0
@@ -102,8 +109,15 @@ def create_output_product(
 
     assert unw_arr.shape == conncomp_arr.shape == tcorr_arr.shape
 
-    if create_browse_image:
-        make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
+    make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
+    start_times = [
+        _parse_cslc_product.get_zero_doppler_time(f, type_="start") for f in cslc_files
+    ]
+    start_time = min(start_times)
+    end_times = [
+        _parse_cslc_product.get_zero_doppler_time(f, type_="end") for f in cslc_files
+    ]
+    end_time = max(end_times)
 
     with h5netcdf.File(output_name, "w") as f:
         # Create the NetCDF file
@@ -113,8 +127,10 @@ def create_output_product(
         _create_grid_mapping(group=f, crs=crs, gt=gt)
 
         # Set up the X/Y variables for each group
-        _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape)
+        _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
+        _create_time_dset(group=f, time=start_time)
 
+        # ######## Main datasets ###########
         # Write the displacement array / conncomp arrays
         _create_geo_dataset(
             group=f,
@@ -143,23 +159,65 @@ def create_output_product(
         _create_geo_dataset(
             group=f,
             name="interferometric_correlation",
-            data=spatial_corr_arr,
+            data=ifg_corr_arr,
             description="Multilooked sample interferometric correlation",
             fillvalue=np.nan,
             attrs=dict(units="unitless"),
         )
+        _create_geo_dataset(
+            group=f,
+            name="persistent_scatterer_mask",
+            data=io.load_gdal(ps_mask_filename),
+            description=(
+                "Mask of persistent scatterers downsampled to the multilooked output"
+                " grid."
+            ),
+            fillvalue=255,
+            attrs=dict(units="unitless"),
+        )
 
+    _create_corrections_group(
+        output_name=output_name,
+        corrections=corrections,
+        shape=unw_arr.shape,
+        gt=gt,
+        crs=crs,
+        start_time=min(start_times),
+    )
+
+    _create_identification_group(
+        output_name=output_name,
+        pge_runconfig=pge_runconfig,
+        cslc_files=cslc_files,
+        start_time=start_time,
+        end_time=end_time,
+    )
+
+    _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
+
+
+def _create_corrections_group(
+    output_name: Filename,
+    corrections: dict[str, ArrayLike],
+    shape: tuple[int, int],
+    gt: list[float],
+    crs: pyproj.CRS,
+    start_time: datetime.datetime,
+) -> None:
+    with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections that were used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
         corrections_group.attrs["description"] = (
             "Phase corrections applied to the unwrapped_phase"
         )
+        empty_arr = np.zeros(shape, dtype="float32")
 
         # TODO: Are we going to downsample these for space?
         # if so, they need they're own X/Y variables and GeoTransform
         _create_grid_mapping(group=corrections_group, crs=crs, gt=gt)
-        _create_yx_dsets(group=corrections_group, gt=gt, shape=unw_arr.shape)
-        troposphere = corrections.get("troposphere", np.zeros_like(unw_arr))
+        _create_yx_dsets(group=corrections_group, gt=gt, shape=shape, include_time=True)
+        _create_time_dset(group=corrections_group, time=start_time)
+        troposphere = corrections.get("troposphere", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
@@ -168,7 +226,7 @@ def create_output_product(
             fillvalue=np.nan,
             attrs=dict(units="radians"),
         )
-        ionosphere = corrections.get("ionosphere", np.zeros_like(unw_arr))
+        ionosphere = corrections.get("ionosphere", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
@@ -177,7 +235,7 @@ def create_output_product(
             fillvalue=np.nan,
             attrs=dict(units="radians"),
         )
-        solid_earth = corrections.get("solid_earth", np.zeros_like(unw_arr))
+        solid_earth = corrections.get("solid_earth", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
@@ -186,7 +244,7 @@ def create_output_product(
             fillvalue=np.nan,
             attrs=dict(units="radians"),
         )
-        plate_motion = corrections.get("plate_motion", np.zeros_like(unw_arr))
+        plate_motion = corrections.get("plate_motion", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="plate_motion",
@@ -213,11 +271,15 @@ def create_output_product(
             attrs=dict(units="unitless", rows=[], cols=[], latitudes=[], longitudes=[]),
         )
 
-    # End of the product for non-PGE users
-    if pge_runconfig is None:
-        return
 
-    # Add the PGE metadata to the file
+def _create_identification_group(
+    output_name: Filename,
+    pge_runconfig: RunConfig,
+    cslc_files: Sequence[Filename],
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+) -> None:
+    """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
         identification_group = f.create_group(IDENTIFICATION_GROUP_NAME)
         _create_dataset(
@@ -229,7 +291,6 @@ def create_output_product(
             description="ID number of the processed frame.",
             attrs=dict(units="unitless"),
         )
-        # product_version
         _create_dataset(
             group=identification_group,
             name="product_version",
@@ -239,14 +300,71 @@ def create_output_product(
             description="Version of the product.",
             attrs=dict(units="unitless"),
         )
-        # software_version
+
         _create_dataset(
             group=identification_group,
-            name="software_version",
+            name="zero_doppler_start_time",
+            dimensions=(),
+            data=start_time.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "Zero doppler start time of the first burst contained in the frame."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="zero_doppler_end_time",
+            dimensions=(),
+            data=end_time.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "Zero doppler end time of the last burst contained in the frame."
+            ),
+        )
+
+        _create_dataset(
+            group=identification_group,
+            name="bounding_polygon",
+            dimensions=(),
+            data=get_union_polygon(cslc_files).wkt,
+            fillvalue=None,
+            description="WKT representation of bounding polygon of the image",
+            attrs=dict(units="degrees"),
+        )
+
+        wavelength, attrs = _parse_cslc_product.get_radar_wavelength(cslc_files[-1])
+        desc = attrs.pop("description")
+        _create_dataset(
+            group=identification_group,
+            name="radar_wavelength",
+            dimensions=(),
+            data=wavelength,
+            fillvalue=None,
+            description=desc,
+            attrs=attrs,
+        )
+
+
+def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> None:
+    """Create the metadata group in the output file."""
+    with h5netcdf.File(output_name, "a") as f:
+        metadata_group = f.create_group(METADATA_GROUP_NAME)
+        _create_dataset(
+            group=metadata_group,
+            name="disp_s1_software_version",
+            dimensions=(),
+            data=disp_s1_version,
+            fillvalue=None,
+            description="Version of the disp-s1 software used to generate the product.",
+            attrs=dict(units="unitless"),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="dolphin_software_version",
             dimensions=(),
             data=dolphin_version,
             fillvalue=None,
-            description="Version of the Dolphin software used to generate the product.",
+            description="Version of the dolphin software used to generate the product.",
             attrs=dict(units="unitless"),
         )
 
@@ -255,7 +373,7 @@ def create_output_product(
         pge_runconfig.to_yaml(ss)
         runconfig_str = ss.getvalue()
         _create_dataset(
-            group=identification_group,
+            group=metadata_group,
             name="pge_runconfig",
             dimensions=(),
             data=runconfig_str,
@@ -310,8 +428,14 @@ def _create_geo_dataset(
     description: str,
     fillvalue: float,
     attrs: Optional[dict[str, Any]],
+    include_time: bool = False,
 ) -> h5netcdf.Variable:
-    dimensions = ["y", "x"]
+    if include_time:
+        dimensions = ["time", "y", "x"]
+        if data.ndim == 2:
+            data = data[np.newaxis, :, :]
+    else:
+        dimensions = ["y", "x"]
     dset = _create_dataset(
         group=group,
         name=name,
@@ -345,13 +469,18 @@ def _create_yx_dsets(
     group: h5netcdf.Group,
     gt: list[float],
     shape: tuple[int, int],
+    include_time: bool = False,
 ) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
-    """Create the x and y coordinate datasets."""
+    """Create the y, x, and coordinate datasets."""
     y, x = _create_yx_arrays(gt, shape)
 
     if not group.dimensions:
-        group.dimensions = dict(y=y.size, x=x.size)
-    # Create the datasets
+        dims = dict(y=y.size, x=x.size)
+        if include_time:
+            dims["time"] = 1
+        group.dimensions = dims
+
+    # Create the x/y datasets
     y_ds = group.create_variable("y", ("y",), data=y, dtype=float)
     x_ds = group.create_variable("x", ("x",), data=x, dtype=float)
 
@@ -359,8 +488,38 @@ def _create_yx_dsets(
         ds.attrs["standard_name"] = f"projection_{name}_coordinate"
         ds.attrs["long_name"] = f"{name.replace('_', ' ')} coordinate of projection"
         ds.attrs["units"] = "m"
-
     return y_ds, x_ds
+
+
+def _create_time_dset(
+    group: h5netcdf.Group, time: datetime.datetime
+) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
+    """Create the time coordinate dataset."""
+    times, calendar, units = _create_time_array([time])
+    t_ds = group.create_variable("time", ("time",), data=times, dtype=float)
+    t_ds.attrs["standard_name"] = "time"
+    t_ds.attrs["long_name"] = "time"
+    t_ds.attrs["calendar"] = calendar
+    t_ds.attrs["units"] = units
+
+    return t_ds
+
+
+def _create_time_array(times: list[datetime.datetime]):
+    """Set up the CF-compliant time array and dimension metadata.
+
+    References
+    ----------
+    http://cfconventions.org/cf-conventions/cf-conventions.html#time-coordinate
+    """
+    # 'calendar': 'standard',
+    # 'units': 'seconds since 2017-02-03 00:00:00.000000'
+    # Create the time array
+    since_time = times[0]
+    time = np.array([(t - since_time).total_seconds() for t in times])
+    calendar = "standard"
+    units = f"seconds since {since_time.strftime(DATETIME_FORMAT)}"
+    return time, calendar, units
 
 
 def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Variable:
@@ -424,7 +583,9 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
 
             data_group = f.create_group(group_name)
             _create_grid_mapping(group=data_group, crs=crs, gt=gt)
-            _create_yx_dsets(group=data_group, gt=gt, shape=data.shape)
+            _create_yx_dsets(
+                group=data_group, gt=gt, shape=data.shape, include_time=False
+            )
             _create_geo_dataset(
                 group=data_group,
                 name=dset_name,
@@ -433,31 +594,3 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
                 fillvalue=np.nan + 0j,
                 attrs=attrs,
             )
-
-
-def make_browse_image(
-    output_filename: Filename,
-    arr: ArrayLike,
-    max_dim_allowed: int = 2048,
-) -> None:
-    """Create a PNG browse image for the output product.
-
-    Parameters
-    ----------
-    output_filename : Filename
-        Name of output PNG
-    arr : ArrayLike
-        input 2D image array
-    max_dim_allowed : int, default = 2048
-        Size (in pixels) of the maximum allowed dimension of output image.
-        Image gets rescaled with same aspect ratio.
-    """
-    orig_shape = arr.shape
-    scaling_ratio = max([s / max_dim_allowed for s in orig_shape])
-    # scale original shape by scaling ratio
-    scaled_shape = [int(np.ceil(s / scaling_ratio)) for s in orig_shape]
-
-    # TODO: Make actual browse image
-    dummy = np.zeros(scaled_shape, dtype="uint8")
-    img = Image.fromarray(dummy, mode="L")
-    img.save(output_filename, transparency=0)

@@ -38,7 +38,7 @@ jobs:
         uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: conda-env.yml
-          environment-name: dolphin-env
+          environment-name: disp-s1-env
           generate-run-shell: false
           create-args: ${{ matrix.deps.spec }}
           condarc: |
@@ -50,7 +50,7 @@ jobs:
       - name: Install test dependencies
         run: |
           micromamba install -f tests/requirements.txt -c conda-forge
-      - name: Disable numba boundscheck for better error catching
+      - name: Enable numba boundscheck for better error catching
         run: |
           echo "NUMBA_BOUNDSCHECK=1" >> $GITHUB_ENV
       - name: Test (with numba boundscheck on)

@@ -22,7 +22,6 @@ def run(
         Enable debug logging, by default False.
     """
     # rest of imports here so --help doesn't take forever
-
     from disp_s1.main import run
     from disp_s1.pge_runconfig import RunConfig
 
@@ -35,6 +34,8 @@ def get_parser(
     subparser: Optional[_SubparserType] = None, subcommand_name: str = "run"
 ) -> argparse.ArgumentParser:
     """Set up the command line interface."""
+    from disp_s1 import __version__
+
     metadata = dict(
         description="Run a displacement workflow",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -45,6 +46,10 @@ def get_parser(
     else:
         parser = argparse.ArgumentParser(**metadata)  # type: ignore
 
+    # add a version command
+    parser.add_argument("--version", action="version", version=__version__)
+
+    # Main cli arguments
     parser.add_argument(
         "config_file",
         help="Name of YAML configuration file describing workflow options.",

@@ -27,29 +27,29 @@ test_location="${3:-/tmp/test_delivery}"
 test_location=$(realpath $test_location)
 mkdir -p $test_location
 
-# Clone the source.
-git clone git@github.com:opera-adt/disp-s1.git
-cd disp-s1
-# git checkout v0.1
+# # Clone the source.
+# git clone git@github.com:opera-adt/disp-s1.git
+# cd disp-s1
+# # git checkout v0.1
 
-# # Build the docker image.
-BASE="cae-artifactory.jpl.nasa.gov:16003/gov/nasa/jpl/iems/sds/infrastructure/base/jplsds-oraclelinux:8.4.230101"
 TAG=${TAG:-"$(whoami)/disp-s1:0.2"}
-./docker/build-docker-image.sh --tag "$TAG" --base "$BASE"
+# # Build the docker image.
+# BASE="cae-artifactory.jpl.nasa.gov:16003/gov/nasa/jpl/iems/sds/infrastructure/base/jplsds-oraclelinux:8.4.230101"
+# ./docker/build-docker-image.sh --tag "$TAG" --base "$BASE"
 
-# untar the test data.
-# Pick the small or large one
-# $ lsh *tar
-# -rw-r--r-- 1 staniewi users 144G Oct  6 16:36 delivery_data_full.tar
-# -rw-r--r-- 1 staniewi users 3.1G Oct  6 17:08 delivery_data_small.tar
+# # untar the test data.
+# # Pick the small or large one
+# # $ lsh *tar
+# # -rw-r--r-- 1 staniewi users 144G Oct  6 16:36 delivery_data_full.tar
+# # -rw-r--r-- 1 staniewi users 3.1G Oct  6 17:08 delivery_data_small.tar
 
-if [ "$1" == "small" ]; then
-    tar -xf /home/staniewi/dev/beta-delivery/delivery_data_small.tar -C $test_location
-    cd $test_location/delivery_data_small
-else
-    tar -xf /home/staniewi/dev/beta-delivery/delivery_data_full.tar -C $test_location
-    cd $test_location/delivery_data_full
-fi
+# if [ "$1" == "small" ]; then
+#     tar -xf /home/staniewi/dev/beta-delivery/delivery_data_small.tar -C $test_location
+#     cd $test_location/delivery_data_small
+# else
+#     tar -xf /home/staniewi/dev/beta-delivery/delivery_data_full.tar -C $test_location
+#     cd $test_location/delivery_data_full
+# fi
 
 # Run the SAS workflow.
 # Pick the "historical" or "forward"

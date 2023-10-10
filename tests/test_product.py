@@ -14,7 +14,7 @@ SHAPE = (256, 256)
 @pytest.fixture
 def unw_filename(tmp_path) -> str:
     data = np.random.randn(*SHAPE).astype(np.float32)
-    filename = tmp_path / "unw.tif"
+    filename = tmp_path / "20200101_20200113.tif"
     io.write_arr(
         arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
     )

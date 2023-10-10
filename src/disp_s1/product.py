@@ -1,6 +1,7 @@
 """Module for creating the OPERA output product in NetCDF format."""
 from __future__ import annotations
 
+import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any, Optional, Sequence, Union
@@ -18,9 +19,10 @@ from dolphin.utils import get_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
 
-from disp_s1 import __version__ as disp_s1_version
-from disp_s1.browse_image import make_browse_image
-from disp_s1.pge_runconfig import RunConfig
+from . import __version__ as disp_s1_version
+from . import _parse_cslc_product
+from .browse_image import make_browse_image
+from .pge_runconfig import RunConfig
 
 logger = get_log(__name__)
 
@@ -59,6 +61,7 @@ def create_output_product(
     tcorr_filename: Filename,
     ifg_corr_filename: Filename,
     pge_runconfig: RunConfig,
+    cslc_files: Sequence[Filename],
     corrections: dict[str, ArrayLike] = {},
 ):
     """Create the OPERA output product in NetCDF format.
@@ -77,6 +80,8 @@ def create_output_product(
         The path to the output NetCDF file, by default "output.nc"
     corrections : dict[str, ArrayLike], optional
         A dictionary of corrections to write to the output file, by default None
+    cslc_files : Sequence[Filename]
+        The list of input CSLC products used to generate the output product.
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
@@ -102,6 +107,9 @@ def create_output_product(
 
     make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
 
+    start_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="start")
+    end_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="end")
+
     with h5netcdf.File(output_name, "w") as f:
         # Create the NetCDF file
         f.attrs.update(GLOBAL_ATTRS)
@@ -110,7 +118,8 @@ def create_output_product(
         _create_grid_mapping(group=f, crs=crs, gt=gt)
 
         # Set up the X/Y variables for each group
-        _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape)
+        _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
+        _create_time_dset(group=f, time=min(start_times))
 
         # Write the displacement array / conncomp arrays
         _create_geo_dataset(
@@ -155,7 +164,10 @@ def create_output_product(
         # TODO: Are we going to downsample these for space?
         # if so, they need they're own X/Y variables and GeoTransform
         _create_grid_mapping(group=corrections_group, crs=crs, gt=gt)
-        _create_yx_dsets(group=corrections_group, gt=gt, shape=unw_arr.shape)
+        _create_yx_dsets(
+            group=corrections_group, gt=gt, shape=unw_arr.shape, include_time=True
+        )
+        _create_time_dset(group=corrections_group, time=min(start_times))
         troposphere = corrections.get("troposphere", np.zeros_like(unw_arr))
         _create_geo_dataset(
             group=corrections_group,
@@ -231,6 +243,26 @@ def create_output_product(
             fillvalue=None,
             description="Version of the product.",
             attrs=dict(units="unitless"),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="zero_doppler_start_time",
+            dimensions=(),
+            data=min(start_times).strftime("%Y-%m-%dT%H:%M:%S.%f"),
+            fillvalue=None,
+            description=(
+                "Zero doppler start time of the first burst contained in the frame."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="zero_doppler_end_time",
+            dimensions=(),
+            data=max(end_times).strftime("%Y-%m-%dT%H:%M:%S.%f"),
+            fillvalue=None,
+            description=(
+                "Zero doppler end time of the last burst contained in the frame."
+            ),
         )
 
         metadata_group = f.create_group(METADATA_GROUP_NAME)
@@ -313,8 +345,9 @@ def _create_geo_dataset(
     description: str,
     fillvalue: float,
     attrs: Optional[dict[str, Any]],
+    include_time: bool = False,
 ) -> h5netcdf.Variable:
-    dimensions = ["y", "x"]
+    dimensions = ["y", "x"] if not include_time else ["time", "y", "x"]
     dset = _create_dataset(
         group=group,
         name=name,
@@ -348,13 +381,18 @@ def _create_yx_dsets(
     group: h5netcdf.Group,
     gt: list[float],
     shape: tuple[int, int],
+    include_time: bool = False,
 ) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
-    """Create the x and y coordinate datasets."""
+    """Create the y, x, and coordinate datasets."""
     y, x = _create_yx_arrays(gt, shape)
 
     if not group.dimensions:
-        group.dimensions = dict(y=y.size, x=x.size)
-    # Create the datasets
+        dims = dict(y=y.size, x=x.size)
+        if include_time:
+            dims["time"] = 1
+        group.dimensions = dims
+
+    # Create the x/y datasets
     y_ds = group.create_variable("y", ("y",), data=y, dtype=float)
     x_ds = group.create_variable("x", ("x",), data=x, dtype=float)
 
@@ -362,8 +400,38 @@ def _create_yx_dsets(
         ds.attrs["standard_name"] = f"projection_{name}_coordinate"
         ds.attrs["long_name"] = f"{name.replace('_', ' ')} coordinate of projection"
         ds.attrs["units"] = "m"
-
     return y_ds, x_ds
+
+
+def _create_time_dset(
+    group: h5netcdf.Group, time: datetime.datetime
+) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
+    """Create the time coordinate dataset."""
+    times, calendar, units = _create_time_array([time])
+    t_ds = group.create_variable("time", ("time",), data=times, dtype=float)
+    t_ds.attrs["standard_name"] = "time"
+    t_ds.attrs["long_name"] = "time"
+    t_ds.attrs["calendar"] = calendar
+    t_ds.attrs["units"] = units
+
+    return t_ds
+
+
+def _create_time_array(times: list[datetime.datetime]):
+    """Set up the CF-compliant time array and dimension metadata.
+
+    References
+    ----------
+    http://cfconventions.org/cf-conventions/cf-conventions.html#time-coordinate
+    """
+    # 'calendar': 'standard',
+    # 'units': 'seconds since 2017-02-03 00:00:00.000000'
+    # Create the time array
+    since_time = times[0]
+    time = np.array([(t - since_time).total_seconds() for t in times])
+    calendar = "standard"
+    units = f"seconds since {since_time.strftime('%Y-%m-%d %H:%M:%S.%f')}"
+    return time, calendar, units
 
 
 def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Variable:
@@ -427,7 +495,9 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
 
             data_group = f.create_group(group_name)
             _create_grid_mapping(group=data_group, crs=crs, gt=gt)
-            _create_yx_dsets(group=data_group, gt=gt, shape=data.shape)
+            _create_yx_dsets(
+                group=data_group, gt=gt, shape=data.shape, include_time=False
+            )
             _create_geo_dataset(
                 group=data_group,
                 name=dset_name,

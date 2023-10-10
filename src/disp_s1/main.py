@@ -8,10 +8,10 @@ from pathlib import Path
 from pprint import pformat
 
 from dolphin import __version__ as dolphin_version
+from dolphin import utils
 from dolphin._background import DummyProcessPoolExecutor
 from dolphin._log import get_log, log_runtime
 from dolphin.opera_utils import group_by_burst
-from dolphin.utils import get_max_memory_usage, set_num_threads
 from dolphin.workflows import stitch_and_unwrap, wrapped_phase
 from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
 from dolphin.workflows.config import Workflow
@@ -43,7 +43,7 @@ def run(
     logger.debug(pformat(cfg.model_dump()))
     cfg.create_dir_tree(debug=debug)
 
-    set_num_threads(cfg.worker_settings.threads_per_worker)
+    utils.set_num_threads(cfg.worker_settings.threads_per_worker)
 
     try:
         grouped_slc_files = group_by_burst(cfg.cslc_file_list)
@@ -145,6 +145,11 @@ def run(
     # ######################################
     # 3. Finalize the output as an HDF5 product
     # ######################################
+    # Group all the non-compressed SLCs by date
+    date_to_slcs = utils.group_by_date(
+        [p for p in cfg.cslc_file_list if "compressed" not in p.name]
+    )
+
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(unwrapped_paths)} outputs in {out_dir}")
@@ -154,6 +159,11 @@ def run(
         ifg_corr_paths,
     ):
         output_name = out_dir / unw_p.with_suffix(".nc").name
+        # Get the current list of acq times for this product
+        dair_pair = utils.get_dates(output_name)
+        secondary_date = dair_pair[1]
+        cur_slc_list = date_to_slcs[(secondary_date,)]
+
         product.create_output_product(
             output_name=output_name,
             unw_filename=unw_p,
@@ -161,6 +171,7 @@ def run(
             tcorr_filename=stitched_tcorr_file,
             ifg_corr_filename=s_corr_p,
             pge_runconfig=pge_runconfig,
+            cslc_files=cur_slc_list,
             corrections={},
         )
 
@@ -174,7 +185,7 @@ def run(
         )
 
     # Print the maximum memory usage for each worker
-    max_mem = get_max_memory_usage(units="GB")
+    max_mem = utils.get_max_memory_usage(units="GB")
     logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
     logger.info(f"Config file dolphin version: {cfg._dolphin_version}")
     logger.info(f"Current running dolphin version: {dolphin_version}")

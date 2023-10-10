@@ -17,14 +17,16 @@ from dolphin.opera_utils import OPERA_DATASET_NAME
 from dolphin.utils import get_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
-from PIL import Image
 
+from disp_s1 import __version__ as disp_s1_version
+from disp_s1.browse_image import make_browse_image
 from disp_s1.pge_runconfig import RunConfig
 
 logger = get_log(__name__)
 
 CORRECTIONS_GROUP_NAME = "corrections"
 IDENTIFICATION_GROUP_NAME = "identification"
+METADATA_GROUP_NAME = "metadata"
 GLOBAL_ATTRS = dict(
     Conventions="CF-1.8",
     contact="operaops@jpl.nasa.gov",
@@ -51,14 +53,13 @@ COMPRESSED_SLC_TEMPLATE = "compressed_{burst}_{date_str}.h5"
 
 
 def create_output_product(
+    output_name: Filename,
     unw_filename: Filename,
     conncomp_filename: Filename,
     tcorr_filename: Filename,
     ifg_corr_filename: Filename,
-    output_name: Filename,
+    pge_runconfig: RunConfig,
     corrections: dict[str, ArrayLike] = {},
-    pge_runconfig: Optional[RunConfig] = None,
-    create_browse_image: bool = True,
 ):
     """Create the OPERA output product in NetCDF format.
 
@@ -79,9 +80,6 @@ def create_output_product(
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
-    create_browse_image : bool
-        If true, creates a PNG browse image of the unwrapped phase
-        with filename as `output_name`.png
     """
     # Read the Geotiff file and its metadata
     crs = io.get_raster_crs(unw_filename)
@@ -102,8 +100,7 @@ def create_output_product(
 
     assert unw_arr.shape == conncomp_arr.shape == tcorr_arr.shape
 
-    if create_browse_image:
-        make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
+    make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
 
     with h5netcdf.File(output_name, "w") as f:
         # Create the NetCDF file
@@ -213,10 +210,6 @@ def create_output_product(
             attrs=dict(units="unitless", rows=[], cols=[], latitudes=[], longitudes=[]),
         )
 
-    # End of the product for non-PGE users
-    if pge_runconfig is None:
-        return
-
     # Add the PGE metadata to the file
     with h5netcdf.File(output_name, "a") as f:
         identification_group = f.create_group(IDENTIFICATION_GROUP_NAME)
@@ -239,14 +232,24 @@ def create_output_product(
             description="Version of the product.",
             attrs=dict(units="unitless"),
         )
-        # software_version
+
+        metadata_group = f.create_group(METADATA_GROUP_NAME)
         _create_dataset(
-            group=identification_group,
-            name="software_version",
+            group=metadata_group,
+            name="disp_s1_software_version",
+            dimensions=(),
+            data=disp_s1_version,
+            fillvalue=None,
+            description="Version of the disp-s1 software used to generate the product.",
+            attrs=dict(units="unitless"),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="dolphin_software_version",
             dimensions=(),
             data=dolphin_version,
             fillvalue=None,
-            description="Version of the Dolphin software used to generate the product.",
+            description="Version of the dolphin software used to generate the product.",
             attrs=dict(units="unitless"),
         )
 
@@ -255,7 +258,7 @@ def create_output_product(
         pge_runconfig.to_yaml(ss)
         runconfig_str = ss.getvalue()
         _create_dataset(
-            group=identification_group,
+            group=metadata_group,
             name="pge_runconfig",
             dimensions=(),
             data=runconfig_str,
@@ -433,31 +436,3 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
                 fillvalue=np.nan + 0j,
                 attrs=attrs,
             )
-
-
-def make_browse_image(
-    output_filename: Filename,
-    arr: ArrayLike,
-    max_dim_allowed: int = 2048,
-) -> None:
-    """Create a PNG browse image for the output product.
-
-    Parameters
-    ----------
-    output_filename : Filename
-        Name of output PNG
-    arr : ArrayLike
-        input 2D image array
-    max_dim_allowed : int, default = 2048
-        Size (in pixels) of the maximum allowed dimension of output image.
-        Image gets rescaled with same aspect ratio.
-    """
-    orig_shape = arr.shape
-    scaling_ratio = max([s / max_dim_allowed for s in orig_shape])
-    # scale original shape by scaling ratio
-    scaled_shape = [int(np.ceil(s / scaling_ratio)) for s in orig_shape]
-
-    # TODO: Make actual browse image
-    dummy = np.zeros(scaled_shape, dtype="uint8")
-    img = Image.fromarray(dummy, mode="L")
-    img.save(output_filename, transparency=0)

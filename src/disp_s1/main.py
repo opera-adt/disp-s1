@@ -155,13 +155,13 @@ def run(
     ):
         output_name = out_dir / unw_p.with_suffix(".nc").name
         product.create_output_product(
+            output_name=output_name,
             unw_filename=unw_p,
             conncomp_filename=cc_p,
             tcorr_filename=stitched_tcorr_file,
             ifg_corr_filename=s_corr_p,
-            output_name=output_name,
-            corrections={},
             pge_runconfig=pge_runconfig,
+            corrections={},
         )
 
     if pge_runconfig.product_path_group.save_compressed_slc:

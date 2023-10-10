@@ -15,6 +15,7 @@ def convert_to_runconfig(
     processing_mode: str,
     frame_to_burst_json: str | None = None,
     algorithm_parameters_file: str = "algorithm_parameters.yaml",
+    output_directory: str | None = None,
     save_compressed_slc: bool = True,
     outfile: str = "runconfig.yaml",
 ):
@@ -27,6 +28,7 @@ def convert_to_runconfig(
         algorithm_parameters_file=algorithm_parameters_file,
         processing_mode=processing_mode,
         save_compressed_slc=save_compressed_slc,
+        output_directory=output_directory,
     )
     rc.to_yaml(outfile)
 
@@ -43,6 +45,15 @@ def main():
     parser.add_argument("--frame-id", required=True, type=str, help="Frame ID.")
     parser.add_argument(
         "--processing-mode", required=True, type=str, help="Processing mode."
+    )
+    parser.add_argument(
+        "-od",
+        "--output-directory",
+        type=str,
+        help=(
+            "Name of output directory for final products. If not specified, will use"
+            " `outputs` one level up from the dolphin working directory."
+        ),
     )
     parser.add_argument(
         "-o", "--outfile", type=str, default="runconfig.yaml", help="Output file path."
@@ -79,6 +90,7 @@ def main():
         frame_to_burst_json=args.frame_to_burst_json,
         algorithm_parameters_file=args.algorithm_parameters_file,
         save_compressed_slc=args.save_compressed_slc,
+        output_directory=args.output_directory,
         outfile=args.outfile,
     )
 

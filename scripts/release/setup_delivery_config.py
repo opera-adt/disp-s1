@@ -12,14 +12,14 @@ from disp_s1.enums import ProcessingMode
 # done
 
 
-def setup_delivery(out_dir: Path, mode: ProcessingMode):
+def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
     """Set up the dolphin config file for the delivery for one mode."""
-    out_dir.mkdir(exist_ok=True)
+    cfg_dir.mkdir(exist_ok=True)
     single_flag = "--single" if mode == ProcessingMode.FORWARD else ""
-    outfile = f"{out_dir}/dolphin_config_{mode.value}.yaml"
+    outfile = f"{cfg_dir}/dolphin_config_{mode.value}.yaml"
     cmd = (
         "dolphin config "
-        " --keep-paths-relative --work scratch --strides 6 3"
+        f" --keep-paths-relative --work scratch/{mode.value} --strides 6 3"
         # Inputs:
         " --slc-files ./input_slcs/*h5 --subdataset /data/VV"
         # Phase linking stuff
@@ -44,7 +44,7 @@ def setup_delivery(out_dir: Path, mode: ProcessingMode):
         # Unwrapping stuff
         " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5"
         # Worker stuff
-        " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 3 --no-gpu"
+        " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 2 --no-gpu"
         f" -o {outfile}"
     )
     print(cmd)
@@ -53,24 +53,30 @@ def setup_delivery(out_dir: Path, mode: ProcessingMode):
 
 
 if __name__ == "__main__":
-    out_dir = Path("config_files")
+    cfg_dir = Path("config_files")
     # California, track 42, bay area:
     frame_id = 11114
     # Creates one file for the forward mode and one for the historical mode.
     for mode in ProcessingMode:
+        output_directory = Path(f"output/{mode.value}")
         # TODO: adjust the number of
         # ionosphere files
         # troposphere files
-        dolphin_cfg_file = setup_delivery(out_dir=out_dir, mode=mode)
+        dolphin_cfg_file = setup_delivery(cfg_dir=cfg_dir, mode=mode)
         # Run the "convert_config.py" script in the same directory
         # as this script.
         this_dir = Path(__file__).parent
         convert_config = this_dir / "convert_config.py"
         arg_string = (
-            f" --frame-id {frame_id} --processing-mode {mode.value} -o"
-            f" {out_dir}/runconfig_{mode.value}.yaml -a"
-            f" {out_dir}/algorithm_parameters_{mode.value}.yaml"
+            f" --frame-id {frame_id} "
+            f" --output-directory {output_directory}"
+            f" --processing-mode {mode.value} --save-compressed-slc -o"
+            f" {cfg_dir}/runconfig_{mode.value}.yaml  -a"
+            f" {cfg_dir}/algorithm_parameters_{mode.value}.yaml"
         )
         cmd = f"python {convert_config} {dolphin_cfg_file} {arg_string}"
         print(cmd)
         subprocess.run(cmd, shell=True)
+        # Remove the `dolphin` yamls
+        for f in cfg_dir.glob("dolphin_config*.yaml"):
+            f.unlink()

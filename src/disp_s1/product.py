@@ -14,7 +14,7 @@ from dolphin import __version__ as dolphin_version
 from dolphin import io
 from dolphin._log import get_log
 from dolphin._types import Filename
-from dolphin.opera_utils import OPERA_DATASET_NAME
+from dolphin.opera_utils import OPERA_DATASET_NAME, get_union_polygon
 from dolphin.utils import get_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
@@ -52,6 +52,8 @@ HDF5_OPTS["chunks"] = tuple(HDF5_OPTS["chunks"])  # type: ignore
 GRID_MAPPING_DSET = "spatial_ref"
 
 COMPRESSED_SLC_TEMPLATE = "compressed_{burst}_{date_str}.h5"
+
+DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 
 
 def create_output_product(
@@ -106,9 +108,7 @@ def create_output_product(
     assert unw_arr.shape == conncomp_arr.shape == tcorr_arr.shape
 
     make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
-
     start_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="start")
-    end_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="end")
 
     with h5netcdf.File(output_name, "w") as f:
         # Create the NetCDF file
@@ -121,6 +121,9 @@ def create_output_product(
         _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
         _create_time_dset(group=f, time=min(start_times))
 
+        # ##################################
+        # ######## Main datasets ###########
+        # ##################################
         # Write the displacement array / conncomp arrays
         _create_geo_dataset(
             group=f,
@@ -155,20 +158,45 @@ def create_output_product(
             attrs=dict(units="unitless"),
         )
 
+        # ######## Corrections #############
+        _create_corrections_group(
+            output_name=output_name,
+            corrections=corrections,
+            shape=unw_arr.shape,
+            gt=gt,
+            crs=crs,
+            start_time=min(start_times),
+        )
+
+        _create_identification_group(
+            output_name=output_name, pge_runconfig=pge_runconfig, cslc_files=cslc_files
+        )
+
+        _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
+
+
+def _create_corrections_group(
+    output_name: Filename,
+    corrections: dict[str, ArrayLike],
+    shape: tuple[int, int],
+    gt: list[float],
+    crs: pyproj.CRS,
+    start_time: datetime.datetime,
+) -> None:
+    with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections that were used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
         corrections_group.attrs["description"] = (
             "Phase corrections applied to the unwrapped_phase"
         )
+        empty_arr = np.zeros(shape, dtype="float32")
 
         # TODO: Are we going to downsample these for space?
         # if so, they need they're own X/Y variables and GeoTransform
         _create_grid_mapping(group=corrections_group, crs=crs, gt=gt)
-        _create_yx_dsets(
-            group=corrections_group, gt=gt, shape=unw_arr.shape, include_time=True
-        )
-        _create_time_dset(group=corrections_group, time=min(start_times))
-        troposphere = corrections.get("troposphere", np.zeros_like(unw_arr))
+        _create_yx_dsets(group=corrections_group, gt=gt, shape=shape, include_time=True)
+        _create_time_dset(group=corrections_group, time=start_time)
+        troposphere = corrections.get("troposphere", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
@@ -177,7 +205,7 @@ def create_output_product(
             fillvalue=np.nan,
             attrs=dict(units="radians"),
         )
-        ionosphere = corrections.get("ionosphere", np.zeros_like(unw_arr))
+        ionosphere = corrections.get("ionosphere", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
@@ -186,7 +214,7 @@ def create_output_product(
             fillvalue=np.nan,
             attrs=dict(units="radians"),
         )
-        solid_earth = corrections.get("solid_earth", np.zeros_like(unw_arr))
+        solid_earth = corrections.get("solid_earth", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
@@ -195,7 +223,7 @@ def create_output_product(
             fillvalue=np.nan,
             attrs=dict(units="radians"),
         )
-        plate_motion = corrections.get("plate_motion", np.zeros_like(unw_arr))
+        plate_motion = corrections.get("plate_motion", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
             name="plate_motion",
@@ -222,7 +250,13 @@ def create_output_product(
             attrs=dict(units="unitless", rows=[], cols=[], latitudes=[], longitudes=[]),
         )
 
-    # Add the PGE metadata to the file
+
+def _create_identification_group(
+    output_name: Filename,
+    pge_runconfig: RunConfig,
+    cslc_files: Sequence[Filename],
+) -> None:
+    """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
         identification_group = f.create_group(IDENTIFICATION_GROUP_NAME)
         _create_dataset(
@@ -234,7 +268,6 @@ def create_output_product(
             description="ID number of the processed frame.",
             attrs=dict(units="unitless"),
         )
-        # product_version
         _create_dataset(
             group=identification_group,
             name="product_version",
@@ -244,27 +277,46 @@ def create_output_product(
             description="Version of the product.",
             attrs=dict(units="unitless"),
         )
+
+        start_times = _parse_cslc_product.get_zero_doppler_time(
+            cslc_files, type_="start"
+        )
         _create_dataset(
             group=identification_group,
             name="zero_doppler_start_time",
             dimensions=(),
-            data=min(start_times).strftime("%Y-%m-%dT%H:%M:%S.%f"),
+            data=min(start_times).strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
                 "Zero doppler start time of the first burst contained in the frame."
             ),
         )
+        end_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="end")
         _create_dataset(
             group=identification_group,
             name="zero_doppler_end_time",
             dimensions=(),
-            data=max(end_times).strftime("%Y-%m-%dT%H:%M:%S.%f"),
+            data=max(end_times).strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
                 "Zero doppler end time of the last burst contained in the frame."
             ),
         )
+        # bounding polygon
+        _create_dataset(
+            group=identification_group,
+            name="bounding_polygon",
+            dimensions=(),
+            data=get_union_polygon(cslc_files).wkt,
+            fillvalue=None,
+            description="WKT representation of bounding polygon of the image",
+            attrs=dict(units="degrees"),
+        )
 
+
+def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> None:
+    """Create the metadata group in the output file."""
+    with h5netcdf.File(output_name, "a") as f:
         metadata_group = f.create_group(METADATA_GROUP_NAME)
         _create_dataset(
             group=metadata_group,
@@ -435,7 +487,7 @@ def _create_time_array(times: list[datetime.datetime]):
     since_time = times[0]
     time = np.array([(t - since_time).total_seconds() for t in times])
     calendar = "standard"
-    units = f"seconds since {since_time.strftime('%Y-%m-%d %H:%M:%S.%f')}"
+    units = f"seconds since {since_time.strftime(DATETIME_FORMAT)}"
     return time, calendar, units
 
 

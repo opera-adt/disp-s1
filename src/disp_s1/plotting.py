@@ -136,7 +136,9 @@ class _HDF5GroupExplorer:
         return list(self._attr_cache.keys())
 
 
-def create_explorer_widget(hf: h5py.File, load_less_than: float = 1e3):
+def create_explorer_widget(
+    hf: h5py.File, load_less_than: float = 1e3
+) -> widgets.Widget:
     """Make a widget in Jupyter to explore a h5py file.
 
     Examples
@@ -145,7 +147,7 @@ def create_explorer_widget(hf: h5py.File, load_less_than: float = 1e3):
     >>> create_explorer_widget(hf)
     """
 
-    def _make_thumbnail(image):
+    def _make_thumbnail(image) -> widgets.Image:
         # Create a thumbnail of the dataset
         fig, ax = plt.subplots(figsize=(5, 5))
         ax.imshow(image, cmap="gray", vmax=np.nanpercentile(image, 99))
@@ -157,7 +159,7 @@ def create_explorer_widget(hf: h5py.File, load_less_than: float = 1e3):
         # Display the thumbnail in an Image widget
         return widgets.Image(value=buf.read(), format="png")
 
-    def _add_widgets(item, level: int = 0):
+    def _add_widgets(item, level: int = 0) -> widgets.Widget:
         """Recursively add widgets to the accordion widget."""
         if isinstance(item, h5py.Group):
             # Add a new accordion widget for the group

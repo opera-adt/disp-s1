@@ -16,7 +16,7 @@ from dolphin.workflows import stitch_and_unwrap, wrapped_phase
 from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
 from dolphin.workflows.config import Workflow
 
-from disp_s1 import product
+from disp_s1 import _log, product
 from disp_s1.pge_runconfig import RunConfig
 
 
@@ -39,7 +39,10 @@ def run(
         PGE-specific metadata for the output product.
     """
     # Set the logging level for all `dolphin.` modules
-    logger = get_log(name="disp_s1", debug=debug, filename=cfg.log_file)
+    logger = get_log(name="disp_s1", debug=debug)
+    if cfg.log_file:
+        _log.setup_file_logging(cfg.log_file)
+
     logger.debug(pformat(cfg.model_dump()))
     cfg.create_dir_tree(debug=debug)
 

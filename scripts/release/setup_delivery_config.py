@@ -45,6 +45,7 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5"
         # Worker stuff
         " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 2 --no-gpu"
+        f" --log-file scratch/{mode.value}/log_sas.log"
         f" -o {outfile}"
     )
     print(cmd)

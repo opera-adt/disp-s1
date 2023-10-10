@@ -3,7 +3,7 @@
 set -e
 set -x # echo on
 
-readonly HELP='usage: ./test_delivery.sh [small|large] [forward|historical] [test_location]
+readonly HELP="usage: $0 [small|large] [forward|historical] test_location
 
 Run the SAS workflow on a small or large dataset and compare the output against
 a golden dataset.
@@ -11,51 +11,19 @@ a golden dataset.
 positional arguments:
 small|large     the size of the dataset to use
 forward|historical  the mode to run the workflow in
-test_location   the location to put the test data
-'
+test_location   the location to put the test data and run the workflow
+"
 
 if [[ "${1-}" =~ ^-*h(elp)?$ ]]; then
     echo "$HELP"
     exit 0
-elif [[ "$#" -lt 2 ]]; then
+elif [[ "$#" -lt 3 ]]; then
     echo 'Illegal number of parameters' >&2
     echo "$HELP"
     exit 1
 fi
 
-test_location="${3:-/tmp/test_delivery}"
-test_location=$(realpath $test_location)
-mkdir -p $test_location
-
-# # Clone the source.
-# git clone git@github.com:opera-adt/disp-s1.git
-# cd disp-s1
-# # git checkout v0.1
-
-TAG=${TAG:-"$(whoami)/disp-s1:0.2"}
-# # Build the docker image.
-# BASE="cae-artifactory.jpl.nasa.gov:16003/gov/nasa/jpl/iems/sds/infrastructure/base/jplsds-oraclelinux:8.4.230101"
-# ./docker/build-docker-image.sh --tag "$TAG" --base "$BASE"
-
-# # untar the test data.
-# # Pick the small or large one
-# # $ lsh *tar
-# # -rw-r--r-- 1 staniewi users 144G Oct  6 16:36 delivery_data_full.tar
-# # -rw-r--r-- 1 staniewi users 3.1G Oct  6 17:08 delivery_data_small.tar
-
-# if [ "$1" == "small" ]; then
-#     tar -xf /home/staniewi/dev/beta-delivery/delivery_data_small.tar -C $test_location
-#     cd $test_location/delivery_data_small
-# else
-#     tar -xf /home/staniewi/dev/beta-delivery/delivery_data_full.tar -C $test_location
-#     cd $test_location/delivery_data_full
-# fi
-
-# Run the SAS workflow.
-# Pick the "historical" or "forward"
-# $ ls config_files/run*
-# config_files/runconfig_forward.yaml  config_files/runconfig_historical.yaml
-mode=${2:-forward}
+mode="$2"
 if [ "$mode" == "forward" ]; then
     echo "Running forward mode"
 elif [ "$mode" == "historical" ]; then
@@ -64,6 +32,40 @@ else
     echo "Invalid mode: $mode"
     exit 1
 fi
+
+test_location="$3"
+test_location=$(realpath $test_location)
+mkdir -p $test_location
+
+# Clone the source.
+git clone git@github.com:opera-adt/disp-s1.git
+cd disp-s1
+git checkout v0.1
+
+TAG=${TAG:-"$(whoami)/disp-s1:0.2"}
+# Build the docker image.
+BASE="cae-artifactory.jpl.nasa.gov:16003/gov/nasa/jpl/iems/sds/infrastructure/base/jplsds-oraclelinux:8.4.230101"
+./docker/build-docker-image.sh --tag "$TAG" --base "$BASE"
+
+# untar the test data.
+# Pick the small or large one. Sizes of the tarballs:
+# $ lsh *tar
+# -rw-r--r-- 1 staniewi users 144G Oct  6 16:36 delivery_data_full.tar
+# -rw-r--r-- 1 staniewi users 3.1G Oct  6 17:08 delivery_data_small.tar
+
+if [ "$1" == "small" ]; then
+    tar -xf /home/staniewi/dev/beta-delivery/delivery_data_small.tar -C $test_location
+    cd $test_location/delivery_data_small
+else
+    tar -xf /home/staniewi/dev/beta-delivery/delivery_data_full.tar -C $test_location
+    cd $test_location/delivery_data_full
+fi
+
+# Run the SAS workflow.
+# Pick the "historical" or "forward":
+# $ ls config_files/run*
+#     config_files/runconfig_forward.yaml  config_files/runconfig_historical.yaml
+
 cfg_file="config_files/runconfig_${mode}.yaml"
 
 docker run --rm -u $(id -u):$(id -g) \

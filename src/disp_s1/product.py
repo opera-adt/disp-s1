@@ -21,6 +21,7 @@ from numpy.typing import ArrayLike, DTypeLike
 
 from . import __version__ as disp_s1_version
 from . import _parse_cslc_product
+from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image
 from .pge_runconfig import RunConfig
 
@@ -52,8 +53,6 @@ HDF5_OPTS["chunks"] = tuple(HDF5_OPTS["chunks"])  # type: ignore
 GRID_MAPPING_DSET = "spatial_ref"
 
 COMPRESSED_SLC_TEMPLATE = "compressed_{burst}_{date_str}.h5"
-
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 
 
 def create_output_product(
@@ -111,7 +110,14 @@ def create_output_product(
     assert unw_arr.shape == conncomp_arr.shape == tcorr_arr.shape
 
     make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
-    start_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="start")
+    start_times = [
+        _parse_cslc_product.get_zero_doppler_time(f, type_="start") for f in cslc_files
+    ]
+    start_time = min(start_times)
+    end_times = [
+        _parse_cslc_product.get_zero_doppler_time(f, type_="end") for f in cslc_files
+    ]
+    end_time = max(end_times)
 
     with h5netcdf.File(output_name, "w") as f:
         # Create the NetCDF file
@@ -122,11 +128,9 @@ def create_output_product(
 
         # Set up the X/Y variables for each group
         _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
-        _create_time_dset(group=f, time=min(start_times))
+        _create_time_dset(group=f, time=start_time)
 
-        # ##################################
         # ######## Main datasets ###########
-        # ##################################
         # Write the displacement array / conncomp arrays
         _create_geo_dataset(
             group=f,
@@ -172,21 +176,24 @@ def create_output_product(
             attrs=dict(units="unitless"),
         )
 
-        # ######## Corrections #############
-        _create_corrections_group(
-            output_name=output_name,
-            corrections=corrections,
-            shape=unw_arr.shape,
-            gt=gt,
-            crs=crs,
-            start_time=min(start_times),
-        )
+    _create_corrections_group(
+        output_name=output_name,
+        corrections=corrections,
+        shape=unw_arr.shape,
+        gt=gt,
+        crs=crs,
+        start_time=min(start_times),
+    )
 
-        _create_identification_group(
-            output_name=output_name, pge_runconfig=pge_runconfig, cslc_files=cslc_files
-        )
+    _create_identification_group(
+        output_name=output_name,
+        pge_runconfig=pge_runconfig,
+        cslc_files=cslc_files,
+        start_time=start_time,
+        end_time=end_time,
+    )
 
-        _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
+    _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
 
 
 def _create_corrections_group(
@@ -269,6 +276,8 @@ def _create_identification_group(
     output_name: Filename,
     pge_runconfig: RunConfig,
     cslc_files: Sequence[Filename],
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
 ) -> None:
     """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
@@ -292,26 +301,21 @@ def _create_identification_group(
             attrs=dict(units="unitless"),
         )
 
-        start_times = _parse_cslc_product.get_zero_doppler_time(
-            cslc_files, type_="start"
-        )
         _create_dataset(
             group=identification_group,
             name="zero_doppler_start_time",
             dimensions=(),
-            data=min(start_times).strftime(DATETIME_FORMAT),
+            data=start_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
                 "Zero doppler start time of the first burst contained in the frame."
             ),
         )
-
-        end_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="end")
         _create_dataset(
             group=identification_group,
             name="zero_doppler_end_time",
             dimensions=(),
-            data=max(end_times).strftime(DATETIME_FORMAT),
+            data=end_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
                 "Zero doppler end time of the last burst contained in the frame."
@@ -328,12 +332,7 @@ def _create_identification_group(
             attrs=dict(units="degrees"),
         )
 
-        wavelength_dset = (
-            "/metadata/processing_information/input_burst_metadata/wavelength"
-        )
-        wavelength, attrs = _parse_cslc_product.get_dset_and_attrs(
-            cslc_files[-1], wavelength_dset
-        )
+        wavelength, attrs = _parse_cslc_product.get_radar_wavelength(cslc_files[-1])
         desc = attrs.pop("description")
         _create_dataset(
             group=identification_group,

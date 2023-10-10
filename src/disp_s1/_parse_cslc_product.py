@@ -1,45 +1,41 @@
 """Module for extracting relevant metadata from the CSLC products."""
 from datetime import datetime
-from typing import Iterable
+from typing import Any, Callable
 
 import h5py
 from dolphin._types import Filename
 
+from ._common import DATETIME_FORMAT
 
-def get_dset_and_attrs(filename: Filename, dset_name: str):
-    """Get the dataset and attributes from the CSLC product.
+
+def get_radar_wavelength(filename: Filename):
+    """Get the radar wavelength from the CSLC product.
 
     Parameters
     ----------
     filename : Filename
         Path to the CSLC product.
-    dset_name : str
-        Name of the dataset.
 
     Returns
     -------
-    dset : h5py.Dataset
-        Dataset.
+    wavelength : float
+        Radar wavelength.
     attrs : dict
-        Attributes.
+        Attributes from the HDF5 dataset.
     """
-    with h5py.File(filename, "r") as hf:
-        dset = hf[dset_name]
-        attrs = dict(dset.attrs)
-        return dset[()], attrs
+    dset = "/metadata/processing_information/input_burst_metadata/wavelength"
+    value, attrs = _get_dset_and_attrs(filename, dset)
+    return value, attrs
 
 
-# Get the full acquisition times
-def get_zero_doppler_time(
-    filenames: Iterable[Filename], type_: str = "start"
-) -> list[datetime]:
+def get_zero_doppler_time(filename: Filename, type_: str = "start") -> datetime:
     """Get the full acquisition time from the CSLC product.
 
     Uses `/identification/zero_doppler_{type_}_time` from the CSLC product.
 
     Parameters
     ----------
-    filenames : Filename
+    filename : Filename
         Path to the CSLC product.
     type_ : str, optional
         Either "start" or "stop", by default "start".
@@ -49,14 +45,41 @@ def get_zero_doppler_time(
     str
         Full acquisition time.
     """
-    datetimes = []
-    for filename in filenames:
-        with h5py.File(filename, "r") as hf:
-            # Example:
-            # "2022-11-19 14:07:51.997436"
-            date_str = hf[f"/identification/zero_doppler_{type_}_time"][()]
 
-        datetimes.append(
-            datetime.strptime(date_str.decode("utf-8"), "%Y-%m-%d %H:%M:%S.%f")
-        )
-    return datetimes
+    def get_dt(in_str):
+        return datetime.strptime(in_str.decode("utf-8"), DATETIME_FORMAT)
+
+    dset = f"/identification/zero_doppler_{type_}_time"
+    return _get_dset_and_attrs(filename, dset, parse_func=get_dt)[0]
+
+
+def _get_dset_and_attrs(
+    filename: Filename,
+    dset_name: str,
+    parse_func: Callable = lambda x: x,
+) -> tuple[Any, dict[str, Any]]:
+    """Get one dataset's value and attributes from the CSLC product.
+
+    Parameters
+    ----------
+    filename : Filename
+        Path to the CSLC product.
+    dset_name : str
+        Name of the dataset.
+    parse_func : Callable, optional
+        Function to parse the dataset value, by default lambda x: x
+        For example, could be parse_func=lambda x: x.decode("utf-8") to decode,
+        or getting a datetime object from a string.
+
+    Returns
+    -------
+    dset : Any
+        The value of the scalar
+    attrs : dict
+        Attributes.
+    """
+    with h5py.File(filename, "r") as hf:
+        dset = hf[dset_name]
+        attrs = dict(dset.attrs)
+        value = parse_func(dset[()])
+        return value, attrs

@@ -45,9 +45,7 @@ jobs:
             channels:
               - conda-forge
       - name: Install
-        # Install tophu from git (Change v0.2.0 is up)
         run: |
-          pip install --no-deps git+https://github.com/opera-adt/tophu@36f87d8ce6dee3f48f922718552471e52179dfe1
           pip install --no-deps .
       - name: Install test dependencies
         run: |

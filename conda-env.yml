@@ -11,5 +11,5 @@ dependencies:
   - pillow>=7.0
   - pydantic>=2.1
   - ruamel.yaml>=0.15
-  - tophu>=0.1.0
+  - tophu>=0.2.0
   - yamale

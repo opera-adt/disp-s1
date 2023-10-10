@@ -64,3 +64,12 @@ To enable GPU support (on aurora with CUDA 11.6 installed), install the followin
 ```bash
 mamba install -c conda-forge "cudatoolkit=11.6" cupy "pynvml>=11.0"
 ```
+
+
+### Building the docker image
+
+To build the docker image, run:
+```bash
+./docker/build-docker-image.sh --tag my-tag
+```
+which will print out instructions for running the image.

@@ -305,6 +305,7 @@ def _create_identification_group(
                 "Zero doppler start time of the first burst contained in the frame."
             ),
         )
+
         end_times = _parse_cslc_product.get_zero_doppler_time(cslc_files, type_="end")
         _create_dataset(
             group=identification_group,
@@ -316,7 +317,7 @@ def _create_identification_group(
                 "Zero doppler end time of the last burst contained in the frame."
             ),
         )
-        # bounding polygon
+
         _create_dataset(
             group=identification_group,
             name="bounding_polygon",
@@ -325,6 +326,23 @@ def _create_identification_group(
             fillvalue=None,
             description="WKT representation of bounding polygon of the image",
             attrs=dict(units="degrees"),
+        )
+
+        wavelength_dset = (
+            "/metadata/processing_information/input_burst_metadata/wavelength"
+        )
+        wavelength, attrs = _parse_cslc_product.get_dset_and_attrs(
+            cslc_files[-1], wavelength_dset
+        )
+        desc = attrs.pop("description")
+        _create_dataset(
+            group=identification_group,
+            name="radar_wavelength",
+            dimensions=(),
+            data=wavelength,
+            fillvalue=None,
+            description=desc,
+            attrs=attrs,
         )
 
 

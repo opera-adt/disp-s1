@@ -6,6 +6,29 @@ import h5py
 from dolphin._types import Filename
 
 
+def get_dset_and_attrs(filename: Filename, dset_name: str):
+    """Get the dataset and attributes from the CSLC product.
+
+    Parameters
+    ----------
+    filename : Filename
+        Path to the CSLC product.
+    dset_name : str
+        Name of the dataset.
+
+    Returns
+    -------
+    dset : h5py.Dataset
+        Dataset.
+    attrs : dict
+        Attributes.
+    """
+    with h5py.File(filename, "r") as hf:
+        dset = hf[dset_name]
+        attrs = dict(dset.attrs)
+        return dset[()], attrs
+
+
 # Get the full acquisition times
 def get_zero_doppler_time(
     filenames: Iterable[Filename], type_: str = "start"

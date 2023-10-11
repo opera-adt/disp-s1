@@ -522,7 +522,7 @@ def _create_time_dset(
     times, calendar, units = _create_time_array([time])
     t_ds = group.create_variable("time", ("time",), data=times, dtype=float)
     t_ds.attrs["standard_name"] = "time"
-    t_ds.attrs["long_name"] = "time"
+    t_ds.attrs["long_name"] = "time corresponding to beginning of Displacement frame"
     t_ds.attrs["calendar"] = calendar
     t_ds.attrs["units"] = units
 

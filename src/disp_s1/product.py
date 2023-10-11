@@ -344,6 +344,30 @@ def _create_identification_group(
             attrs=attrs,
         )
 
+        reference_date, secondary_date = get_dates(output_name)[:2]
+        _create_dataset(
+            group=identification_group,
+            name="reference_datetime",
+            dimensions=(),
+            data=reference_date.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "UTC datetime of the acquisition sensing start of the reference epoch"
+                " to which the unwrapped phase is referenced."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="secondary_datetime",
+            dimensions=(),
+            data=secondary_date.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "UTC datetime of the acquisition sensing start of current acquisition"
+                " used to create the unwrapped phase."
+            ),
+        )
+
 
 def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> None:
     """Create the metadata group in the output file."""

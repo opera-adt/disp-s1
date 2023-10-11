@@ -128,7 +128,11 @@ def create_output_product(
 
         # Set up the X/Y variables for each group
         _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
-        _create_time_dset(group=f, time=start_time)
+        _create_time_dset(
+            group=f,
+            time=start_time,
+            long_name="time corresponding to beginning of Displacement frame",
+        )
 
         # ######## Main datasets ###########
         # Write the displacement array / conncomp arrays
@@ -216,7 +220,11 @@ def _create_corrections_group(
         # if so, they need they're own X/Y variables and GeoTransform
         _create_grid_mapping(group=corrections_group, crs=crs, gt=gt)
         _create_yx_dsets(group=corrections_group, gt=gt, shape=shape, include_time=True)
-        _create_time_dset(group=corrections_group, time=start_time)
+        _create_time_dset(
+            group=corrections_group,
+            time=start_time,
+            long_name="time corresponding to beginning of Displacement frame",
+        )
         troposphere = corrections.get("troposphere", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
@@ -516,13 +524,13 @@ def _create_yx_dsets(
 
 
 def _create_time_dset(
-    group: h5netcdf.Group, time: datetime.datetime
+    group: h5netcdf.Group, time: datetime.datetime, long_name: str = "time"
 ) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
     """Create the time coordinate dataset."""
     times, calendar, units = _create_time_array([time])
     t_ds = group.create_variable("time", ("time",), data=times, dtype=float)
     t_ds.attrs["standard_name"] = "time"
-    t_ds.attrs["long_name"] = "time corresponding to beginning of Displacement frame"
+    t_ds.attrs["long_name"] = long_name
     t_ds.attrs["calendar"] = calendar
     t_ds.attrs["units"] = units
 

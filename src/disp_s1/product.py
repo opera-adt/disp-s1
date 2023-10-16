@@ -131,7 +131,7 @@ def create_output_product(
         _create_time_dset(
             group=f,
             time=start_time,
-            long_name="time corresponding to beginning of Displacement frame",
+            long_name="Time corresponding to beginning of Displacement frame",
         )
 
         # ######## Main datasets ###########
@@ -164,7 +164,10 @@ def create_output_product(
             group=f,
             name="interferometric_correlation",
             data=ifg_corr_arr,
-            description="Multilooked sample interferometric correlation",
+            description=(
+                "Estimate of interferometric correlation derived from multilooked"
+                " interferogram."
+            ),
             fillvalue=np.nan,
             attrs=dict(units="unitless"),
         )
@@ -297,7 +300,6 @@ def _create_identification_group(
             data=pge_runconfig.input_file_group.frame_id,
             fillvalue=None,
             description="ID number of the processed frame.",
-            attrs=dict(units="unitless"),
         )
         _create_dataset(
             group=identification_group,
@@ -306,7 +308,6 @@ def _create_identification_group(
             data=pge_runconfig.product_path_group.product_version,
             fillvalue=None,
             description="Version of the product.",
-            attrs=dict(units="unitless"),
         )
 
         _create_dataset(
@@ -388,7 +389,6 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             data=disp_s1_version,
             fillvalue=None,
             description="Version of the disp-s1 software used to generate the product.",
-            attrs=dict(units="unitless"),
         )
         _create_dataset(
             group=metadata_group,
@@ -397,7 +397,6 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             data=dolphin_version,
             fillvalue=None,
             description="Version of the dolphin software used to generate the product.",
-            attrs=dict(units="unitless"),
         )
 
         # TODO: prob should just make a _to_string method?
@@ -413,7 +412,6 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             description=(
                 "The full PGE runconfig YAML file used to generate the product."
             ),
-            attrs=dict(units="unitless"),
         )
 
 

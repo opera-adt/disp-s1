@@ -1,40 +1,115 @@
+#!/usr/bin/env python3
+
 """Module for creating browse images for the output product."""
 from __future__ import annotations
 
+import argparse
+
+import h5netcdf
 import numpy as np
+import scipy
 from dolphin._types import Filename
 from numpy.typing import ArrayLike
+from osgeo import gdal
 from PIL import Image
 
 
-def _scale_to_max_pixel_dimension(orig_shape, max_dim_allowed=2048):
+def _normalize_apply_gamma(
+    arr: np.ndarray,
+    gamma=1.0
+) -> np.ndarray:
+    '''
+    Normal to [0-1] and gamma correct an image array
+
+    Parameters
+    ----------
+    arr np.ndarray
+        Numpy array representing an image to be normalized and gamma corrected
+    gamma: float
+        Exponent value used to gamma correct image
+
+    Returns
+    -------
+    arr: np.ndarray
+        Normalized and gamma corrected image
+    '''
+    vmin = np.nanmin(arr)
+    vmax = np.nanmax(arr)
+
+    # scale to 0-1 for gray scale and then apply gamma correction
+    arr = (arr - vmin) / (vmax - vmin)
+
+    # scale to 0-1 for gray scale and then apply gamma correction
+    if gamma != 1.0:
+        arr = np.power(arr, gamma)
+
+    return arr
+
+
+def _resize_to_max_pixel_dim(
+    arr: np.ndarray,
+    max_dim_allowed=2048
+) -> np.ndarray:
     '''
     Scale up or down length and width represented by a shape to a maximum
     dimension. The larger of length or width used to compute scaling ratio.
 
     Parameters
     ----------
-    orig_shape: tuple[int]
-        Shape (length, width) to be scaled
+    arr: np.ndarray
+        Numpy array representing an image to be resized
     max_dim_allowed: int
         Maximum dimension allowed for either length or width
 
     Returns
     -------
-    _: list(int)
-        Shape (length, width) scaled up or down from original shape
+    arr: np.ndarray
+        Numpy array representing a resized image
     '''
+    if max_dim_allowed < 1:
+        raise ValueError(f"{max_dim_allowed} is not a valid max image dimension")
+
     # compute scaling ratio based on larger dimension
-    scaling_ratio = max([xy / max_dim_allowed for xy in orig_shape])
+    input_shape = arr.shape
+    scaling_ratio = max([max_dim_allowed / xy for xy in input_shape])
+
+    # set NaNs set to 0 to correctly interpolate with zoom
+    arr[np.isnan(arr)] = 0
 
     # scale original shape by scaling ratio
-    scaled_shape = [int(np.ceil(xy / scaling_ratio)) for xy in orig_shape]
-    return scaled_shape
+    arr = scipy.ndimage.zoom(arr,
+                             scaling_ratio)
+
+    return arr
+
+
+def _save_to_disk_as_greyscale(
+    arr: np.ndarray,
+    fname: Filename
+) -> None:
+    '''
+    Save image array as greyscale to file
+
+    Parameters
+    ----------
+    arr: np.ndarray
+        Numpy array representing an image to be saved to png file
+    fname: str
+        File name of output browse image
+    '''
+    # scale to 1-255
+    # 0 reserved for transparency
+    arr = np.uint8(arr * (254)) + 1
+
+    # save to disk in grayscale ('L')
+    img = Image.fromarray(arr, mode='L')
+    img.save(fname, transparency=0)
 
 
 def make_browse_image(
     output_filename: Filename,
-    arr: ArrayLike,
+    input_filename: Filename,
+    dataset_name: str,
     max_dim_allowed: int = 2048,
 ) -> None:
     """Create a PNG browse image for the output product.
@@ -45,26 +120,53 @@ def make_browse_image(
         Name of output PNG
     arr : ArrayLike
         input 2D image array
+    dataset_name: str
+        Name of datast to be made into a browse image
     max_dim_allowed : int, default = 2048
         Size (in pixels) of the maximum allowed dimension of output image.
         Image gets rescaled with same aspect ratio.
     """
-    # compute browse shape
-    full_shape = arr.shape
-    browse_h, browse_w = _scale_to_max_pixel_dimension(full_shape,
-                                                       max_dim_allowed)
+    # check if dataset can be plotted
+    valid_dataset_names = ["unwrapped_phase",
+                           "connected_component_labels",
+                           "temporal_coherence",
+                           "interferometric_correlation",
+                           "persistent_scatterer_mask"]
+    if dataset_name not in valid_dataset_names:
+        raise ValueError(f"{args.dataset_name} is not a valid dataset name")
 
-    orig_shape = arr.shape
-    scaling_ratio = max([s / max_dim_allowed for s in orig_shape])
-    # scale original shape by scaling ratio
-    scaled_shape = [int(np.ceil(s / scaling_ratio)) for s in orig_shape]
+    # get dataset as array from input NC file
+    with h5netcdf.File(input_filename, 'r') as nc_handle:
+        arr = nc_handle[dataset_name][()]
 
-    # TODO: Make actual browse image
-    dummy = np.zeros(scaled_shape, dtype="uint8")
-    img = Image.fromarray(dummy, mode="L")
-    img.save(output_filename, transparency=0)
+    # nomalize non-nan pixels to 0-1
+    arr = _normalize_apply_gamma(arr)
+
+    # compute browse shape and resize full size array to it
+    arr = _resize_to_max_pixel_dim(
+        arr,
+        max_dim_allowed)
+
+    _save_to_disk_as_greyscale(
+        arr,
+        output_filename)
 
 
-def make_unwrapped_phase_browse_image(
-        output_filename: Filename):
-    make
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Create browse images for displacement products from command line',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-o', '--out-fname',
+                        help='Path to output png file')
+    parser.add_argument('-i', '--in-fname',
+                        help='Path to input NetCDF file')
+    parser.add_argument('-n', '--dataset-name',
+                        help='Name of dataset to plot from NetCDF file')
+    parser.add_argument('-m', '--max-img-dim', type=int, default=2048,
+                        help='Maximum dimension allowed for either length or width of browse image')
+    args = parser.parse_args()
+
+    make_browse_image(args.out_fname,
+                      args.in_fname,
+                      args.dataset_name,
+                      args.max_img_dim)

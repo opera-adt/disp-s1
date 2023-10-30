@@ -164,7 +164,7 @@ if __name__ == "__main__":
     # dataset name inserted before .nc
     if args.out_fname is None:
         args.out_fname = args.in_fname.replace(".nc",
-                                               f".{args.dataset_name}.nc")
+                                               f".{args.dataset_name}.png")
 
     make_browse_image(
         args.out_fname, args.in_fname, args.dataset_name, args.max_img_dim

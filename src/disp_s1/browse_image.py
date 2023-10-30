@@ -10,15 +10,11 @@ import numpy as np
 import scipy
 from dolphin._types import Filename
 from numpy.typing import ArrayLike
-from osgeo import gdal
 from PIL import Image
 
 
-def _normalize_apply_gamma(
-    arr: np.ndarray,
-    gamma=1.0
-) -> np.ndarray:
-    '''
+def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
+    """
     Normal to [0-1] and gamma correct an image array
 
     Parameters
@@ -30,9 +26,9 @@ def _normalize_apply_gamma(
 
     Returns
     -------
-    arr: np.ndarray
+    arr: ArrayLike
         Normalized and gamma corrected image
-    '''
+    """
     vmin = np.nanmin(arr)
     vmax = np.nanmax(arr)
 
@@ -46,26 +42,23 @@ def _normalize_apply_gamma(
     return arr
 
 
-def _resize_to_max_pixel_dim(
-    arr: np.ndarray,
-    max_dim_allowed=2048
-) -> np.ndarray:
-    '''
+def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray:
+    """
     Scale up or down length and width represented by a shape to a maximum
     dimension. The larger of length or width used to compute scaling ratio.
 
     Parameters
     ----------
-    arr: np.ndarray
+    arr: ArrayLike
         Numpy array representing an image to be resized
     max_dim_allowed: int
         Maximum dimension allowed for either length or width
 
     Returns
     -------
-    arr: np.ndarray
+    arr: ArrayLike
         Numpy array representing a resized image
-    '''
+    """
     if max_dim_allowed < 1:
         raise ValueError(f"{max_dim_allowed} is not a valid max image dimension")
 
@@ -77,32 +70,28 @@ def _resize_to_max_pixel_dim(
     arr[np.isnan(arr)] = 0
 
     # scale original shape by scaling ratio
-    arr = scipy.ndimage.zoom(arr,
-                             scaling_ratio)
+    arr = scipy.ndimage.zoom(arr, scaling_ratio)
 
     return arr
 
 
-def _save_to_disk_as_greyscale(
-    arr: np.ndarray,
-    fname: Filename
-) -> None:
-    '''
+def _save_to_disk_as_greyscale(arr: ArrayLike, fname: Filename) -> None:
+    """
     Save image array as greyscale to file
 
     Parameters
     ----------
-    arr: np.ndarray
+    arr: ArrayLike
         Numpy array representing an image to be saved to png file
     fname: str
         File name of output browse image
-    '''
+    """
     # scale to 1-255
     # 0 reserved for transparency
     arr = np.uint8(arr * (254)) + 1
 
     # save to disk in grayscale ('L')
-    img = Image.fromarray(arr, mode='L')
+    img = Image.fromarray(arr, mode="L")
     img.save(fname, transparency=0)
 
 
@@ -127,41 +116,48 @@ def make_browse_image(
         Image gets rescaled with same aspect ratio.
     """
     # check if dataset can be plotted
-    valid_dataset_names = ["unwrapped_phase",
-                           "connected_component_labels",
-                           "temporal_coherence",
-                           "interferometric_correlation",
-                           "persistent_scatterer_mask"]
+    valid_dataset_names = [
+        "unwrapped_phase",
+        "connected_component_labels",
+        "temporal_coherence",
+        "interferometric_correlation",
+        "persistent_scatterer_mask",
+    ]
     if dataset_name not in valid_dataset_names:
         raise ValueError(f"{args.dataset_name} is not a valid dataset name")
 
     # get dataset as array from input NC file
-    with h5netcdf.File(input_filename, 'r') as nc_handle:
+    with h5netcdf.File(input_filename, "r") as nc_handle:
         arr = nc_handle[dataset_name][()]
 
     # nomalize non-nan pixels to 0-1
     arr = _normalize_apply_gamma(arr)
 
     # compute browse shape and resize full size array to it
-    arr = _resize_to_max_pixel_dim(arr,
-                                   max_dim_allowed)
+    arr = _resize_to_max_pixel_dim(arr, max_dim_allowed)
 
-    _save_to_disk_as_greyscale(arr,
-                               output_filename)
+    _save_to_disk_as_greyscale(arr, output_filename)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Create browse images for displacement products from command line',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-o', '--out-fname', required=False,
-                        help='Optional path to output png file')
-    parser.add_argument('-i', '--in-fname',
-                        help='Path to input NetCDF file')
-    parser.add_argument('-n', '--dataset-name',
-                        help='Name of dataset to plot from NetCDF file')
-    parser.add_argument('-m', '--max-img-dim', type=int, default=2048,
-                        help='Maximum dimension allowed for either length or width of browse image')
+        description="Create browse images for displacement products from command line",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-o", "--out-fname", required=False, help="Optional path to output png file"
+    )
+    parser.add_argument("-i", "--in-fname", help="Path to input NetCDF file")
+    parser.add_argument(
+        "-n", "--dataset-name", help="Name of dataset to plot from NetCDF file"
+    )
+    parser.add_argument(
+        "-m",
+        "--max-img-dim",
+        type=int,
+        default=2048,
+        help="Maximum dimension allowed for either length or width of browse image",
+    )
     args = parser.parse_args()
 
     # if no output file name given, set output file name to input path with
@@ -170,7 +166,6 @@ if __name__ == "__main__":
         args.out_fname = args.in_fname.replace(".nc",
                                                f".{args.dataset_name}.nc")
 
-    make_browse_image(args.out_fname,
-                      args.in_fname,
-                      args.dataset_name,
-                      args.max_img_dim)
+    make_browse_image(
+        args.out_fname, args.in_fname, args.dataset_name, args.max_img_dim
+    )

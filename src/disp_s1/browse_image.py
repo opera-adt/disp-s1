@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Module for creating browse images for the output product."""
 from __future__ import annotations
 
@@ -14,20 +12,19 @@ from PIL import Image
 
 
 def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
-    """
-    Normal to [0-1] and gamma correct an image array
+    """Normalize to [0-1] and gamma correct an image array.
 
     Parameters
     ----------
-    arr np.ndarray
-        Numpy array representing an image to be normalized and gamma corrected
+    arr: np.ndarray
+        Numpy array representing an image to be normalized and gamma corrected.
     gamma: float
-        Exponent value used to gamma correct image
+        Exponent value used to gamma correct image.
 
     Returns
     -------
     arr: ArrayLike
-        Normalized and gamma corrected image
+        Normalized and gamma corrected image.
     """
     vmin = np.nanmin(arr)
     vmax = np.nanmax(arr)
@@ -43,21 +40,19 @@ def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
 
 
 def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray:
-    """
-    Scale up or down length and width represented by a shape to a maximum
-    dimension. The larger of length or width used to compute scaling ratio.
+    """Scale up or down length and width represented by a shape to a maximum dimension. The larger of length or width used to compute scaling ratio.
 
     Parameters
     ----------
     arr: ArrayLike
-        Numpy array representing an image to be resized
+        Numpy array representing an image to be resized.
     max_dim_allowed: int
-        Maximum dimension allowed for either length or width
+        Maximum dimension allowed for either length or width.
 
     Returns
     -------
     arr: ArrayLike
-        Numpy array representing a resized image
+        Numpy array representing a resized image.
     """
     if max_dim_allowed < 1:
         raise ValueError(f"{max_dim_allowed} is not a valid max image dimension")
@@ -76,15 +71,14 @@ def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray
 
 
 def _save_to_disk_as_greyscale(arr: ArrayLike, fname: Filename) -> None:
-    """
-    Save image array as greyscale to file
+    """Save image array as greyscale to file.
 
     Parameters
     ----------
     arr: ArrayLike
-        Numpy array representing an image to be saved to png file
+        Numpy array representing an image to be saved to png file.
     fname: str
-        File name of output browse image
+        File name of output browse image.
     """
     # scale to 1-255
     # 0 reserved for transparency
@@ -107,10 +101,10 @@ def make_browse_image(
     ----------
     output_filename : Filename
         Name of output PNG
-    arr : ArrayLike
-        input 2D image array
+    input_filename : Filename
+        Name of input NetCDF file.
     dataset_name: str
-        Name of datast to be made into a browse image
+        Name of datast to be made into a browse image.
     max_dim_allowed : int, default = 2048
         Size (in pixels) of the maximum allowed dimension of output image.
         Image gets rescaled with same aspect ratio.
@@ -163,8 +157,7 @@ if __name__ == "__main__":
     # if no output file name given, set output file name to input path with
     # dataset name inserted before .nc
     if args.out_fname is None:
-        args.out_fname = args.in_fname.replace(".nc",
-                                               f".{args.dataset_name}.png")
+        args.out_fname = args.in_fname.replace(".nc", f".{args.dataset_name}.png")
 
     make_browse_image(
         args.out_fname, args.in_fname, args.dataset_name, args.max_img_dim

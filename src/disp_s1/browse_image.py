@@ -143,21 +143,19 @@ def make_browse_image(
     arr = _normalize_apply_gamma(arr)
 
     # compute browse shape and resize full size array to it
-    arr = _resize_to_max_pixel_dim(
-        arr,
-        max_dim_allowed)
+    arr = _resize_to_max_pixel_dim(arr,
+                                   max_dim_allowed)
 
-    _save_to_disk_as_greyscale(
-        arr,
-        output_filename)
+    _save_to_disk_as_greyscale(arr,
+                               output_filename)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Create browse images for displacement products from command line',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-o', '--out-fname',
-                        help='Path to output png file')
+    parser.add_argument('-o', '--out-fname', required=False,
+                        help='Optional path to output png file')
     parser.add_argument('-i', '--in-fname',
                         help='Path to input NetCDF file')
     parser.add_argument('-n', '--dataset-name',
@@ -165,6 +163,12 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--max-img-dim', type=int, default=2048,
                         help='Maximum dimension allowed for either length or width of browse image')
     args = parser.parse_args()
+
+    # if no output file name given, set output file name to input path with
+    # dataset name inserted before .nc
+    if args.out_fname is None:
+        args.out_fname = args.in_fname.replace(".nc",
+                                               f".{args.dataset_name}.nc")
 
     make_browse_image(args.out_fname,
                       args.in_fname,

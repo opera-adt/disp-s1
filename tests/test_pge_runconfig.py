@@ -29,7 +29,8 @@ def test_run_config_schema():
 
 @pytest.fixture
 def input_file_group(slc_file_list_nc_with_sds):
-    return InputFileGroup(cslc_file_list=slc_file_list_nc_with_sds, frame_id=10)
+    file_list, subdataset = slc_file_list_nc_with_sds
+    return InputFileGroup(cslc_file_list=file_list, frame_id=10)
 
 
 @pytest.fixture
@@ -102,7 +103,7 @@ def test_runconfig_from_workflow(tmp_path, runconfig_minimum):
     assert w == w2
 
 
-def test_runconfig_yaml_rountrip(tmp_path, runconfig_minimum):
+def test_runconfig_yaml_roundtrip(tmp_path, runconfig_minimum):
     f = tmp_path / "test.yaml"
     runconfig_minimum.to_yaml(f)
     c = RunConfig.from_yaml(f)

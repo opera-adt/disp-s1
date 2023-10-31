@@ -58,8 +58,9 @@ def slc_file_list_nc_with_sds(tmp_path, slc_stack):
 # @pytest.fixture
 # def delivery_data_tar_file():
 DATA_DIR = Path(__file__).parent / "data"
-DELIVERY_DATA_TAR_FILE = Path(f"{DATA_DIR}/delivery_data_small.tar")
+DELIVERY_DATA_TAR_FILE = DATA_DIR / "delivery_data_small.tar"
 WORKFLOW_SCRATCH_FILE = DATA_DIR / "delivery_data_small_scratch.tar"
+SKIP_REAL_DATA = not DELIVERY_DATA_TAR_FILE.exists()
 
 
 def _untar_dir(tmp_path, delivery_data_tar_file: Path, target_dir=None):
@@ -90,6 +91,8 @@ def test_data_dir(tmp_path_factory):
     pathlib.Path
         The directory where the data was untarred.
     """
+    if SKIP_REAL_DATA:
+        pytest.skip("Real data not available")
     tmpdir = tmp_path_factory.mktemp("test_data")
     return _untar_dir(tmpdir, DELIVERY_DATA_TAR_FILE)
 
@@ -103,6 +106,8 @@ def golden_outputs_dir(tmp_path_factory):
     pathlib.Path
         The directory where the specific directory was untarred.
     """
+    if SKIP_REAL_DATA:
+        pytest.skip("Real data not available")
     tmpdir = tmp_path_factory.mktemp("test_data")
     target_dir = "delivery_data_small/golden_output/"
     return _untar_dir(tmpdir, DELIVERY_DATA_TAR_FILE, target_dir)
@@ -117,5 +122,7 @@ def scratch_dir(tmp_path_factory):
     pathlib.Path
         The directory where the specific directory was untarred.
     """
+    if SKIP_REAL_DATA:
+        pytest.skip("Real data not available")
     tmpdir = tmp_path_factory.mktemp("test_data")
     return _untar_dir(tmpdir, WORKFLOW_SCRATCH_FILE) / "scratch"

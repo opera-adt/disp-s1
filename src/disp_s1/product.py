@@ -128,7 +128,11 @@ def create_output_product(
 
         # Set up the X/Y variables for each group
         _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
-        _create_time_dset(group=f, time=start_time)
+        _create_time_dset(
+            group=f,
+            time=start_time,
+            long_name="Time corresponding to beginning of Displacement frame",
+        )
 
         # ######## Main datasets ###########
         # Write the displacement array / conncomp arrays
@@ -160,7 +164,10 @@ def create_output_product(
             group=f,
             name="interferometric_correlation",
             data=ifg_corr_arr,
-            description="Multilooked sample interferometric correlation",
+            description=(
+                "Estimate of interferometric correlation derived from multilooked"
+                " interferogram."
+            ),
             fillvalue=np.nan,
             attrs=dict(units="unitless"),
         )
@@ -216,7 +223,11 @@ def _create_corrections_group(
         # if so, they need they're own X/Y variables and GeoTransform
         _create_grid_mapping(group=corrections_group, crs=crs, gt=gt)
         _create_yx_dsets(group=corrections_group, gt=gt, shape=shape, include_time=True)
-        _create_time_dset(group=corrections_group, time=start_time)
+        _create_time_dset(
+            group=corrections_group,
+            time=start_time,
+            long_name="time corresponding to beginning of Displacement frame",
+        )
         troposphere = corrections.get("troposphere", empty_arr)
         _create_geo_dataset(
             group=corrections_group,
@@ -289,7 +300,6 @@ def _create_identification_group(
             data=pge_runconfig.input_file_group.frame_id,
             fillvalue=None,
             description="ID number of the processed frame.",
-            attrs=dict(units="unitless"),
         )
         _create_dataset(
             group=identification_group,
@@ -298,7 +308,6 @@ def _create_identification_group(
             data=pge_runconfig.product_path_group.product_version,
             fillvalue=None,
             description="Version of the product.",
-            attrs=dict(units="unitless"),
         )
 
         _create_dataset(
@@ -344,6 +353,30 @@ def _create_identification_group(
             attrs=attrs,
         )
 
+        reference_date, secondary_date = get_dates(output_name)[:2]
+        _create_dataset(
+            group=identification_group,
+            name="reference_datetime",
+            dimensions=(),
+            data=reference_date.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "UTC datetime of the acquisition sensing start of the reference epoch"
+                " to which the unwrapped phase is referenced."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="secondary_datetime",
+            dimensions=(),
+            data=secondary_date.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "UTC datetime of the acquisition sensing start of current acquisition"
+                " used to create the unwrapped phase."
+            ),
+        )
+
 
 def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> None:
     """Create the metadata group in the output file."""
@@ -356,7 +389,6 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             data=disp_s1_version,
             fillvalue=None,
             description="Version of the disp-s1 software used to generate the product.",
-            attrs=dict(units="unitless"),
         )
         _create_dataset(
             group=metadata_group,
@@ -365,7 +397,6 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             data=dolphin_version,
             fillvalue=None,
             description="Version of the dolphin software used to generate the product.",
-            attrs=dict(units="unitless"),
         )
 
         # TODO: prob should just make a _to_string method?
@@ -381,7 +412,6 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             description=(
                 "The full PGE runconfig YAML file used to generate the product."
             ),
-            attrs=dict(units="unitless"),
         )
 
 
@@ -492,13 +522,13 @@ def _create_yx_dsets(
 
 
 def _create_time_dset(
-    group: h5netcdf.Group, time: datetime.datetime
+    group: h5netcdf.Group, time: datetime.datetime, long_name: str = "time"
 ) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
     """Create the time coordinate dataset."""
     times, calendar, units = _create_time_array([time])
     t_ds = group.create_variable("time", ("time",), data=times, dtype=float)
     t_ds.attrs["standard_name"] = "time"
-    t_ds.attrs["long_name"] = "time"
+    t_ds.attrs["long_name"] = long_name
     t_ds.attrs["calendar"] = calendar
     t_ds.attrs["units"] = units
 

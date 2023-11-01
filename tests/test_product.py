@@ -3,62 +3,39 @@ import numpy as np
 import pytest
 from dolphin import io
 
+from disp_s1.pge_runconfig import RunConfig
 from disp_s1.product import create_compressed_products, create_output_product
-
-# random place in hawaii
-GEOTRANSFORM = [204500.0, 5.0, 0.0, 2151300.0, 0.0, -10.0]
-SRS = "EPSG:32605"
-SHAPE = (256, 256)
-
-
-@pytest.fixture
-def unw_filename(tmp_path) -> str:
-    data = np.random.randn(*SHAPE).astype(np.float32)
-    filename = tmp_path / "20200101_20200113.tif"
-    io.write_arr(
-        arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
-    )
-    return filename
-
-
-@pytest.fixture
-def conncomp_filename(tmp_path) -> str:
-    data = np.random.randn(*SHAPE).astype(np.uint32)
-    filename = tmp_path / "conncomp.tif"
-    io.write_arr(
-        arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
-    )
-    return filename
-
-
-@pytest.fixture
-def tcorr_filename(tmp_path) -> str:
-    data = np.random.randn(*SHAPE).astype(np.float32)
-    filename = tmp_path / "tcorr.tif"
-    io.write_arr(
-        arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
-    )
-    return filename
-
-
-@pytest.fixture
-def ifg_corr_filename(tmp_path) -> str:
-    data = np.random.randn(*SHAPE).astype(np.float32)
-    filename = tmp_path / "ifg_corr.tif"
-    io.write_arr(
-        arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
-    )
-    return filename
 
 
 def test_create_output_product(
     tmp_path,
-    unw_filename,
-    conncomp_filename,
-    tcorr_filename,
-    ifg_corr_filename,
+    test_data_dir,
+    scratch_dir,
 ):
-    output_name = tmp_path / "output_product.nc"
+    # Get the test run scratch directory
+    # $ ls scratch/forward/
+    # interferograms  log_sas.log  t042_088905_iw1  t042_088906_iw1  unwrapped
+    # $ ls scratch/forward/unwrapped/
+    # 20221119_20221213.unw.conncomp  20221119_20221213.unw.conncomp.hdr  ...
+    unw_dir = scratch_dir / "forward/unwrapped"
+    unw_filename = unw_dir / "20221119_20221213.unw.tif"
+    conncomp_filename = unw_dir / "20221119_20221213.unw.conncomp"
+
+    ifg_dir = scratch_dir / "forward/interferograms/stitched"
+    tcorr_filename = ifg_dir / "tcorr.tif"
+    ps_mask_filename = ifg_dir / "ps_mask_looked.tif"
+    ifg_corr_filename = ifg_dir / "20221119_20221213.cor"
+
+    cslc_files = sorted(
+        (test_data_dir / "delivery_data_small/input_slcs").glob("t*.h5")
+    )
+    assert len(cslc_files) > 0
+
+    output_name = tmp_path / "20221119_20221213.unw.nc"
+
+    pge_runconfig = RunConfig.from_yaml(
+        test_data_dir / "delivery_data_small/config_files/runconfig_forward.yaml"
+    )
 
     create_output_product(
         unw_filename=unw_filename,
@@ -67,16 +44,24 @@ def test_create_output_product(
         ifg_corr_filename=ifg_corr_filename,
         output_name=output_name,
         corrections={},
+        ps_mask_filename=ps_mask_filename,
+        pge_runconfig=pge_runconfig,
+        cslc_files=cslc_files,
     )
 
 
 @pytest.fixture
 def comp_slc(tmp_path) -> str:
-    data = np.random.randn(*SHAPE).astype(np.complex64)
+    # random place in hawaii
+    geotransform = [204500.0, 5.0, 0.0, 2151300.0, 0.0, -10.0]
+    srs = "EPSG:32605"
+    shape = (256, 256)
+
+    data = np.random.randn(*shape).astype(np.complex64)
     date_pair = "20220101_20220102"
     filename = tmp_path / f"compressed_{date_pair}.tif"
     io.write_arr(
-        arr=data, output_name=filename, geotransform=GEOTRANSFORM, projection=SRS
+        arr=data, output_name=filename, geotransform=geotransform, projection=srs
     )
     return filename
 

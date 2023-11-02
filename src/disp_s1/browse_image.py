@@ -10,7 +10,6 @@ from dolphin._types import Filename
 from numpy.typing import ArrayLike
 from PIL import Image
 
-
 # check if dataset can be plotted
 DATASET_CHOICES = [
     "unwrapped_phase",
@@ -145,9 +144,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("-i", "--in-fname", help="Path to input NetCDF file")
     parser.add_argument(
-        "-n", "--dataset-name",
+        "-n",
+        "--dataset-name",
         choices=DATASET_CHOICES,
-        help="Name of dataset to plot from NetCDF file"
+        help="Name of dataset to plot from NetCDF file",
     )
     parser.add_argument(
         "-m",

@@ -11,6 +11,16 @@ from numpy.typing import ArrayLike
 from PIL import Image
 
 
+# check if dataset can be plotted
+DATASET_CHOICES = [
+    "unwrapped_phase",
+    "connected_component_labels",
+    "temporal_coherence",
+    "interferometric_correlation",
+    "persistent_scatterer_mask",
+]
+
+
 def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
     """Normalize to [0-1] and gamma correct an image array.
 
@@ -109,15 +119,7 @@ def make_browse_image(
         Size (in pixels) of the maximum allowed dimension of output image.
         Image gets rescaled with same aspect ratio.
     """
-    # check if dataset can be plotted
-    valid_dataset_names = [
-        "unwrapped_phase",
-        "connected_component_labels",
-        "temporal_coherence",
-        "interferometric_correlation",
-        "persistent_scatterer_mask",
-    ]
-    if dataset_name not in valid_dataset_names:
+    if dataset_name not in DATASET_CHOICES:
         raise ValueError(f"{args.dataset_name} is not a valid dataset name")
 
     # get dataset as array from input NC file
@@ -143,7 +145,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-i", "--in-fname", help="Path to input NetCDF file")
     parser.add_argument(
-        "-n", "--dataset-name", help="Name of dataset to plot from NetCDF file"
+        "-n", "--dataset-name",
+        choices=DATASET_CHOICES,
+        help="Name of dataset to plot from NetCDF file"
     )
     parser.add_argument(
         "-m",

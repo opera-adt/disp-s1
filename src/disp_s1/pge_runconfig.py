@@ -1,4 +1,5 @@
 """Module for creating PGE-compatible run configuration files."""
+
 from __future__ import annotations
 
 from pathlib import Path

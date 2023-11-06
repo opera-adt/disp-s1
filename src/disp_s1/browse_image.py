@@ -1,4 +1,5 @@
 """Module for creating browse images for the output product."""
+
 from __future__ import annotations
 
 import numpy as np

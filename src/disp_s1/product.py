@@ -1,4 +1,5 @@
 """Module for creating the OPERA output product in NetCDF format."""
+
 from __future__ import annotations
 
 import datetime

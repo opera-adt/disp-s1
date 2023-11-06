@@ -1,4 +1,5 @@
 """Module for extracting relevant metadata from the CSLC products."""
+
 from datetime import datetime
 from typing import Any, Callable
 

@@ -6,7 +6,7 @@ __all__ = [
 
 
 class ProcessingMode(str, Enum):
-    """Workflow processing modes for SDS operation."""
+    """DisplacementWorkflow processing modes for SDS operation."""
 
     FORWARD = "forward"
     """New data: only output one incremental result."""

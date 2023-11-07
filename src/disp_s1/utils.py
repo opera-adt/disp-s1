@@ -79,7 +79,7 @@ def get_frame_bbox(
     """
     frame_dict = get_frame_json(frame_id=frame_id, json_file=json_file)
     epsg = frame_dict["epsg"]
-    bounds = (frame_dict[k] for k in ["xmin", "ymin", "xmax", "ymax"])
+    bounds = [frame_dict[k] for k in ["xmin", "ymin", "xmax", "ymax"]]
     return epsg, bounds
 
 

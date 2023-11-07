@@ -10,7 +10,6 @@ from dolphin._types import Filename
 from numpy.typing import ArrayLike
 from PIL import Image
 
-
 # check if dataset can be plotted
 DATASET_CHOICES = [
     "unwrapped_phase",
@@ -50,7 +49,10 @@ def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
 
 
 def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray:
-    """Scale up or down length and width represented by a shape to a maximum dimension. The larger of length or width used to compute scaling ratio.
+    """Scale shape of a given array.
+
+    Scale up or down length and width of an array to a maximum dimension
+    where the larger of length or width used to compute scaling ratio.
 
     Parameters
     ----------
@@ -99,13 +101,39 @@ def _save_to_disk_as_greyscale(arr: ArrayLike, fname: Filename) -> None:
     img.save(fname, transparency=0)
 
 
-def make_browse_image(
+def make_browse_image_from_arr(
+    output_filename: Filename,
+    arr: ArrayLike,
+    max_dim_allowed: int = 2048,
+) -> None:
+    """Create a PNG browse image for the output product from given array.
+
+    Parameters
+    ----------
+    output_filename : Filename
+        Name of output PNG
+    arr : ArrayLike
+        Array to be saved to image
+    max_dim_allowed : int, default = 2048
+        Size (in pixels) of the maximum allowed dimension of output image.
+        Image gets rescaled with same aspect ratio.
+    """
+    # nomalize non-nan pixels to 0-1
+    arr = _normalize_apply_gamma(arr)
+
+    # compute browse shape and resize full size array to it
+    arr = _resize_to_max_pixel_dim(arr, max_dim_allowed)
+
+    _save_to_disk_as_greyscale(arr, output_filename)
+
+
+def make_browse_image_from_nc(
     output_filename: Filename,
     input_filename: Filename,
     dataset_name: str,
     max_dim_allowed: int = 2048,
 ) -> None:
-    """Create a PNG browse image for the output product.
+    """Create a PNG browse image for the output product from product in NetCDF file.
 
     Parameters
     ----------
@@ -126,13 +154,7 @@ def make_browse_image(
     with h5netcdf.File(input_filename, "r") as nc_handle:
         arr = nc_handle[dataset_name][()]
 
-    # nomalize non-nan pixels to 0-1
-    arr = _normalize_apply_gamma(arr)
-
-    # compute browse shape and resize full size array to it
-    arr = _resize_to_max_pixel_dim(arr, max_dim_allowed)
-
-    _save_to_disk_as_greyscale(arr, output_filename)
+    make_browse_image_from_arr(arr, output_filename, max_dim_allowed)
 
 
 if __name__ == "__main__":
@@ -145,9 +167,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("-i", "--in-fname", help="Path to input NetCDF file")
     parser.add_argument(
-        "-n", "--dataset-name",
+        "-n",
+        "--dataset-name",
         choices=DATASET_CHOICES,
-        help="Name of dataset to plot from NetCDF file"
+        help="Name of dataset to plot from NetCDF file",
     )
     parser.add_argument(
         "-m",
@@ -163,6 +186,6 @@ if __name__ == "__main__":
     if args.out_fname is None:
         args.out_fname = args.in_fname.replace(".nc", f".{args.dataset_name}.png")
 
-    make_browse_image(
+    make_browse_image_from_nc(
         args.out_fname, args.in_fname, args.dataset_name, args.max_img_dim
     )

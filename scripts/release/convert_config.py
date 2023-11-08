@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from dolphin.workflows.config import Workflow
+from dolphin.workflows.config import DisplacementWorkflow
 
 from disp_s1.enums import ProcessingMode
 from disp_s1.pge_runconfig import RunConfig
@@ -21,7 +21,7 @@ def convert_to_runconfig(
     outfile: str | Path = "runconfig.yaml",
 ):
     """Run the conversion CLI."""
-    workflow = Workflow.from_yaml(dolphin_config_file)
+    workflow = DisplacementWorkflow.from_yaml(dolphin_config_file)
     rc = RunConfig.from_workflow(
         workflow,
         frame_id=frame_id,

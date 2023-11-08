@@ -46,6 +46,13 @@ write_to = "src/disp_s1/_version.py"
 version_scheme = "no-guess-dev" # Will not guess the next version
 
 
+[tool.ruff]
+src = ["src"]
+
+[tool.ruff.lint]
+# Enable the isort rules.
+extend-select = ["I"]
+
 [tool.black]
 target-version = ["py39", "py310", "py311"]
 preview = true
@@ -55,7 +62,7 @@ profile = "black"
 known_first_party = ["disp_s1"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 

@@ -14,8 +14,8 @@ from dolphin.workflows.config import (
     PsOptions,
     UnwrapOptions,
     WorkerSettings,
-    YamlModel,
 )
+from dolphin.workflows.config._yaml_model import YamlModel
 from pydantic import ConfigDict, Field
 
 from .enums import ProcessingMode

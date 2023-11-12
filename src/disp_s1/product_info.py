@@ -6,15 +6,20 @@ from numpy.typing import DTypeLike
 
 @dataclass(frozen=True)
 class DispProductInfo:
-    """Describe me plz."""
+    """Dataclass used as a container for displacement product dataset items."""
 
+    # Name of of the dataset.
     name: str
+    # Description of the dataset.
     description: str
+    # Fill value of the dataset.
     fillvalue: DTypeLike
+    # Attributes of the dataset.
     attrs: dict
 
     @classmethod
     def unwrapped_phase(cls):
+        """Return container of unwrapped phase specific information."""
         return cls(
             name="unwrapped_phase",
             description="Unwrapped phase",
@@ -24,6 +29,7 @@ class DispProductInfo:
 
     @classmethod
     def connected_component_labels(cls):
+        """Return container of connected component label specific information."""
         return cls(
             name="connected_component_labels",
             description="Connected component labels of the unwrapped phase",
@@ -33,6 +39,7 @@ class DispProductInfo:
 
     @classmethod
     def temporal_coherence(cls):
+        """Return container of temporal coherence specific information."""
         return cls(
             name="temporal_coherence",
             description="Temporal coherence of phase inversion",
@@ -42,6 +49,7 @@ class DispProductInfo:
 
     @classmethod
     def interferometric_correlation(cls):
+        """Return container of interferometric correlation specific information."""
         return cls(
             name="interferometric_correlation",
             description=(
@@ -53,7 +61,8 @@ class DispProductInfo:
         )
 
     @classmethod
-    def persistent_scattere_mask(cls):
+    def persistent_scatterer_mask(cls):
+        """Return container of persistent scatterer mask specific information."""
         return cls(
             name="persistent_scatterer_mask",
             description=(
@@ -77,9 +86,9 @@ class DispProductsInfo:
     interferometric_correlation: DispProductInfo = (
         DispProductInfo.interferometric_correlation()
     )
-    persistent_scattere_mask: DispProductInfo = (
-        DispProductInfo.persistent_scattere_mask()
+    persistent_scatterer_mask: DispProductInfo = (
+        DispProductInfo.persistent_scatterer_mask()
     )
 
     def as_list(self):
-        return [getattr(self, field) for field in fields(self)]
+        return [getattr(self, field.name) for field in fields(self)]

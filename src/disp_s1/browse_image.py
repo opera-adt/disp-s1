@@ -10,15 +10,7 @@ import scipy
 from dolphin._types import Filename
 from numpy.typing import ArrayLike
 from PIL import Image
-
-# check if dataset can be plotted
-DATASET_CHOICES = [
-    "unwrapped_phase",
-    "connected_component_labels",
-    "temporal_coherence",
-    "interferometric_correlation",
-    "persistent_scatterer_mask",
-]
+from product_info import DISP_PRODUCT_NAMES
 
 
 def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
@@ -148,14 +140,14 @@ def make_browse_image_from_nc(
         Size (in pixels) of the maximum allowed dimension of output image.
         Image gets rescaled with same aspect ratio.
     """
-    if dataset_name not in DATASET_CHOICES:
+    if dataset_name not in DISP_PRODUCT_NAMES:
         raise ValueError(f"{args.dataset_name} is not a valid dataset name")
 
     # get dataset as array from input NC file
     with h5netcdf.File(input_filename, "r") as nc_handle:
         arr = nc_handle[dataset_name][()]
 
-    make_browse_image_from_arr(arr, output_filename, max_dim_allowed)
+    make_browse_image_from_arr(output_filename, arr, max_dim_allowed)
 
 
 if __name__ == "__main__":
@@ -170,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         "--dataset-name",
-        choices=DATASET_CHOICES,
+        choices=DISP_PRODUCT_NAMES,
         help="Name of dataset to plot from NetCDF file",
     )
     parser.add_argument(

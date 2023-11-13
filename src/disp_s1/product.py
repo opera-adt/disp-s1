@@ -25,7 +25,7 @@ from . import _parse_cslc_product
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
-from .product_info import DispProductsInfo
+from .product_info import DISP_PRODUCTS_INFO
 
 logger = get_log(__name__)
 
@@ -137,7 +137,7 @@ def create_output_product(
 
         # ######## Main datasets ###########
         # Write the displacement array / conncomp arrays
-        disp_products_info = DispProductsInfo().as_list()
+        disp_products_info = DISP_PRODUCTS_INFO
         disp_data = [
             unw_arr,
             conncomp_arr,

@@ -93,3 +93,11 @@ class DispProductsInfo:
     def as_list(self):
         """Return all displacement dataset info containers as a list."""
         return [getattr(self, field.name) for field in fields(self)]
+
+    def product_names(self):
+        """Return all displacement dataset names as a list."""
+        return [field.name for field in fields(self)]
+
+
+DISP_PRODUCTS_INFO = DispProductsInfo().as_list()
+DISP_PRODUCT_NAMES = DispProductsInfo().product_names()

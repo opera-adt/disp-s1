@@ -7,6 +7,8 @@ from disp_s1.pge_runconfig import RunConfig
 from disp_s1.product import create_compressed_products, create_output_product
 
 
+# Shapely runtime warning
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_create_output_product(
     tmp_path,
     test_data_dir,

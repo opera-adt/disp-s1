@@ -14,7 +14,7 @@ from dolphin._log import get_log, log_runtime
 from dolphin.opera_utils import group_by_burst
 from dolphin.workflows import stitch_and_unwrap, wrapped_phase
 from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
-from dolphin.workflows.config import Workflow
+from dolphin.workflows.config import DisplacementWorkflow
 
 from disp_s1 import _log, product
 from disp_s1.pge_runconfig import RunConfig
@@ -22,7 +22,7 @@ from disp_s1.pge_runconfig import RunConfig
 
 @log_runtime
 def run(
-    cfg: Workflow,
+    cfg: DisplacementWorkflow,
     pge_runconfig: RunConfig,
     debug: bool = False,
 ):
@@ -30,8 +30,8 @@ def run(
 
     Parameters
     ----------
-    cfg : Workflow
-        [`Workflow`][dolphin.workflows.config.Workflow] object for controlling the
+    cfg : DisplacementWorkflow
+        [`DisplacementWorkflow`][dolphin.workflows.config.DisplacementWorkflow] object for controlling the
         workflow.
     debug : bool, optional
         Enable debug logging, by default False.

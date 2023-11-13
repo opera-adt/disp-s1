@@ -12,7 +12,11 @@ from dolphin._log import get_log, log_runtime
 from dolphin._types import Filename
 from dolphin.opera_utils import OPERA_DATASET_NAME, group_by_burst, make_nodata_mask
 from dolphin.workflows import s1_disp
-from dolphin.workflows.config import InterferogramNetworkType, ShpMethod, Workflow
+from dolphin.workflows.config import (
+    DisplacementWorkflow,
+    InterferogramNetworkType,
+    ShpMethod,
+)
 
 logger = get_log("dolphin.run_repeated_nrt")
 
@@ -42,7 +46,7 @@ def _create_cfg(
             indexes=[(0, -1)],
         )
 
-    cfg = Workflow(
+    cfg = DisplacementWorkflow(
         # Things that change with each workflow run
         cslc_file_list=slc_files,
         input_options=dict(subdataset=OPERA_DATASET_NAME),

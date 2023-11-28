@@ -10,7 +10,8 @@ import scipy
 from dolphin._types import Filename
 from numpy.typing import ArrayLike
 from PIL import Image
-from product_info import DISP_PRODUCT_NAMES
+
+from .product_info import DISP_PRODUCT_NAMES
 
 
 def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:

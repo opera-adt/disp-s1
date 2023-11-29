@@ -23,8 +23,9 @@ from opera_utils import OPERA_DATASET_NAME, get_union_polygon
 from . import __version__ as disp_s1_version
 from . import _parse_cslc_product
 from ._common import DATETIME_FORMAT
-from .browse_image import make_browse_image
+from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
+from .product_info import DISP_PRODUCTS_INFO
 
 logger = get_log(__name__)
 
@@ -110,7 +111,6 @@ def create_output_product(
 
     assert unw_arr.shape == conncomp_arr.shape == tcorr_arr.shape
 
-    make_browse_image(Path(output_name).with_suffix(".png"), unw_arr)
     start_times = [
         _parse_cslc_product.get_zero_doppler_time(f, type_="start") for f in cslc_files
     ]
@@ -137,52 +137,29 @@ def create_output_product(
 
         # ######## Main datasets ###########
         # Write the displacement array / conncomp arrays
-        _create_geo_dataset(
-            group=f,
-            name="unwrapped_phase",
-            data=unw_arr,
-            description="Unwrapped phase",
-            fillvalue=np.nan,
-            attrs=dict(units="radians"),
-        )
-        _create_geo_dataset(
-            group=f,
-            name="connected_component_labels",
-            data=conncomp_arr,
-            description="Connected component labels of the unwrapped phase",
-            fillvalue=0,
-            attrs=dict(units="unitless"),
-        )
-        _create_geo_dataset(
-            group=f,
-            name="temporal_coherence",
-            data=tcorr_arr,
-            description="Temporal coherence of phase inversion",
-            fillvalue=np.nan,
-            attrs=dict(units="unitless"),
-        )
-        _create_geo_dataset(
-            group=f,
-            name="interferometric_correlation",
-            data=ifg_corr_arr,
-            description=(
-                "Estimate of interferometric correlation derived from multilooked"
-                " interferogram."
-            ),
-            fillvalue=np.nan,
-            attrs=dict(units="unitless"),
-        )
-        _create_geo_dataset(
-            group=f,
-            name="persistent_scatterer_mask",
-            data=io.load_gdal(ps_mask_filename),
-            description=(
-                "Mask of persistent scatterers downsampled to the multilooked output"
-                " grid."
-            ),
-            fillvalue=255,
-            attrs=dict(units="unitless"),
-        )
+        disp_products_info = DISP_PRODUCTS_INFO
+        disp_data = [
+            unw_arr,
+            conncomp_arr,
+            tcorr_arr,
+            ifg_corr_arr,
+            io.load_gdal(ps_mask_filename),
+        ]
+        disp_products = [
+            (nfo, data) for nfo, data in zip(disp_products_info, disp_data)
+        ]
+        for nfo, data in disp_products:
+            _create_geo_dataset(
+                group=f,
+                name=nfo.name,
+                data=data,
+                description=nfo.description,
+                fillvalue=nfo.fillvalue,
+                attrs=nfo.attrs,
+            )
+            make_browse_image_from_arr(
+                Path(output_name).with_suffix(f".{nfo.name}.png"), data
+            )
 
     _create_corrections_group(
         output_name=output_name,

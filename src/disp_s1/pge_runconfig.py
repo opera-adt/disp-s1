@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, List, Optional, Union
 
-from dolphin.opera_utils import OPERA_DATASET_NAME
 from dolphin.workflows.config import (
     DisplacementWorkflow,
     InterferogramNetwork,
@@ -16,6 +15,7 @@ from dolphin.workflows.config import (
     WorkerSettings,
 )
 from dolphin.workflows.config._yaml_model import YamlModel
+from opera_utils import OPERA_DATASET_NAME
 from pydantic import ConfigDict, Field
 
 from .enums import ProcessingMode

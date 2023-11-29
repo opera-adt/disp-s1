@@ -8,13 +8,13 @@ from pathlib import Path
 from pprint import pformat
 
 from dolphin import __version__ as dolphin_version
-from dolphin import utils
+from dolphin import get_dates, utils
 from dolphin._background import DummyProcessPoolExecutor
 from dolphin._log import get_log, log_runtime
-from dolphin.opera_utils import group_by_burst
 from dolphin.workflows import stitch_and_unwrap, wrapped_phase
 from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
 from dolphin.workflows.config import DisplacementWorkflow
+from opera_utils import group_by_burst
 
 from disp_s1 import _log, product
 from disp_s1.pge_runconfig import RunConfig
@@ -164,7 +164,7 @@ def run(
     ):
         output_name = out_dir / unw_p.with_suffix(".nc").name
         # Get the current list of acq times for this product
-        dair_pair = utils.get_dates(output_name)
+        dair_pair = get_dates(output_name)
         secondary_date = dair_pair[1]
         cur_slc_list = date_to_slcs[(secondary_date,)]
 

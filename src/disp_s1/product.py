@@ -13,12 +13,12 @@ import numpy as np
 import pyproj
 from dolphin import __version__ as dolphin_version
 from dolphin import io
+from dolphin._dates import _format_date_pair, get_dates
 from dolphin._log import get_log
 from dolphin._types import Filename
-from dolphin.opera_utils import OPERA_DATASET_NAME, get_union_polygon
-from dolphin.utils import get_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
+from opera_utils import OPERA_DATASET_NAME, get_union_polygon
 
 from . import __version__ as disp_s1_version
 from . import _parse_cslc_product
@@ -556,7 +556,7 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
 
     def form_name(filename: Path, burst: str):
         # filename: compressed_20180222_20180716.tif
-        date_str = io._format_date_pair(*get_dates(filename.stem))
+        date_str = _format_date_pair(*get_dates(filename.stem))
         return COMPRESSED_SLC_TEMPLATE.format(burst=burst, date_str=date_str)
 
     attrs = GLOBAL_ATTRS.copy()

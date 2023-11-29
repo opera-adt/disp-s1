@@ -10,13 +10,13 @@ from typing import Any, Mapping, Sequence
 from dolphin import io, ps, stack, utils
 from dolphin._log import get_log, log_runtime
 from dolphin._types import Filename
-from dolphin.opera_utils import OPERA_DATASET_NAME, group_by_burst, make_nodata_mask
 from dolphin.workflows import s1_disp
 from dolphin.workflows.config import (
     DisplacementWorkflow,
     InterferogramNetworkType,
     ShpMethod,
 )
+from opera_utils import OPERA_DATASET_NAME, group_by_burst, make_nodata_mask
 
 logger = get_log("dolphin.run_repeated_nrt")
 

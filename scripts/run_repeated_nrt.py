@@ -277,7 +277,7 @@ def create_nodata_masks(
 
 
 def _form_burst_vrt_stacks(
-    burst_grouped_slc_files: Mapping[str, Sequence[Filename]]
+    burst_grouped_slc_files: Mapping[str, Sequence[Filename]],
 ) -> dict[str, stack.VRTStack]:
     logger.info("For each burst, creating a VRTStack...")
     # Each burst needs to be the same size

@@ -4,7 +4,7 @@ from .run import run
 from .validate import validate
 
 
-@click.group()
+@click.group(name="disp-s1")
 @click.version_option()
 @click.option("--debug", is_flag=True, help="Add debug messages to the log.")
 @click.pass_context

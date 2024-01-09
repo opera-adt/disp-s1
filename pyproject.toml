@@ -28,7 +28,7 @@ Homepage = "https://github.com/opera-adt/disp-s1"
 
 # Entry points for the command line interface
 [project.scripts]
-disp-s1 = "disp_s1.cli:main"
+disp-s1 = "disp_s1.cli:cli_app"
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }

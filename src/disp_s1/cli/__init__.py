@@ -2,6 +2,7 @@ import click
 
 from .run import run
 from .validate import validate
+from .create import create
 
 
 @click.group(name="disp-s1")
@@ -17,6 +18,7 @@ def cli_app(ctx: click.Context, debug: bool) -> None:
 
 cli_app.add_command(run)
 cli_app.add_command(validate)
+cli_app.add_command(create)
 
 if __name__ == "__main__":
     cli_app()

@@ -5,6 +5,7 @@ dependencies:
   - python>=3.9
   - pip>=21.3  # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#editable-installation
   - git  # for pip install, due to setuptools_scm
+  - click>=7.0
   - isce3>=0.16.0
   - dolphin>=0.6.0
   - h5netcdf>=1.0

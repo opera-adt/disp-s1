@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-import argparse
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
 
 import h5py
 import numpy as np
@@ -12,10 +10,6 @@ from numpy.typing import ArrayLike
 
 logger = get_log()
 
-if TYPE_CHECKING:
-    _SubparserType = argparse._SubParsersAction[argparse.ArgumentParser]
-else:
-    _SubparserType = Any
 
 DSET_DEFAULT = "unwrapped_phase"
 
@@ -490,32 +484,3 @@ def compare(golden: Filename, test: Filename, data_dset: str = DSET_DEFAULT) -> 
 
     logger.info(f"Files {golden} and {test} match.")
     _check_compressed_slc_dirs(golden, test)
-
-
-def get_parser(
-    subparser: Optional[_SubparserType] = None, subcommand_name: str = "run"
-) -> argparse.ArgumentParser:
-    """Set up the command line interface."""
-    metadata = dict(
-        description="Compare two HDF5 files for consistency.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    if subparser:
-        # Used by the subparser to make a nested command line interface
-        parser = subparser.add_parser(subcommand_name, **metadata)  # type: ignore
-    else:
-        parser = argparse.ArgumentParser(**metadata)  # type: ignore
-
-    parser.add_argument("--golden", help="The golden HDF5 file.", required=True)
-    parser.add_argument(
-        "--test", help="The test HDF5 file to be compared.", required=True
-    )
-    parser.add_argument("--data-dset", default=DSET_DEFAULT)
-    parser.set_defaults(run_func=compare)
-    return parser
-
-
-if __name__ == "__main__":
-    parser = get_parser()
-    args = parser.parse_args()
-    compare(args.golden, args.test, args.data_dset)

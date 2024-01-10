@@ -9,9 +9,10 @@ import click
 @click.argument("pair", type=str)
 def create(process_dir, cslc_list, pair):
     """Create DISP-S1 product for given pair."""
-    from disp_s1.product import create_output_product
     from pathlib import Path
+
     from disp_s1.pge_runconfig import RunConfig
+    from disp_s1.product import create_output_product
 
     # Get necessary files.
     prod_dict = {}

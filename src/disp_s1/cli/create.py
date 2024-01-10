@@ -8,7 +8,7 @@ import click
 @click.argument("cslc_list", type=click.File("r"))
 @click.argument("pair", type=str)
 def create(process_dir, cslc_list, pair):
-    """Create DISP-S1 product for given pair"""
+    """Create DISP-S1 product for given pair."""
     from disp_s1.product import create_output_product
     from pathlib import Path
     from disp_s1.pge_runconfig import RunConfig

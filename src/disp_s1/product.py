@@ -13,12 +13,12 @@ import numpy as np
 import pyproj
 from dolphin import __version__ as dolphin_version
 from dolphin import io
-from dolphin._dates import _format_date_pair, get_dates
 from dolphin._log import get_log
 from dolphin._types import Filename
+from dolphin.utils import _format_date_pair
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
-from opera_utils import OPERA_DATASET_NAME, get_union_polygon
+from opera_utils import OPERA_DATASET_NAME, get_dates, get_union_polygon
 
 from . import __version__ as disp_s1_version
 from . import _parse_cslc_product

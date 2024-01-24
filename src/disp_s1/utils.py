@@ -27,8 +27,8 @@ def read_zipped_json(filename: Filename):
     """
     if Path(filename).suffix == ".zip":
         with zipfile.ZipFile(filename) as zf:
-            bytes = zf.read(str(Path(filename).name).replace(".zip", ""))
-            return json.loads(bytes.decode())
+            b = zf.read(str(Path(filename).name).replace(".zip", ""))
+            return json.loads(b.decode())
     else:
         with open(filename) as f:
             return json.load(f)
@@ -46,6 +46,7 @@ def get_frame_json(
     json_file : Filename, optional
         The path to the JSON file containing the frame-to-burst mapping.
         If `None`, uses the zip file contained in `disp_s1/data`
+
     Returns
     -------
     dict

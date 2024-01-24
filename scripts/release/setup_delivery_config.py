@@ -8,7 +8,7 @@ from disp_s1.enums import ProcessingMode
 # see `ionosphere.download_ionex_for_slcs`.
 # The troposphere file download is missing. Dummy files were created.
 # for d in `ls input_slcs/t042_088905_iw1* | awk -F'_' '{print $5}' | cut -d'.' -f1`; do
-#     touch dynamic_ancillary_files/troposphere_files/ERA5_N30_N40_W120_W110_${d}_14.grb;
+#    touch dynamic_ancillary_files/troposphere_files/ERA5_N30_N40_W120_W110_${d}_14.grb;
 # done
 
 
@@ -30,7 +30,6 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         " --amplitude-mean-files ./dynamic_ancillary_files/ps_files/*mean*"
         " --amplitude-dispersion-files ./dynamic_ancillary_files/ps_files/*dispersion*"
         # TODO # seasonal coherence averages
-        # "--seasonal-coherence-files dynamic_ancillary_files/seasonal_coherence_files/* "
         # Troposphere files:
         " --troposphere-files ./dynamic_ancillary_files/troposphere_files/*"
         # Ionosphere files:
@@ -49,7 +48,7 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         f" -o {outfile}"
     )
     print(cmd)
-    subprocess.run(cmd, shell=True)
+    subprocess.run(cmd, shell=True, check=False)
     return outfile
 
 
@@ -77,7 +76,7 @@ if __name__ == "__main__":
         )
         cmd = f"python {convert_config} {dolphin_cfg_file} {arg_string}"
         print(cmd)
-        subprocess.run(cmd, shell=True)
+        subprocess.run(cmd, shell=True, check=False)
         # Remove the `dolphin` yamls
         for f in cfg_dir.glob("dolphin_config*.yaml"):
             f.unlink()

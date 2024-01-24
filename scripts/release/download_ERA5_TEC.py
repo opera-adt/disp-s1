@@ -67,7 +67,7 @@ def check_exist_grib_file(grib_files: list[Path]) -> list[Path]:
     return grib_files_exist
 
 
-def dload_grib_files(
+def download_grib_files(
     grib_files: list[Path], tropo_model: str = "ERA5", snwe: Bbox = None
 ) -> list[Path]:
     """Download weather re-analysis grib files using PyAPS.
@@ -314,7 +314,7 @@ def main(iargs=None):
 
     grib_files, snwe = get_grib_file_names(args.slc_files, grib_dir, args.frame_id)
 
-    dload_grib_files(grib_files, snwe=snwe)
+    download_grib_files(grib_files, snwe=snwe)
 
     download_ionex_for_slcs(args.slc_files, TEC_dir)
 

@@ -48,7 +48,7 @@ def _get_cli_args():
 
 
 def check_exist_grib_file(grib_files: list[Path]) -> list[Path]:
-    """Check for grib files that are already downloaded
+    """Check for grib files that are already downloaded.
 
     Parameters
     ----------
@@ -70,15 +70,15 @@ def check_exist_grib_file(grib_files: list[Path]) -> list[Path]:
 def dload_grib_files(
     grib_files: list[Path], tropo_model: str = "ERA5", snwe: Bbox = None
 ) -> list[Path]:
-    """Download weather re-analysis grib files using PyAPS
+    """Download weather re-analysis grib files using PyAPS.
 
     Parameters
     ----------
-    grib_files list[Path]
+    grib_files : list[Path]
         list of path to the grib files
-    tropo_model str
+    tropo_model : str
         the tropospheric model
-    snwe Bbox
+    snwe : Bbox
         bounding box of the data required in the format of (south north west east)
 
     Returns
@@ -93,7 +93,7 @@ def dload_grib_files(
 
     # Get date list to download (skip already downloaded files)
     grib_files_exist = check_exist_grib_file(grib_files)
-    grib_files2dload = sorted(list(set(grib_files) - set(grib_files_exist)))
+    grib_files2dload = sorted(set(grib_files) - set(grib_files_exist))
     date_list2dload = [str(re.findall(r"\d{8}", i.name)[0]) for i in grib_files2dload]
     logger.info("number of grib files to download: %d" % len(date_list2dload))
 
@@ -131,14 +131,9 @@ def dload_grib_files(
                     pa.NARRdload(date_list2dload, hour, grib_dir)
             except Exception:
                 if i < 3:
-                    logger.warning(
-                        f"WARNING: the {i} attempt to download failed, retry it.\n"
-                    )
+                    logger.warning(f"The {i} attempt to download failed, retrying it.")
                 else:
-                    logger.warning(
-                        "WARNING: downloading failed for 3 times, stop trying and continue."
-                    )
-                pass
+                    logger.error("Downloading failed for 3 times. Stopping.")
 
     # check potentially corrupted files
     grib_files = check_exist_grib_file(grib_files)
@@ -146,14 +141,19 @@ def dload_grib_files(
 
 
 def check_pyaps_account_config(tropo_model: str, parent_dir: Path):
-    """Check for input in PyAPS config file. If they are default values or are empty, then raise error.
+    """Check for input in PyAPS config file.
 
     Parameters
     ----------
-    tropo_model  str
+    tropo_model :str
         tropo model being used to calculate tropospheric delay
-    parent_dir Path
+    parent_dir : Path
         Path to the PyAPS package where it is installed
+
+    Raises
+    ------
+    ValueError
+        If account info is not set in PyAPS config file.
     """
     # Convert MintPy tropo model name to data archive center name
     # NARR model included for completeness but no key required
@@ -209,13 +209,17 @@ def check_pyaps_account_config(tropo_model: str, parent_dir: Path):
 def get_grib_file_names(
     slc_files: Sequence[Path], grib_dir: Path, frame_id: int
 ) -> tuple[list[Path], Bbox]:
-    """generate the grib file names for each SLC to download
+    """Generate the grib file names for each SLC to download.
 
     Parameters
     ----------
-
+    slc_files : Sequence[Path]
+        list of paths to the slc files
+    grib_dir : Path
+        Path to the grib directory
+    frame_id : int
+        DISP-S1 frame id
     """
-
     slc_file_list = group_by_date(slc_files)
     first_date = next(iter(slc_file_list))
     acquisition_time = get_zero_doppler_time(slc_file_list[first_date][0])
@@ -245,7 +249,7 @@ def get_grib_file_names(
     return grib_files, snwe
 
 
-def add_buffer(snwe):
+def _add_buffer(snwe: tuple[float, float, float, float]):
     s, n, w, e = snwe
 
     min_buffer = 1
@@ -257,12 +261,12 @@ def add_buffer(snwe):
     return S, N, W, E
 
 
-def snwe2str(snwe: Bbox):
-    """Get area extent in string"""
+def snwe2str(snwe: tuple[float, float, float, float]):
+    """Get area extent in string."""
     if not snwe:
         return None
 
-    S, N, W, E = add_buffer(snwe)
+    S, N, W, E = _add_buffer(snwe)
 
     area = ""
     area += f"_S{abs(S)}" if S < 0 else f"_N{abs(S)}"
@@ -273,14 +277,18 @@ def snwe2str(snwe: Bbox):
     return area
 
 
-def closest_weather_model_hour(sar_acquisition_time):
-    """Find closest available time of weather product from SAR acquisition time
-    Parameters: sar_acquisition_time - str, SAR data acquisition time in seconds
-                grib_source          - str, Grib Source of weather reanalysis product
-    Returns:    grib_hr              - str, time of closest available weather product
-    Example:
-        '06' = closest_weather_model_hour(atr['CENTER_LINE_UTC'])
-        '12' = closest_weather_model_hour(atr['CENTER_LINE_UTC'], 'NARR')
+def closest_weather_model_hour(sar_acquisition_time: datetime.datetime) -> str:
+    """Find closest available time of weather product from SAR acquisition time.
+
+    Parameters
+    ----------
+    sar_acquisition_time : str
+        SAR data acquisition time in seconds
+
+    Returns
+    -------
+    grib_hr : str
+        time of closest available weather product
     """
     # get hour/min of SAR acquisition time
     # sar_time = datetime.strptime(sar_acquisition_time, "%Y-%m-%d %H:%M:%S.%f").hour
@@ -291,8 +299,7 @@ def closest_weather_model_hour(sar_acquisition_time):
     grib_hr = int(min(grib_hr_list, key=lambda x: abs(x - sar_time)))
 
     # add zero padding
-    grib_hr = f"{grib_hr:02d}"
-    return grib_hr
+    return f"{grib_hr:02d}"
 
 
 def main(iargs=None):

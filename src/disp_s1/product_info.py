@@ -24,7 +24,7 @@ class DispProductInfo:
             name="unwrapped_phase",
             description="Unwrapped phase",
             fillvalue=np.nan,
-            attrs=dict(units="radians"),
+            attrs={"units": "radians"},
         )
 
     @classmethod
@@ -34,7 +34,7 @@ class DispProductInfo:
             name="connected_component_labels",
             description="Connected component labels of the unwrapped phase",
             fillvalue=0,
-            attrs=dict(units="unitless"),
+            attrs={"units": "unitless"},
         )
 
     @classmethod
@@ -44,7 +44,7 @@ class DispProductInfo:
             name="temporal_coherence",
             description="Temporal coherence of phase inversion",
             fillvalue=np.nan,
-            attrs=dict(units="unitless"),
+            attrs={"units": "unitless"},
         )
 
     @classmethod
@@ -57,7 +57,7 @@ class DispProductInfo:
                 " multilooked interferogram."
             ),
             fillvalue=np.nan,
-            attrs=dict(units="unitless"),
+            attrs={"units": "unitless"},
         )
 
     @classmethod
@@ -70,7 +70,7 @@ class DispProductInfo:
                 " output grid."
             ),
             fillvalue=255,
-            attrs=dict(units="unitless"),
+            attrs={"units": "unitless"},
         )
 
 

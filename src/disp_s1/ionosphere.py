@@ -36,7 +36,7 @@ def download_ionex_for_slcs(
     logger.info(f"Found {len(date_to_file_list)} dates in the input files.")
 
     output_files = []
-    for input_date_tuple, file_list in date_to_file_list.items():
+    for input_date_tuple, _file_list in date_to_file_list.items():
         input_date = input_date_tuple[0]
         logger.info("Downloading for %s", input_date)
         f = download_ionex_for_date(input_date, dest_dir=dest_dir, verbose=verbose)
@@ -78,7 +78,7 @@ def download_ionex_for_date(
         wget_cmd.append("--quiet")
 
     logger.info('Running command: "%s"', " ".join(wget_cmd))
-    subprocess.run(wget_cmd, cwd=dest_dir)
+    subprocess.run(wget_cmd, cwd=dest_dir, check=False)
     return dest_file
 
 

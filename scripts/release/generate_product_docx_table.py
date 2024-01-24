@@ -77,13 +77,13 @@ def _get_hdf5_attributes(hdf5_path: Filename) -> list:
         description = item.attrs.get("long_name", "")
         units = item.attrs.get("units", "")
         table_data.append(
-            dict(
-                Name=name,
-                Type=data_type,
-                Shape=shape,
-                Units=units,
-                Description=description,
-            )
+            {
+                "Name": name,
+                "Type": data_type,
+                "Shape": shape,
+                "Units": units,
+                "Description": description,
+            }
         )
 
     with h5py.File(hdf5_path, "r") as hf:

@@ -32,14 +32,14 @@ logger = get_log(__name__)
 CORRECTIONS_GROUP_NAME = "corrections"
 IDENTIFICATION_GROUP_NAME = "identification"
 METADATA_GROUP_NAME = "metadata"
-GLOBAL_ATTRS = dict(
-    Conventions="CF-1.8",
-    contact="operaops@jpl.nasa.gov",
-    institution="NASA JPL",
-    mission_name="OPERA",
-    reference_document="TBD",
-    title="OPERA L3_DISP-S1 Product",
-)
+GLOBAL_ATTRS = {
+    "Conventions": "CF-1.8",
+    "contact": "operaops@jpl.nasa.gov",
+    "institution": "NASA JPL",
+    "mission_name": "OPERA",
+    "reference_document": "TBD",
+    "title": "OPERA L3_DISP-S1 Product",
+}
 
 # Convert chunks to a tuple or h5py errors
 HDF5_OPTS = io.DEFAULT_HDF5_OPTIONS.copy()
@@ -66,7 +66,7 @@ def create_output_product(
     ps_mask_filename: Filename,
     pge_runconfig: RunConfig,
     cslc_files: Sequence[Filename],
-    corrections: dict[str, ArrayLike] = {},
+    corrections: Optional[dict[str, ArrayLike]] = None,
 ):
     """Create the OPERA output product in NetCDF format.
 
@@ -93,6 +93,8 @@ def create_output_product(
         Used to add extra metadata to the output file.
     """
     # Read the Geotiff file and its metadata
+    if corrections is None:
+        corrections = {}
     crs = io.get_raster_crs(unw_filename)
     gt = io.get_raster_gt(unw_filename)
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
@@ -145,9 +147,7 @@ def create_output_product(
             ifg_corr_arr,
             io.load_gdal(ps_mask_filename),
         ]
-        disp_products = [
-            (nfo, data) for nfo, data in zip(disp_products_info, disp_data)
-        ]
+        disp_products = list(zip(disp_products_info, disp_data))
         for nfo, data in disp_products:
             _create_geo_dataset(
                 group=f,
@@ -190,7 +190,7 @@ def _create_corrections_group(
     start_time: datetime.datetime,
 ) -> None:
     with h5netcdf.File(output_name, "a") as f:
-        # Create the group holding phase corrections that were used on the unwrapped phase
+        # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
         corrections_group.attrs[
             "description"
@@ -213,7 +213,7 @@ def _create_corrections_group(
             data=troposphere,
             description="Tropospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
-            attrs=dict(units="radians"),
+            attrs={"units": "radians"},
         )
         ionosphere = corrections.get("ionosphere", empty_arr)
         _create_geo_dataset(
@@ -222,7 +222,7 @@ def _create_corrections_group(
             data=ionosphere,
             description="Ionospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
-            attrs=dict(units="radians"),
+            attrs={"units": "radians"},
         )
         solid_earth = corrections.get("solid_earth", empty_arr)
         _create_geo_dataset(
@@ -231,7 +231,7 @@ def _create_corrections_group(
             data=solid_earth,
             description="Solid Earth tide used to correct the unwrapped phase",
             fillvalue=np.nan,
-            attrs=dict(units="radians"),
+            attrs={"units": "radians"},
         )
         plate_motion = corrections.get("plate_motion", empty_arr)
         _create_geo_dataset(
@@ -240,7 +240,7 @@ def _create_corrections_group(
             data=plate_motion,
             description="Phase ramp caused by tectonic plate motion",
             fillvalue=np.nan,
-            attrs=dict(units="radians"),
+            attrs={"units": "radians"},
         )
         # Make a scalar dataset for the reference point
         reference_point = corrections.get("reference_point", 0.0)
@@ -256,8 +256,14 @@ def _create_corrections_group(
             ),
             dtype=int,
             # Note: the dataset contains attributes with lists, since the reference
-            # could have come from multiple points (e.g. some boxcar average of an area).
-            attrs=dict(units="unitless", rows=[], cols=[], latitudes=[], longitudes=[]),
+            # could have come from multiple points (e.g. boxcar average of an area).
+            attrs={
+                "units": "unitless",
+                "rows": [],
+                "cols": [],
+                "latitudes": [],
+                "longitudes": [],
+            },
         )
 
 
@@ -316,7 +322,7 @@ def _create_identification_group(
             data=get_union_polygon(cslc_files).wkt,
             fillvalue=None,
             description="WKT representation of bounding polygon of the image",
-            attrs=dict(units="degrees"),
+            attrs={"units": "degrees"},
         )
 
         wavelength, attrs = _parse_cslc_product.get_radar_wavelength(cslc_files[-1])
@@ -483,7 +489,7 @@ def _create_yx_dsets(
     y, x = _create_yx_arrays(gt, shape)
 
     if not group.dimensions:
-        dims = dict(y=y.size, x=x.size)
+        dims = {"y": y.size, "x": x.size}
         if include_time:
             dims["time"] = 1
         group.dimensions = dims
@@ -539,13 +545,13 @@ def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Va
     # Also add the GeoTransform
     gt_string = " ".join([str(x) for x in gt])
     dset.attrs.update(
-        dict(
-            GeoTransform=gt_string,
-            units="unitless",
-            long_name=(
+        {
+            "GeoTransform": gt_string,
+            "units": "unitless",
+            "long_name": (
                 "Dummy variable containing geo-referencing metadata in attributes"
             ),
-        )
+        }
     )
 
     return dset
@@ -577,7 +583,7 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
 
         # Input metadata is stored within the GDAL "DOLPHIN" domain
         metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
-        attrs = dict(units="unitless")
+        attrs = {"units": "unitless"}
         attrs.update(metadata_dict)
 
         logger.info(f"Writing {outname}")

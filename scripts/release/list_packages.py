@@ -33,13 +33,9 @@ class Package:
 class CommandNotFoundError(Exception):
     """Raised when a required Unix shell command was not found."""
 
-    pass
-
 
 class YumListIsAnnoyingError(Exception):
     """Raised when 'yum list' does something annoying."""
-
-    pass
 
 
 def check_command(cmd: str) -> bool:

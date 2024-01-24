@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from __future__ import annotations
 
 import multiprocessing as mp
@@ -31,8 +30,7 @@ def run(
     Parameters
     ----------
     cfg : DisplacementWorkflow
-        [`DisplacementWorkflow`][dolphin.workflows.config.DisplacementWorkflow] object for controlling the
-        workflow.
+        `DisplacementWorkflow` object for controlling the workflow.
     debug : bool, optional
         Enable debug logging, by default False.
     pge_runconfig : RunConfig, optional
@@ -92,7 +90,7 @@ def run(
 
     else:
         # grab the only key (either a burst, or "") and use that
-        b = list(grouped_slc_files.keys())[0]
+        b = next(iter(grouped_slc_files.keys()))
         wrapped_phase_cfgs = [(b, cfg)]
 
     ifg_file_list: list[Path] = []

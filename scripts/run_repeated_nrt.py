@@ -31,57 +31,57 @@ def _create_cfg(
     amplitude_mean_files: Sequence[Filename] = [],
     amplitude_dispersion_files: Sequence[Filename] = [],
     strides: Mapping[str, int] = {"x": 6, "y": 3},
-    work_dir: Path = Path("."),
+    work_dir: Path = Path(),
     n_parallel_bursts: int = 1,
 ):
     # strides = {"x": 1, "y": 1}
     interferogram_network: dict[str, Any]
     if first_ministack:
-        interferogram_network = dict(
-            network_type=InterferogramNetworkType.SINGLE_REFERENCE
-        )
+        interferogram_network = {
+            "network_type": InterferogramNetworkType.SINGLE_REFERENCE
+        }
     else:
-        interferogram_network = dict(
-            network_type=InterferogramNetworkType.MANUAL_INDEX,
-            indexes=[(0, -1)],
-        )
+        interferogram_network = {
+            "network_type": InterferogramNetworkType.MANUAL_INDEX,
+            "indexes": [(0, -1)],
+        }
 
     cfg = DisplacementWorkflow(
         # Things that change with each workflow run
         cslc_file_list=slc_files,
-        input_options=dict(subdataset=OPERA_DATASET_NAME),
+        input_options={"subdataset": OPERA_DATASET_NAME},
         interferogram_network=interferogram_network,
         amplitude_mean_files=amplitude_mean_files,
         amplitude_dispersion_files=amplitude_dispersion_files,
         # Configurable from CLI inputs:
-        output_options=dict(
-            strides=strides,
-        ),
-        phase_linking=dict(
-            ministack_size=1000,  # for single update, process in one ministack
-            half_window={"x": half_window_size[0], "y": half_window_size[1]},
-            shp_method=shp_method,
-        ),
+        output_options={
+            "strides": strides,
+        },
+        phase_linking={
+            "ministack_size": 1000,  # for single update, process in one ministack
+            "half_window": {"x": half_window_size[0], "y": half_window_size[1]},
+            "shp_method": shp_method,
+        },
         work_directory=work_dir,
-        worker_settings=dict(
+        worker_settings={
             #     block_size_gb=block_size_gb,
-            n_parallel_bursts=n_parallel_bursts,
-            n_workers=4,
-            threads_per_worker=8,
-        ),
+            "n_parallel_bursts": n_parallel_bursts,
+            "n_workers": 4,
+            "threads_per_worker": 8,
+        },
         #     ps_options=dict(
         #         amp_dispersion_threshold=amp_dispersion_threshold,
         #     ),
         #     log_file=log_file,
         # )
         # Definite hard coded things
-        unwrap_options=dict(
-            unwrap_method="snaphu",
-            run_unwrap=run_unwrap,
-            ntiles=(2, 2),
-            downsample_factor=(3, 3),
+        unwrap_options={
+            "unwrap_method": "snaphu",
+            "run_unwrap": run_unwrap,
+            "ntiles": (2, 2),
+            "downsample_factor": (3, 3),
             # CHANGEME: or else run in background somehow?
-        ),
+        },
         save_compressed_slc=True,  # always save, and only sometimes will we grab it
         # workflow_name=workflow_name,
     )

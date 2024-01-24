@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import logging
 from pathlib import Path
 from typing import Any
@@ -30,9 +29,9 @@ def get_params(
             Path(f"{process_dir}/unwrapped/").glob(f"{pair}.unw.tif")
         )
         logger.info(param_dict["unw_filename"])
-    except StopIteration:
+    except StopIteration as e:
         logger.error("Check if the pair %s exists", pair)
-        raise FileNotFoundError(f"Pair {pair} not found")
+        raise FileNotFoundError(f"Pair {pair} not found") from e
     param_dict["conncomp_filename"] = next(
         Path(f"{process_dir}/unwrapped/").glob(f"{pair}.unw.conncomp.tif")
     )

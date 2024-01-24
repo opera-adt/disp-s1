@@ -81,14 +81,14 @@ def plot_product(
 class HDF5Explorer:
     """Class which maps an HDF5 file and allows tab-completion to explore datasets."""
 
-    def __init__(self, hdf5_filepath: str, load_less_than: float = 1e3):
+    def __init__(self, hdf5_filepath: str, load_less_than: float = 1e3):  # noqa: D107
         self.hdf5_filepath = hdf5_filepath
         self._hf = h5py.File(hdf5_filepath, "r")
         self._root_group = _HDF5GroupExplorer(
             self._hf["/"], load_less_than=load_less_than
         )
 
-    def close(self):
+    def close(self):  # noqa: D102
         self._hf.close()
 
     def __getattr__(self, name):

@@ -39,7 +39,7 @@ def download_ionex_for_slcs(
     logger.info(f"Found {len(date_to_file_list)} dates in the input files.")
 
     output_files = []
-    for input_date_tuple, file_list in date_to_file_list.items():
+    for input_date_tuple, _file_list in date_to_file_list.items():
         input_date = input_date_tuple[0]
         logger.info("Downloading for %s", input_date)
         f = download_ionex_for_date(
@@ -96,6 +96,8 @@ def download_ionex_for_date(
             unzip_command = f"gzip --force --decompress {dest_file}".split()
             subprocess.run(unzip_command, cwd=dest_dir)
 
+    logger.info('Running command: "%s"', " ".join(wget_cmd))
+    subprocess.run(wget_cmd, cwd=dest_dir, check=False)
     return dest_file
 
 
@@ -128,6 +130,9 @@ def _generate_ionex_filename(
     old_archive_name = f"{url_directory}/{file_name}"
     # new naming convention
     product_type = "RAP" if solution_code.lower() == IONOSPHERE_TYPE_JPRG else "FIN"
-    new_archive_name = f"{url_directory}/JPL0OPS{product_type}_{input_date.year}{day_of_year}0000_01D_02H_GIM.INX.gz"
+    filename = (
+        f"JPL0OPS{product_type}_{input_date.year}{day_of_year}0000_01D_02H_GIM.INX.gz"
+    )
+    new_archive_name = f"{url_directory}/{filename}"
 
     return [old_archive_name, new_archive_name]

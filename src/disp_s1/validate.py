@@ -17,13 +17,9 @@ DSET_DEFAULT = "unwrapped_phase"
 class ValidationError(Exception):
     """Raised when a product fails a validation check."""
 
-    pass
-
 
 class ComparisonError(ValidationError):
     """Exception raised when two datasets do not match."""
-
-    pass
 
 
 def compare_groups(

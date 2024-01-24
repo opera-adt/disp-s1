@@ -42,7 +42,7 @@ class InputFileGroup(YamlModel):
 class DynamicAncillaryFileGroup(YamlModel):
     """A group of dynamic ancillary files."""
 
-    algorithm_parameters_file: Path = Field(  # type: ignore
+    algorithm_parameters_file: Path = Field(
         default=...,
         description="Path to file containing SAS algorithm parameters.",
     )
@@ -128,7 +128,7 @@ class PrimaryExecutable(YamlModel):
 class ProductPathGroup(YamlModel):
     """Group describing the product paths."""
 
-    product_path: Path = Field(  # type: ignore
+    product_path: Path = Field(
         default=...,
         description="Directory where PGE will place results",
     )
@@ -159,7 +159,7 @@ class ProductPathGroup(YamlModel):
 
 
 class AlgorithmParameters(YamlModel):
-    """Class containing all the other [`DisplacementWorkflow`][dolphin.workflows.config] classes."""
+    """Class containing all the other `DisplacementWorkflow` classes."""
 
     # Options for each step in the workflow
     ps_options: PsOptions = Field(default_factory=PsOptions)
@@ -217,8 +217,8 @@ class RunConfig(YamlModel):
         )
 
     def to_workflow(self):
-        """Convert to a [`DisplacementWorkflow`][dolphin.workflows.config.DisplacementWorkflow] object."""
-        # We need to go to/from the PGE format to our internal DisplacementWorkflow object:
+        """Convert to a `DisplacementWorkflow` object."""
+        # We need to go to/from the PGE format to dolphin's DisplacementWorkflow:
         # Note that the top two levels of nesting can be accomplished by wrapping
         # the normal model export in a dict.
         #
@@ -240,7 +240,7 @@ class RunConfig(YamlModel):
             self.dynamic_ancillary_file_group.algorithm_parameters_file
         )
         param_dict = algorithm_parameters.model_dump()
-        input_options = dict(subdataset=param_dict.pop("subdataset"))
+        input_options = {"subdataset": param_dict.pop("subdataset")}
 
         # Convert the frame_id into an output bounding box
         frame_to_burst_file = self.static_ancillary_file_group.frame_to_burst_json
@@ -251,7 +251,7 @@ class RunConfig(YamlModel):
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
 
-        # This get's unpacked to load the rest of the parameters for the DisplacementWorkflow
+        # unpacked to load the rest of the parameters for the DisplacementWorkflow
         return DisplacementWorkflow(
             cslc_file_list=cslc_file_list,
             input_options=input_options,
@@ -277,13 +277,13 @@ class RunConfig(YamlModel):
         save_compressed_slc: bool = False,
         output_directory: Optional[Path] = None,
     ):
-        """Convert from a [`DisplacementWorkflow`][dolphin.workflows.config.DisplacementWorkflow] object.
+        """Convert from a `DisplacementWorkflow` object.
 
         This is the inverse of the to_workflow method, although there are more
         fields in the PGE version, so it's not a 1-1 mapping.
 
         The arguments, like `frame_id` or `algorithm_parameters_file`, are not in the
-        [`DisplacementWorkflow`][dolphin.workflows.config.DisplacementWorkflow] object, so we need to pass
+        `DisplacementWorkflow` object, so we need to pass
         those in as arguments.
 
         This is can be used as preliminary setup to further edit the fields, or as a
@@ -297,7 +297,7 @@ class RunConfig(YamlModel):
         algo_keys = set(AlgorithmParameters.model_fields.keys())
         alg_param_dict = workflow.model_dump(include=algo_keys)
         AlgorithmParameters(**alg_param_dict).to_yaml(algorithm_parameters_file)
-        # This gets unpacked to load the rest of the parameters for the DisplacementWorkflow
+        # unpacked to load the rest of the parameters for the DisplacementWorkflow
 
         return cls(
             input_file_group=InputFileGroup(

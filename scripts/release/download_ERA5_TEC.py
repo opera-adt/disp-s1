@@ -219,6 +219,12 @@ def get_grib_file_names(
         Path to the grib directory
     frame_id : int
         DISP-S1 frame id
+
+    Returns
+    -------
+    tuple[list[Path], Bbox]
+        The list of weather model files to be downloaded
+        and the bounding box of the frame
     """
     slc_file_list = group_by_date(slc_files)
     first_date = next(iter(slc_file_list))
@@ -282,13 +288,13 @@ def closest_weather_model_hour(sar_acquisition_time: datetime.datetime) -> str:
 
     Parameters
     ----------
-    sar_acquisition_time : str
-        SAR data acquisition time in seconds
+    sar_acquisition_time: datetime.datetime
+        SAR data acquisition time
 
     Returns
     -------
-    grib_hr : str
-        time of closest available weather product
+    grib_hr: str
+        time of closest available weather product in hour
     """
     # get hour/min of SAR acquisition time
     # sar_time = datetime.strptime(sar_acquisition_time, "%Y-%m-%d %H:%M:%S.%f").hour

@@ -3,17 +3,23 @@ from __future__ import annotations
 import multiprocessing as mp
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
+from os import PathLike
 from pathlib import Path
 from pprint import pformat
+from typing import Mapping, Sequence
 
 from dolphin import __version__ as dolphin_version
-from dolphin import get_dates, utils
+from dolphin import utils
 from dolphin._background import DummyProcessPoolExecutor
 from dolphin._log import get_log, log_runtime
-from dolphin.workflows import stitch_and_unwrap, wrapped_phase
+from dolphin.atmosphere import estimate_ionospheric_delay, estimate_tropospheric_delay
+from dolphin.io import get_raster_bounds, get_raster_crs
+from dolphin.utils import prepare_geometry
+from dolphin.workflows import stitching_bursts, unwrapping, wrapped_phase
 from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
 from dolphin.workflows.config import DisplacementWorkflow
-from opera_utils import group_by_burst
+from opera_utils import get_dates, group_by_burst, group_by_date
 
 from disp_s1 import _log, product
 from disp_s1.pge_runconfig import RunConfig
@@ -63,6 +69,25 @@ def run(
         grouped_amp_mean_files = group_by_burst(cfg.amplitude_mean_files)
     else:
         grouped_amp_mean_files = defaultdict(list)
+
+    if len(cfg.correction_options.troposphere_files) > 0:
+        grouped_tropo_files = group_by_date(
+            cfg.correction_options.troposphere_files,
+            file_date_fmt=cfg.correction_options.tropo_date_fmt,
+        )
+    else:
+        grouped_tropo_files = None
+
+    grouped_iono_files: Mapping[tuple[datetime], Sequence[str | PathLike[str]]] = {}
+    if len(cfg.correction_options.ionosphere_files) > 0:
+        for fmt in cfg.correction_options._iono_date_fmt:
+            group_iono = group_by_date(
+                cfg.correction_options.ionosphere_files,
+                file_date_fmt=fmt,
+            )
+            if len(next(iter(group_iono))) == 0:
+                continue
+            grouped_iono_files = {**grouped_iono_files, **group_iono}
 
     # ######################################
     # 1. Burst-wise Wrapped phase estimation
@@ -127,25 +152,107 @@ def run(
             ps_file_list.append(ps_file)
 
     # ###################################
-    # 2. Stitch and unwrap interferograms
+    # 2. Stitch the interferograms
     # ###################################
 
+    stitched_ifg_dir = cfg.interferogram_network._directory
+    stitched_ifg_dir.mkdir(exist_ok=True, parents=True)
+    logger.info("Stitching interferograms by date.")
     (
-        unwrapped_paths,
-        conncomp_paths,
-        ifg_corr_paths,
-        stitched_tcorr_file,
+        stitched_ifg_paths,
+        interferometric_corr_paths,
+        stitched_temp_coh_file,
         stitched_ps_file,
-    ) = stitch_and_unwrap.run(
+    ) = stitching_bursts.run(
         ifg_file_list=ifg_file_list,
-        tcorr_file_list=tcorr_file_list,
+        temp_coh_file_list=tcorr_file_list,
         ps_file_list=ps_file_list,
-        cfg=cfg,
-        debug=debug,
+        stitched_ifg_dir=stitched_ifg_dir,
     )
 
+    # ###################################
+    # 3. Unwrap the interferograms
+    # ###################################
+
+    logger.info(f"Unwrapping {len(stitched_ifg_paths)} interferograms")
+    # Compute the looks for the unwrapping
+    row_looks, col_looks = cfg.phase_linking.half_window.to_looks()
+    nlooks = row_looks * col_looks
+
+    (unwrapped_paths, conncomp_paths) = unwrapping.run(
+        ifg_file_list=stitched_ifg_paths,
+        cor_file_list=interferometric_corr_paths,
+        nlooks=nlooks,
+        unwrap_options=cfg.unwrap_options,
+        mask_file=cfg.dynamic_ancillary_file_group.mask_file,
+    )
+
+    # ###################################
+    # 4. Estimate atmospheric corrections
+    # ###################################
+
+    if len(cfg.correction_options.geometry_files) > 0:
+        ifg_filenames = sorted(Path(stitched_ifg_dir).glob("*.int"))
+        out_dir = cfg.work_directory / cfg.correction_options._atm_directory
+        out_dir.mkdir(exist_ok=True)
+        grouped_slc_files = group_by_date(cfg.cslc_file_list)
+
+        # Prepare frame geometry files
+        geometry_dir = out_dir / "geometry"
+        geometry_dir.mkdir(exist_ok=True)
+        crs = get_raster_crs(ifg_filenames[0])
+        epsg = crs.to_epsg()
+        out_bounds = get_raster_bounds(ifg_filenames[0])
+        frame_geometry_files = prepare_geometry(
+            geometry_dir=geometry_dir,
+            geo_files=cfg.correction_options.geometry_files,
+            matching_file=ifg_filenames[0],
+            dem_file=cfg.correction_options.dem_file,
+            epsg=epsg,
+            out_bounds=out_bounds,
+            strides=cfg.output_options.strides,
+        )
+
+        # Troposphere
+        if "height" not in frame_geometry_files.keys():
+            logger.warning(
+                "DEM file is not given, skip estimating tropospheric corrections..."
+            )
+        else:
+            if grouped_tropo_files:
+                logger.info("Estimating tropospheric corrections")
+                estimate_tropospheric_delay(
+                    ifg_file_list=ifg_filenames,
+                    troposphere_files=grouped_tropo_files,
+                    slc_files=grouped_slc_files,
+                    geom_files=frame_geometry_files,
+                    output_dir=out_dir,
+                    tropo_package=cfg.correction_options.tropo_package,
+                    tropo_model=cfg.correction_options.tropo_model,
+                    tropo_delay_type=cfg.correction_options.tropo_delay_type,
+                    epsg=epsg,
+                    bounds=out_bounds,
+                )
+            else:
+                logger.info("No weather model, skip tropospheric correction ...")
+
+        # Ionosphere
+        if grouped_iono_files:
+            logger.info("Estimating ionospheric corrections")
+            estimate_ionospheric_delay(
+                ifg_file_list=ifg_filenames,
+                slc_files=grouped_slc_files,
+                tec_files=grouped_iono_files,
+                geom_files=frame_geometry_files,
+                output_dir=out_dir,
+                epsg=epsg,
+                bounds=out_bounds,
+            )
+        else:
+            logger.info("No TEC files, skip ionospheric correction ...")
+
     # ######################################
-    # 3. Finalize the output as an HDF5 product
+    # 5. Finalize the output as an HDF5 product
     # ######################################
     # Group all the non-compressed SLCs by date
     date_to_slcs = utils.group_by_date(
@@ -158,7 +265,7 @@ def run(
     for unw_p, cc_p, s_corr_p in zip(
         unwrapped_paths,
         conncomp_paths,
-        ifg_corr_paths,
+        interferometric_corr_paths,
     ):
         output_name = out_dir / unw_p.with_suffix(".nc").name
         # Get the current list of acq times for this product
@@ -170,7 +277,7 @@ def run(
             output_name=output_name,
             unw_filename=unw_p,
             conncomp_filename=cc_p,
-            tcorr_filename=stitched_tcorr_file,
+            tcorr_filename=stitched_temp_coh_file,
             ifg_corr_filename=s_corr_p,
             ps_mask_filename=stitched_ps_file,
             pge_runconfig=pge_runconfig,

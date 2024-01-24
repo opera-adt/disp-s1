@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import ClassVar, List, Optional, Union
 
 from dolphin.workflows.config import (
+    CorrectionOptions,
     DisplacementWorkflow,
     InterferogramNetwork,
     OutputOptions,
@@ -168,6 +169,7 @@ class AlgorithmParameters(YamlModel):
         default_factory=InterferogramNetwork
     )
     unwrap_options: UnwrapOptions = Field(default_factory=UnwrapOptions)
+    correction_options: CorrectionOptions = Field(default_factory=CorrectionOptions)
     output_options: OutputOptions = Field(default_factory=OutputOptions)
     subdataset: str = Field(
         default=OPERA_DATASET_NAME,

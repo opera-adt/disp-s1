@@ -91,6 +91,7 @@ def create_output_product(
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
+
     """
     # Read the Geotiff file and its metadata
     if corrections is None:
@@ -525,6 +526,7 @@ def _create_time_array(times: list[datetime.datetime]):
     References
     ----------
     http://cfconventions.org/cf-conventions/cf-conventions.html#time-coordinate
+
     """
     # 'calendar': 'standard',
     # 'units': 'seconds since 2017-02-03 00:00:00.000000'

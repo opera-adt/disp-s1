@@ -24,6 +24,7 @@ def read_zipped_json(filename: Filename):
     -------
     dict
         The contents of the zipped JSON file as a dictionary.
+
     """
     if Path(filename).suffix == ".zip":
         with zipfile.ZipFile(filename) as zf:
@@ -51,6 +52,7 @@ def get_frame_json(
     -------
     dict
         The frame data for the given frame ID.
+
     """
     if json_file is None:
         json_file = FRAME_TO_BURST_JSON_FILE
@@ -77,6 +79,7 @@ def get_frame_bbox(
         EPSG code for the bounds coordinates
     tuple[float, float, float, float]
         bounding box coordinates (xmin, ymin, xmax, ymax)
+
     """
     frame_dict = get_frame_json(frame_id=frame_id, json_file=json_file)
     epsg = frame_dict["epsg"]
@@ -101,6 +104,7 @@ def get_burst_ids_for_frame(
     -------
     list[str]
         The burst IDs for the given frame ID.
+
     """
     frame_data = get_frame_json(frame_id, json_file)
     return frame_data["burst_ids"]

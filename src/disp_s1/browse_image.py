@@ -28,6 +28,7 @@ def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
     -------
     arr: ArrayLike
         Normalized and gamma corrected image.
+
     """
     vmin = np.nanmin(arr)
     vmax = np.nanmax(arr)
@@ -59,6 +60,7 @@ def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray
     -------
     arr: ArrayLike
         Numpy array representing a resized image.
+
     """
     if max_dim_allowed < 1:
         raise ValueError(f"{max_dim_allowed} is not a valid max image dimension")
@@ -85,6 +87,7 @@ def _save_to_disk_as_greyscale(arr: ArrayLike, fname: Filename) -> None:
         Numpy array representing an image to be saved to png file.
     fname: str
         File name of output browse image.
+
     """
     # scale to 1-255
     # 0 reserved for transparency
@@ -111,6 +114,7 @@ def make_browse_image_from_arr(
     max_dim_allowed : int, default = 2048
         Size (in pixels) of the maximum allowed dimension of output image.
         Image gets rescaled with same aspect ratio.
+
     """
     # nomalize non-nan pixels to 0-1
     arr = _normalize_apply_gamma(arr)
@@ -140,6 +144,7 @@ def make_browse_image_from_nc(
     max_dim_allowed : int, default = 2048
         Size (in pixels) of the maximum allowed dimension of output image.
         Image gets rescaled with same aspect ratio.
+
     """
     if dataset_name not in DISP_PRODUCT_NAMES:
         raise ValueError(f"{args.dataset_name} is not a valid dataset name")

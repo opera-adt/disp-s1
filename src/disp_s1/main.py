@@ -35,6 +35,7 @@ def run(
         Enable debug logging, by default False.
     pge_runconfig : RunConfig, optional
         PGE-specific metadata for the output product.
+
     """
     # Set the logging level for all `dolphin.` modules
     logger = get_log(name="disp_s1", debug=debug)

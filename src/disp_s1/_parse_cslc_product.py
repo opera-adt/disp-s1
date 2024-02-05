@@ -23,6 +23,7 @@ def get_radar_wavelength(filename: Filename):
         Radar wavelength.
     attrs : dict
         Attributes from the HDF5 dataset.
+
     """
     dset = "/metadata/processing_information/input_burst_metadata/wavelength"
     value, attrs = _get_dset_and_attrs(filename, dset)
@@ -45,6 +46,7 @@ def get_zero_doppler_time(filename: Filename, type_: str = "start") -> datetime:
     -------
     str
         Full acquisition time.
+
     """
 
     def get_dt(in_str):
@@ -78,6 +80,7 @@ def _get_dset_and_attrs(
         The value of the scalar
     attrs : dict
         Attributes.
+
     """
     with h5py.File(filename, "r") as hf:
         dset = hf[dset_name]

@@ -267,10 +267,8 @@ def _add_buffer(snwe: tuple[float, float, float, float]):
     return S, N, W, E
 
 
-def snwe2str(snwe: tuple[float, float, float, float]):
+def snwe2str(snwe: tuple[float, float, float, float]) -> str:
     """Get area extent in string."""
-    if not snwe:
-        return None
 
     S, N, W, E = _add_buffer(snwe)
 

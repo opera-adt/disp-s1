@@ -40,8 +40,9 @@ jobs:
             channels:
               - conda-forge
       - name: Install
+        # TODO:  remove the `tqdm` once dolphin tqdm req is in conda
         run: |
-          python -m pip install --no-deps git+https://github.com/isce-framework/dolphin@${{ matrix.dolphin.tag }}
+          python -m pip install tqdm git+https://github.com/isce-framework/dolphin@${{ matrix.dolphin.tag }}
           pip install --no-deps .
       - name: Install test dependencies
         run: |

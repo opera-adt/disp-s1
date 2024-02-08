@@ -14,6 +14,10 @@ from disp_s1.pge_runconfig import (
     StaticAncillaryFileGroup,
 )
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:.*utcnow.*:DeprecationWarning",
+)
+
 
 def test_algorithm_parameters_schema():
     with warnings.catch_warnings():

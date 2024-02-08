@@ -15,7 +15,7 @@ from dolphin import __version__ as dolphin_version
 from dolphin import io
 from dolphin._log import get_log
 from dolphin._types import Filename
-from dolphin.utils import format_date_pair
+from dolphin.utils import format_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import OPERA_DATASET_NAME, get_dates, get_union_polygon
@@ -566,7 +566,7 @@ def create_compressed_products(
 
     def form_name(filename: Path, burst: str):
         # filename: compressed_20180222_20180716.tif
-        date_str = format_date_pair(*get_dates(filename.stem, fmt="%Y%m%d"))
+        date_str = format_dates(*get_dates(filename.stem))
         return COMPRESSED_SLC_TEMPLATE.format(burst=burst, date_str=date_str)
 
     attrs = GLOBAL_ATTRS.copy()

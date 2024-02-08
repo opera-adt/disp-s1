@@ -5,7 +5,6 @@ import argparse
 import datetime
 import logging
 import re
-import sys
 from configparser import ConfigParser
 from pathlib import Path
 from typing import Sequence
@@ -230,7 +229,6 @@ def get_grib_file_names(
     first_date = next(iter(slc_file_list))
     acquisition_time = get_zero_doppler_time(slc_file_list[first_date][0])
     hour = closest_weather_model_hour(acquisition_time)
-
     date_list = [
         datetime.datetime.strftime(key[0], "%Y%m%d") for key in slc_file_list.keys()
     ]
@@ -246,10 +244,7 @@ def get_grib_file_names(
     # grib file list
     grib_files = []
     for d in date_list:
-        if area:
-            grib_file = grib_dir / f"ERA5{area}_{d}_{hour}.grb"
-        else:
-            grib_file = grib_dir / f"ERA5_{d}_{hour}.grb"
+        grib_file = grib_dir / f"ERA5{area}_{d}_{hour}.grb"
         grib_files.append(grib_file)
 
     return grib_files, snwe
@@ -269,7 +264,6 @@ def _add_buffer(snwe: tuple[float, float, float, float]):
 
 def snwe2str(snwe: tuple[float, float, float, float]) -> str:
     """Get area extent in string."""
-
     S, N, W, E = _add_buffer(snwe)
 
     area = ""
@@ -306,10 +300,10 @@ def closest_weather_model_hour(sar_acquisition_time: datetime.datetime) -> str:
     return f"{grib_hr:02d}"
 
 
-def main(iargs=None):
+def main():
     """Download ERA5 weather model files and TEC maps for all the given SLCs."""
     parser = _get_cli_args()
-    args = parser.parse_args(args=iargs)
+    args = parser.parse_args()
 
     grib_dir = Path(args.working_dir) / "troposphere_files"
     grib_dir.mkdir(exist_ok=True)
@@ -326,4 +320,4 @@ def main(iargs=None):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

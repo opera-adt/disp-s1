@@ -34,6 +34,7 @@ def download_ionex_for_slcs(
     -------
     list[Path]
         List of downloaded IONEX files.
+
     """
     date_to_file_list = group_by_date(input_files)
     logger.info(f"Found {len(date_to_file_list)} dates in the input files.")
@@ -73,6 +74,7 @@ def download_ionex_for_date(
     -------
     Path
         Path to the local IONEX text file.
+
     """
     source_urls = _generate_ionex_filename(input_date, solution_code=solution_code)
 
@@ -119,6 +121,7 @@ def _generate_ionex_filename(
     -------
     str
         Complete URL to the IONEX file.
+
     """
     day_of_year = f"{input_date.timetuple().tm_yday:03d}"
     year_short = str(input_date.year)[2:4]

@@ -39,6 +39,7 @@ def plot_product(
     -------
     fig, axes : matplotlib.pyplot.Figure, matplotlib.pyplot.Axes
         Figure and axes objects.
+
     """
     ds = rioxarray.open_rasterio(filename).sel(band=1)
 
@@ -145,6 +146,7 @@ def create_explorer_widget(
     --------
     >>> hf = h5py.File("file.h5", "r")
     >>> create_explorer_widget(hf)
+
     """
 
     def _make_thumbnail(image) -> widgets.Image:

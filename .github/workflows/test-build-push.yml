@@ -15,18 +15,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        deps:
+        dolphin:
           - label: Latest
-            spec: ""
-          - label: Minimum
-            spec: >-
-              python=3.9
-              isce3=0.16.0
-              h5netcdf=1.0
-              pydantic=2.1
+            tag: "main"
+          - label: Last Release
+            tag: v0.12.0
 
       fail-fast: false
-    name: ${{ matrix.os }} • ${{ matrix.deps.label }}
+    name: ${{ matrix.os }} • ${{ matrix.dolphin.label }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -40,12 +36,13 @@ jobs:
           environment-file: conda-env.yml
           environment-name: disp-s1-env
           generate-run-shell: false
-          create-args: ${{ matrix.deps.spec }}
           condarc: |
             channels:
               - conda-forge
       - name: Install
+        # TODO:  remove the `tqdm` once dolphin tqdm req is in conda
         run: |
+          python -m pip install tqdm git+https://github.com/isce-framework/dolphin@${{ matrix.dolphin.tag }}
           pip install --no-deps .
       - name: Install test dependencies
         run: |

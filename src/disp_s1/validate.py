@@ -45,6 +45,7 @@ def compare_groups(
     ------
     ComparisonError
         If the two files do not match in all datasets.
+
     """
     # Check if group names match
     if set(golden_group.keys()) != set(test_group.keys()):
@@ -146,6 +147,7 @@ def _fmt_ratio(num: int, den: int, digits: int = 3) -> str:
     -------
     str
         A string representation of the input.
+
     """
     return f"{num}/{den} ({100.0 * num / den:.{digits}f}%)"
 
@@ -178,6 +180,7 @@ def _validate_conncomp_labels(
     ------
     ComparisonError
         If the intersecting area between the two masks was below the threshold.
+
     """
     logger.info("Checking connected component labels...")
 
@@ -264,6 +267,7 @@ def _validate_unwrapped_phase(
         If the NaN value count exceeded the specified threshold.
     ComparisonError
         If the two datasets were not congruent within the specified error tolerance.
+
     """
     logger.info("Checking unwrapped phase...")
 
@@ -382,6 +386,7 @@ def _validate_dataset(
     ------
     ComparisonError
         If the two datasets do not match.
+
     """
     golden = golden_dataset[()]
     test = test_dataset[()]
@@ -418,6 +423,7 @@ def _check_raster_geometadata(golden_file: Filename, test_file: Filename) -> Non
     ------
     ComparisonError
         If the two files do not match in their metadata
+
     """
     funcs = [io.get_raster_bounds, io.get_raster_crs, io.get_raster_gt]
     for func in funcs:
@@ -444,6 +450,7 @@ def _check_compressed_slc_dirs(golden: Filename, test: Filename) -> None:
     ------
     ComparisonError
         If file names do not match in their compressed SLC directories
+
     """
     golden_slc_dir = Path(golden).parent / "compressed_slcs"
     test_slc_dir = Path(test).parent / "compressed_slcs"

@@ -36,7 +36,6 @@ jobs:
           environment-file: conda-env.yml
           environment-name: disp-s1-env
           generate-run-shell: false
-          create-args: ${{ matrix.dolphin.spec }}
           condarc: |
             channels:
               - conda-forge

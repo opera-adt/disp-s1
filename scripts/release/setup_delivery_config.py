@@ -38,7 +38,7 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         " --dem ./dynamic_ancillary_files/dem.tif"
         # Geometry files/static layers
         " --geometry-files ./dynamic_ancillary_files/static_layers/*"
-        " --mask-file ./dynamic_ancillary_files/watermask.flg"
+        " --mask-file ./dynamic_ancillary_files/watermask.tif"
         #
         # Unwrapping stuff
         " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5"

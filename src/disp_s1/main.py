@@ -4,7 +4,7 @@ from dolphin import utils
 from dolphin._log import get_log, log_runtime
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import run as run_displacement
-from opera_utils._dates import get_dates
+from opera_utils import get_dates
 
 from disp_s1 import _log, product
 from disp_s1.pge_runconfig import RunConfig

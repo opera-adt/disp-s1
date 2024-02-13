@@ -74,7 +74,7 @@ def test_create_compressed_slc(
 ):
     burst = "t123_123456_iw1"
     date_pair = "20220101_20220102"
-    comp_slc_dict = {burst: comp_slc}
+    comp_slc_dict = {burst: [comp_slc]}
 
     create_compressed_products(comp_slc_dict, output_dir=tmp_path)
 

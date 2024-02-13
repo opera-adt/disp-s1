@@ -15,7 +15,7 @@ from dolphin import __version__ as dolphin_version
 from dolphin import io
 from dolphin._log import get_log
 from dolphin._types import Filename
-from dolphin.utils import _format_date_pair
+from dolphin.utils import format_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import OPERA_DATASET_NAME, get_dates, get_union_polygon
@@ -559,12 +559,14 @@ def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Va
     return dset
 
 
-def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filename):
+def create_compressed_products(
+    comp_slc_dict: dict[str, list[Path]], output_dir: Filename
+):
     """Make the compressed SLC output product."""
 
     def form_name(filename: Path, burst: str):
         # filename: compressed_20180222_20180716.tif
-        date_str = _format_date_pair(*get_dates(filename.stem))
+        date_str = format_dates(*get_dates(filename.stem))
         return COMPRESSED_SLC_TEMPLATE.format(burst=burst, date_str=date_str)
 
     attrs = GLOBAL_ATTRS.copy()
@@ -572,41 +574,42 @@ def create_compressed_products(comp_slc_dict: dict[str, Path], output_dir: Filen
     *parts, dset_name = OPERA_DATASET_NAME.split("/")
     group_name = "/".join(parts)
 
-    for burst, comp_slc_file in comp_slc_dict.items():
-        outname = Path(output_dir) / form_name(comp_slc_file, burst)
-        if outname.exists():
-            logger.info(f"Skipping existing {outname}")
-            continue
+    for burst, comp_slc_files in comp_slc_dict.items():
+        for comp_slc_file in comp_slc_files:
+            outname = Path(output_dir) / form_name(comp_slc_file, burst)
+            if outname.exists():
+                logger.info(f"Skipping existing {outname}")
+                continue
 
-        crs = io.get_raster_crs(comp_slc_file)
-        gt = io.get_raster_gt(comp_slc_file)
-        data = io.load_gdal(comp_slc_file)
-        truncate_mantissa(data)
+            crs = io.get_raster_crs(comp_slc_file)
+            gt = io.get_raster_gt(comp_slc_file)
+            data = io.load_gdal(comp_slc_file)
+            truncate_mantissa(data)
 
-        # Input metadata is stored within the GDAL "DOLPHIN" domain
-        metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
-        attrs = {"units": "unitless"}
-        attrs.update(metadata_dict)
+            # Input metadata is stored within the GDAL "DOLPHIN" domain
+            metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
+            attrs = {"units": "unitless"}
+            attrs.update(metadata_dict)
 
-        logger.info(f"Writing {outname}")
-        with h5py.File(outname, "w") as hf:
-            # add type to root for GDAL recognition of complex datasets in NetCDF
-            ctype = h5py.h5t.py_create(np.complex64)
-            ctype.commit(hf["/"].id, np.string_("complex64"))
+            logger.info(f"Writing {outname}")
+            with h5py.File(outname, "w") as hf:
+                # add type to root for GDAL recognition of complex datasets in NetCDF
+                ctype = h5py.h5t.py_create(np.complex64)
+                ctype.commit(hf["/"].id, np.string_("complex64"))
 
-        with h5netcdf.File(outname, mode="a", invalid_netcdf=True) as f:
-            f.attrs.update(attrs)
+            with h5netcdf.File(outname, mode="a", invalid_netcdf=True) as f:
+                f.attrs.update(attrs)
 
-            data_group = f.create_group(group_name)
-            _create_grid_mapping(group=data_group, crs=crs, gt=gt)
-            _create_yx_dsets(
-                group=data_group, gt=gt, shape=data.shape, include_time=False
-            )
-            _create_geo_dataset(
-                group=data_group,
-                name=dset_name,
-                data=data,
-                description="Compressed SLC product",
-                fillvalue=np.nan + 0j,
-                attrs=attrs,
-            )
+                data_group = f.create_group(group_name)
+                _create_grid_mapping(group=data_group, crs=crs, gt=gt)
+                _create_yx_dsets(
+                    group=data_group, gt=gt, shape=data.shape, include_time=False
+                )
+                _create_geo_dataset(
+                    group=data_group,
+                    name=dset_name,
+                    data=data,
+                    description="Compressed SLC product",
+                    fillvalue=np.nan + 0j,
+                    attrs=attrs,
+                )

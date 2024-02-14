@@ -113,6 +113,12 @@ class StaticAncillaryFileGroup(YamlModel):
             "JSON file containing the mapping from frame_id to frame/burst information"
         ),
     )
+    reference_date_database_json: Union[Path, None] = Field(
+        None,
+        description=(
+            "JSON file containing list of reference date changes for each frame"
+        ),
+    )
 
 
 class PrimaryExecutable(YamlModel):

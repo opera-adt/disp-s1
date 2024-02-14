@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from dolphin import utils
 from dolphin._log import get_log, log_runtime
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import run as run_displacement
-from opera_utils import get_dates
+from opera_utils import get_dates, group_by_date
 
 from disp_s1 import _log, product
 from disp_s1.pge_runconfig import RunConfig
@@ -42,8 +41,10 @@ def run(
     # 2. Finalize the output as an HDF5 product
     # #########################################
     # Group all the non-compressed SLCs by date
-    date_to_slcs = utils.group_by_date(
-        [p for p in cfg.cslc_file_list if "compressed" not in p.name]
+    date_to_slcs = group_by_date(
+        [p for p in cfg.cslc_file_list if "compressed" not in p.name],
+        # We only care about the product date, not the Generation Date
+        date_idx=0,
     )
 
     out_dir = pge_runconfig.product_path_group.output_directory

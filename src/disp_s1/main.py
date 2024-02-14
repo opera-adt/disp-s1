@@ -53,7 +53,7 @@ def run(
     for unw_p, cc_p, s_corr_p in zip(
         out_paths.unwrapped_paths,
         out_paths.conncomp_paths,
-        out_paths.ifg_corr_paths,
+        out_paths.stitched_cor_paths,
     ):
         output_name = out_dir / unw_p.with_suffix(".nc").name
         # Get the current list of acq times for this product
@@ -65,7 +65,7 @@ def run(
             output_name=output_name,
             unw_filename=unw_p,
             conncomp_filename=cc_p,
-            tcorr_filename=out_paths.stitched_tcorr_file,
+            temp_coh_filename=out_paths.stitched_temp_coh_file,
             ifg_corr_filename=s_corr_p,
             ps_mask_filename=out_paths.stitched_ps_file,
             pge_runconfig=pge_runconfig,

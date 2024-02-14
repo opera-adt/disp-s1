@@ -40,10 +40,10 @@ def get_params(
         Path(f"{process_dir}/interferograms/").glob(f"{pair}.cor")
     )
     logger.info(param_dict["ifg_corr_filename"])
-    param_dict["tcorr_filename"] = next(
+    param_dict["temp_coh_filename"] = next(
         Path(f"{process_dir}/interferograms/").glob("temporal_coherence*tif")
     )
-    logger.info(param_dict["tcorr_filename"])
+    logger.info(param_dict["temp_coh_filename"])
     param_dict["ps_mask_filename"] = next(
         Path(f"{process_dir}/interferograms/").glob("ps_mask_looked.tif")
     )
@@ -85,7 +85,7 @@ def make_product(param_dict: dict) -> None:
     create_output_product(
         unw_filename=param_dict["unw_filename"],
         conncomp_filename=param_dict["conncomp_filename"],
-        tcorr_filename=param_dict["tcorr_filename"],
+        temp_coh_filename=param_dict["temp_coh_filename"],
         ifg_corr_filename=param_dict["ifg_corr_filename"],
         output_name=param_dict["output_name"],
         corrections={},

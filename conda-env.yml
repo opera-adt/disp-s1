@@ -9,6 +9,7 @@ dependencies:
   - isce3>=0.16.0
   - dolphin>=0.6.0
   - h5netcdf>=1.0
+  - snaphu>=0.1.0
   - pillow>=7.0
   - pydantic>=2.1
   - ruamel.yaml>=0.15

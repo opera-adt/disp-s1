@@ -80,7 +80,7 @@ echo "To run the image and see the help message:"
 echo "docker run --rm -it $image_name disp-s1 --help"
 #
 echo "To run on a PGE runconfig:"
-echo "docker run --user \$(id -u):\$(id -g) -v \$PWD:/work --rm -it $image_name disp-s1 runconfig.yaml"
+echo "docker run --user \$(id -u):\$(id -g) -v \$PWD:/work --rm -it $image_name disp-s1 run runconfig.yaml"
 # where...
 #     --user $(id -u):$(id -g)  # Needed to avoid permission issues when writing to the mounted volume.
 #     -v $PWD:/work  # Mounts the current directory to the /work directory in the container.

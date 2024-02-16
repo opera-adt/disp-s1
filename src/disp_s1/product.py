@@ -41,6 +41,10 @@ GLOBAL_ATTRS = {
     "title": "OPERA L3_DISP-S1 Product",
 }
 
+# Use the "paging file space strategy"
+# https://docs.h5py.org/en/stable/high/file.html#h5py.File
+FILE_OPTS = {"fs_strategy": "page", "fs_page_size": 2**22}
+
 # Convert chunks to a tuple or h5py errors
 HDF5_OPTS = io.DEFAULT_HDF5_OPTIONS.copy()
 HDF5_OPTS["chunks"] = tuple(HDF5_OPTS["chunks"])  # type: ignore
@@ -123,7 +127,7 @@ def create_output_product(
     ]
     end_time = max(end_times)
 
-    with h5netcdf.File(output_name, "w") as f:
+    with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
         # Create the NetCDF file
         f.attrs.update(GLOBAL_ATTRS)
 

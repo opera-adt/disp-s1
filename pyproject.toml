@@ -49,6 +49,8 @@ version_scheme = "no-guess-dev" # Will not guess the next version
 [tool.ruff]
 src = ["src"]
 unsafe-fixes = true
+
+[tool.ruff.lint]
 select = [
   "A",   # flake8-builtins
   "ARG", # flake8-unused-arguments
@@ -66,28 +68,28 @@ select = [
 ]
 
 ignore = [
-  "D100", # Missing docstring in public module
-  "D104", # Missing docstring in public package
-  "D105", # Missing docstring in magic method
-  "D203", # 1 blank line required before class docstring
-  "D213", # Multi-line docstring summary should start at the second line
-  "N803", # Argument name should be lowercase
-  "N806", # Variable _ in function should be lowercase
+  "D100",   # Missing docstring in public module
+  "D104",   # Missing docstring in public package
+  "D105",   # Missing docstring in magic method
+  "D203",   # 1 blank line required before class docstring
+  "D213",   # Multi-line docstring summary should start at the second line
+  "N803",   # Argument name should be lowercase
+  "N806",   # Variable _ in function should be lowercase
   "PIE796", # Non-unique values are redundant and likely a mistake.
-  "PLR",  # Pylint Refactor
+  "PLR",    # Pylint Refactor
   "PTH123", # `open()` should be replaced by `Path.open()`
   "PTH207", # "Replace `glob` with `Path.glob` or `Path.rglob`
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F403"]
+"tests/**" = ["D", "N", "PTH"]
 
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 
-[tool.ruff.per-file-ignores]
-"**/__init__.py" = ["F403"]
-"tests/**" = ["D", "N", "PTH"]
 
 [tool.pytest.ini_options]
 doctest_optionflags = "NORMALIZE_WHITESPACE NUMBER"

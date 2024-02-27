@@ -71,6 +71,8 @@ ARG MAMBA_DOCKERFILE_ACTIVATE=1
 # --no-deps because they are installed with conda
 RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.15.1
 RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.3.0
+# Bump version of snaphu for Gamma delivery
+RUN pip install snaphu>=0.2.1
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .

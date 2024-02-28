@@ -8,8 +8,9 @@ dependencies:
   - click>=7.0
   - isce3>=0.16.0
   - h5netcdf>=1.0
-  - snaphu>=0.1.0
   - pillow>=7.0
+  - pyaps3
+  - snaphu>=0.2.1
   - tophu>=0.2.0
   - yamale
  # dolphin

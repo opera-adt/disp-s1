@@ -46,16 +46,20 @@ def run(
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
-    for unw_p, cc_p, s_corr_p in zip(
+    for unw_p, cc_p, s_corr_p, tropo_p, iono_p in zip(
         out_paths.unwrapped_paths,
         out_paths.conncomp_paths,
         out_paths.stitched_cor_paths,
+        out_paths.tropospheric_corrections,
+        out_paths.ionospheric_corrections,
     ):
         output_name = out_dir / unw_p.with_suffix(".nc").name
         # Get the current list of acq times for this product
         dair_pair = get_dates(output_name)
         secondary_date = dair_pair[1]
         cur_slc_list = date_to_slcs[(secondary_date,)]
+
+        corrections = {"troposphere": tropo_p, "ionosphere": iono_p}
 
         product.create_output_product(
             output_name=output_name,
@@ -66,7 +70,7 @@ def run(
             ps_mask_filename=out_paths.stitched_ps_file,
             pge_runconfig=pge_runconfig,
             cslc_files=cur_slc_list,
-            corrections={},
+            corrections=corrections,
         )
 
     if pge_runconfig.product_path_group.save_compressed_slc:

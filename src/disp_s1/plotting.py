@@ -46,10 +46,11 @@ def plot_product(
     dsets = [
         "unwrapped_phase",
         "connected_component_labels",
-        "temporal_correlation",
+        "temporal_coherence",
         "interferometric_correlation",
+        "persistent_scatterer_mask",
     ]
-    cmaps = [unwrapped_phase_cmap, "jet", "viridis", "plasma"]
+    cmaps = [unwrapped_phase_cmap, "tab10", "viridis", "plasma", "gray"]
 
     vms = [unwrapped_phase_limits, (0, None), (0, 1), (0, 1)]
 
@@ -57,7 +58,7 @@ def plot_product(
         bad_mask = ds["connected_component_labels"][::downsample, ::downsample] == 0
 
     fig, axes = plt.subplots(
-        ncols=2, nrows=2, sharex=True, sharey=True, figsize=figsize
+        ncols=2, nrows=3, sharex=True, sharey=True, figsize=figsize
     )
 
     for ax, dset_name, cmap, vm in zip(axes.ravel(), dsets, cmaps, vms):

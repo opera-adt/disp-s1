@@ -1,6 +1,7 @@
 from dataclasses import dataclass, fields
 
 import numpy as np
+from dolphin.unwrap import DEFAULT_CCL_NODATA
 from numpy.typing import DTypeLike
 
 
@@ -33,7 +34,7 @@ class DispProductInfo:
         return cls(
             name="connected_component_labels",
             description="Connected component labels of the unwrapped phase",
-            fillvalue=0,
+            fillvalue=DEFAULT_CCL_NODATA,
             attrs={"units": "unitless"},
         )
 

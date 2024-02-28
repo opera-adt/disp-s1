@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dolphin._log import get_log, log_runtime
+from dolphin.io import load_gdal
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
@@ -59,7 +60,13 @@ def run(
         secondary_date = dair_pair[1]
         cur_slc_list = date_to_slcs[(secondary_date,)]
 
-        corrections = {"troposphere": tropo_p, "ionosphere": iono_p}
+        if tropo_p and iono_p:
+            corrections = {
+                "troposphere": load_gdal(tropo_p),
+                "ionosphere": load_gdal(iono_p),
+            }
+        else:
+            logger.error(f"Missing {tropo_p = }, {iono_p = }. Creating empty layer.")
 
         product.create_output_product(
             output_name=output_name,

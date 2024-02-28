@@ -1,14 +1,14 @@
 #!/usr/bin/env python
+import logging
 from pathlib import Path
 
 import h5py
 import numpy as np
 from dolphin import io
-from dolphin._log import get_log
 from dolphin._types import Filename
 from numpy.typing import ArrayLike
 
-logger = get_log()
+logger = logging.getLogger(__name__)
 
 
 DSET_DEFAULT = "unwrapped_phase"
@@ -297,8 +297,13 @@ def _validate_unwrapped_phase(
 
     # Get a mask of valid pixels (pixels that had nonzero connected component label) in
     # both the test & reference data.
-    test_valid_mask = np.not_equal(test_conncomps, 0)
-    ref_valid_mask = np.not_equal(ref_conncomps, 0)
+    test_nodata = test_conncomps.attrs["_FillValue"]
+    test_nodata_mask = np.not_equal(test_conncomps, test_nodata)
+    ref_nodata = ref_conncomps.attrs["_FillValue"]
+    ref_nodata_mask = np.not_equal(ref_conncomps, ref_nodata)
+
+    test_valid_mask = np.not_equal(test_conncomps, 0) & test_nodata_mask
+    ref_valid_mask = np.not_equal(ref_conncomps, 0) & ref_nodata_mask
     valid_mask = test_valid_mask & ref_valid_mask
 
     # Get the total valid area in both datasets.

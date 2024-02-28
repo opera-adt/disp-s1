@@ -7,7 +7,7 @@ dependencies:
   - git  # for pip install, due to setuptools_scm
   - click>=7.0
   - isce3>=0.16.0
-  - dolphin>=0.15.2
+  - dolphin>=0.15.3
   - h5netcdf>=1.0
   - snaphu>=0.2.1
   - pillow>=7.0

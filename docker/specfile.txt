@@ -1,4 +1,3 @@
-
 # This file may be used to create an environment using:
 # $ conda create --name <env> --file <this file>
 # platform: linux-64
@@ -175,7 +174,7 @@ https://conda.anaconda.org/conda-forge/linux-64/ruamel.yaml.clib-0.2.8-py311h459
 https://conda.anaconda.org/conda-forge/linux-64/s2n-1.4.5-h06160fa_0.conda#0d3d9c621239b674ac1b738df00a0793
 https://conda.anaconda.org/conda-forge/linux-64/scipy-1.12.0-py311h64a7726_2.conda#24ca5107ab75c5521067b8ba505dfae5
 https://conda.anaconda.org/conda-forge/linux-64/shapely-2.0.3-py311h2032efe_0.conda#e982956906078eeac9feb3b8db10d011
-https://conda.anaconda.org/conda-forge/linux-64/snaphu-0.2.0-py311h459d7ec_0.conda#9d04f068381a76117304394c4e25217d
+https://conda.anaconda.org/conda-forge/linux-64/snaphu-0.2.1-py311h459d7ec_0.conda#bb8fef96a472e0cf345a5587739a25e3
 https://conda.anaconda.org/conda-forge/linux-64/snappy-1.1.10-h9fff704_0.conda#e6d228cd0bb74a51dd18f5bfce0b4115
 https://conda.anaconda.org/conda-forge/linux-64/sqlite-3.45.1-h2c6b66d_0.conda#93acf31b379acebada263b9bce3dc6ed
 https://conda.anaconda.org/conda-forge/linux-64/tiledb-2.20.0-hd75ad12_1.conda#aba964b8fc1257312e407b975aaa5659

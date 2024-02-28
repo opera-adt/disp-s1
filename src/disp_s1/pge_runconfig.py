@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import ClassVar, List, Optional, Union
 
 from dolphin.workflows.config import (
+    CorrectionOptions,
     DisplacementWorkflow,
     InterferogramNetwork,
     OutputOptions,
@@ -236,6 +237,10 @@ class RunConfig(YamlModel):
         cslc_file_list = self.input_file_group.cslc_file_list
         scratch_directory = self.product_path_group.scratch_path
         mask_file = self.dynamic_ancillary_file_group.mask_file
+        geometry_files = self.dynamic_ancillary_file_group.geometry_files
+        troposphere_files = self.dynamic_ancillary_file_group.troposphere_files
+        ionosphere_files = self.dynamic_ancillary_file_group.ionosphere_files
+        dem_file = self.dynamic_ancillary_file_group.dem_file
         amplitude_mean_files = self.dynamic_ancillary_file_group.amplitude_mean_files
         amplitude_dispersion_files = (
             self.dynamic_ancillary_file_group.amplitude_dispersion_files
@@ -267,6 +272,12 @@ class RunConfig(YamlModel):
             amplitude_dispersion_files=amplitude_dispersion_files,
             # These ones directly translate
             worker_settings=self.worker_settings,
+            correction_options=CorrectionOptions(
+                ionosphere_files=ionosphere_files,
+                troposphere_files=troposphere_files,
+                geometry_files=geometry_files,
+                dem_file=dem_file,
+            ),
             log_file=self.log_file,
             # Finally, the rest of the parameters are in the algorithm parameters
             **param_dict,

@@ -50,7 +50,7 @@ def plot_product(
         "interferometric_correlation",
         "persistent_scatterer_mask",
     ]
-    cmaps = [unwrapped_phase_cmap, "tab10", "viridis", "plasma", "gray"]
+    cmaps = [unwrapped_phase_cmap, "tab10", "viridis", "plasma", "plasma_r"]
 
     vms = [unwrapped_phase_limits, (0, None), (0, 1), (0, 1), (0, 1)]
 

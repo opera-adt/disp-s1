@@ -107,9 +107,7 @@ def create_output_product(
 
     conncomp_arr = io.load_gdal(conncomp_filename)
     temp_coh_arr = io.load_gdal(temp_coh_filename)
-    truncate_mantissa(temp_coh_arr)
     ifg_corr_arr = io.load_gdal(ifg_corr_filename)
-    truncate_mantissa(ifg_corr_arr)
 
     # Get the nodata mask (which for snaphu is 0)
     mask = unw_arr == 0
@@ -154,6 +152,8 @@ def create_output_product(
         ]
         disp_products = list(zip(disp_products_info, disp_data))
         for nfo, data in disp_products:
+            if np.issubdtype(data.dtype, np.floating):
+                truncate_mantissa(data)
             _create_geo_dataset(
                 group=f,
                 name=nfo.name,
@@ -212,6 +212,7 @@ def _create_corrections_group(
             long_name="time corresponding to beginning of Displacement frame",
         )
         troposphere = corrections.get("troposphere", empty_arr)
+        truncate_mantissa(troposphere)
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
@@ -221,6 +222,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         ionosphere = corrections.get("ionosphere", empty_arr)
+        truncate_mantissa(ionosphere)
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
@@ -230,6 +232,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         solid_earth = corrections.get("solid_earth", empty_arr)
+        truncate_mantissa(solid_earth)
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
@@ -239,6 +242,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         plate_motion = corrections.get("plate_motion", empty_arr)
+        truncate_mantissa(plate_motion)
         _create_geo_dataset(
             group=corrections_group,
             name="plate_motion",

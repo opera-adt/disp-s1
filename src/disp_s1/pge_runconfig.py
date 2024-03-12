@@ -210,13 +210,13 @@ class RunConfig(YamlModel):
         if "input_file_group" not in kwargs:
             kwargs["input_file_group"] = InputFileGroup._construct_empty()
         if "dynamic_ancillary_file_group" not in kwargs:
-            kwargs[
-                "dynamic_ancillary_file_group"
-            ] = DynamicAncillaryFileGroup._construct_empty()
+            kwargs["dynamic_ancillary_file_group"] = (
+                DynamicAncillaryFileGroup._construct_empty()
+            )
         if "static_ancillary_file_group" not in kwargs:
-            kwargs[
-                "static_ancillary_file_group"
-            ] = StaticAncillaryFileGroup._construct_empty()
+            kwargs["static_ancillary_file_group"] = (
+                StaticAncillaryFileGroup._construct_empty()
+            )
         if "product_path_group" not in kwargs:
             kwargs["product_path_group"] = ProductPathGroup._construct_empty()
         return super().model_construct(

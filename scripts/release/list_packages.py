@@ -3,6 +3,7 @@
 
 Optionally list packages installed inside a container image instead.
 """
+
 from __future__ import annotations
 
 import argparse

@@ -197,9 +197,9 @@ def _create_corrections_group(
     with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
-        corrections_group.attrs[
-            "description"
-        ] = "Phase corrections applied to the unwrapped_phase"
+        corrections_group.attrs["description"] = (
+            "Phase corrections applied to the unwrapped_phase"
+        )
         empty_arr = np.zeros(shape, dtype="float32")
 
         # TODO: Are we going to downsample these for space?

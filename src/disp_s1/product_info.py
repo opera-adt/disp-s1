@@ -80,16 +80,16 @@ class DispProductsInfo:
     """Container for instantiated displacement product dataset info containers."""
 
     unwrapped_phase: DispProductInfo = DispProductInfo.unwrapped_phase()
-    connected_component_labels: (
-        DispProductInfo
-    ) = DispProductInfo.connected_component_labels()
+    connected_component_labels: DispProductInfo = (
+        DispProductInfo.connected_component_labels()
+    )
     temporal_coherence: DispProductInfo = DispProductInfo.temporal_coherence()
-    interferometric_correlation: (
-        DispProductInfo
-    ) = DispProductInfo.interferometric_correlation()
-    persistent_scatterer_mask: (
-        DispProductInfo
-    ) = DispProductInfo.persistent_scatterer_mask()
+    interferometric_correlation: DispProductInfo = (
+        DispProductInfo.interferometric_correlation()
+    )
+    persistent_scatterer_mask: DispProductInfo = (
+        DispProductInfo.persistent_scatterer_mask()
+    )
 
     def as_list(self):
         """Return all displacement dataset info containers as a list."""

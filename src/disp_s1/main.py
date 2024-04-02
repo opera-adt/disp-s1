@@ -47,38 +47,97 @@ def run(
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
-    for unw_p, cc_p, s_corr_p, tropo_p, iono_p in zip(
-        out_paths.unwrapped_paths,
-        out_paths.conncomp_paths,
-        out_paths.stitched_cor_paths,
-        out_paths.tropospheric_corrections,
-        out_paths.ionospheric_corrections,
-    ):
+
+    # group dataset based on date to find corresponding files and set None
+    # for the layers that do not exist: correction layers specifically
+    grouped_unwrapped_paths = group_by_date(out_paths.unwrapped_paths)
+    grouped_conncomp_paths = group_by_date(out_paths.conncomp_paths)
+    grouped_cor_paths = group_by_date(out_paths.stitched_cor_paths)
+    grouped_tropospheric_corrections = None
+    grouped_ionospheric_corrections = None
+
+    if out_paths.tropospheric_corrections is not None:
+        grouped_tropospheric_corrections = group_by_date(
+            out_paths.tropospheric_corrections
+        )
+
+    if out_paths.ionospheric_corrections is not None:
+        grouped_ionospheric_corrections = group_by_date(
+            out_paths.ionospheric_corrections
+        )
+
+    corrections = {}
+
+    # Package the existing layers for each interferogram
+    # TODO: we need to think about how to package if a network
+    # inversion is applied and interferograms are not single reference
+    for key in grouped_unwrapped_paths.keys():
+        if grouped_tropospheric_corrections is not None:
+            corrections["troposphere"] = load_gdal(
+                grouped_tropospheric_corrections.get(key)[0]
+            )
+        else:
+            logger.warning("Missing tropospheric correction. Creating empty layer.")
+
+        if grouped_ionospheric_corrections is not None:
+            corrections["ionosphere"] = load_gdal(
+                grouped_ionospheric_corrections.get(key)[0]
+            )
+        else:
+            logger.warning("Missing ionospheric correction. Creating empty layer.")
+
+        unw_p = grouped_unwrapped_paths.get(key)[0]
         output_name = out_dir / unw_p.with_suffix(".nc").name
         # Get the current list of acq times for this product
         dair_pair = get_dates(output_name)
         secondary_date = dair_pair[1]
         cur_slc_list = date_to_slcs[(secondary_date,)]
 
-        if tropo_p and iono_p:
-            corrections = {
-                "troposphere": load_gdal(tropo_p),
-                "ionosphere": load_gdal(iono_p),
-            }
-        else:
-            logger.error(f"Missing {tropo_p = }, {iono_p = }. Creating empty layer.")
-
         product.create_output_product(
             output_name=output_name,
             unw_filename=unw_p,
-            conncomp_filename=cc_p,
+            conncomp_filename=grouped_conncomp_paths.get(key)[0],
             temp_coh_filename=out_paths.stitched_temp_coh_file,
-            ifg_corr_filename=s_corr_p,
+            ifg_corr_filename=grouped_cor_paths.get(key)[0],
             ps_mask_filename=out_paths.stitched_ps_file,
             pge_runconfig=pge_runconfig,
             cslc_files=cur_slc_list,
             corrections=corrections,
         )
+
+    # for unw_p, cc_p, s_corr_p, tropo_p, iono_p in zip(
+    #     out_paths.unwrapped_paths,
+    #     out_paths.conncomp_paths,
+    #     out_paths.stitched_cor_paths,
+    #     out_paths.tropospheric_corrections,
+    #     out_paths.ionospheric_corrections,
+    # ):
+    #     output_name = out_dir / unw_p.with_suffix(".nc").name
+    #     # Get the current list of acq times for this product
+    #     dair_pair = get_dates(output_name)
+    #     secondary_date = dair_pair[1]
+    #     cur_slc_list = date_to_slcs[(secondary_date,)]
+
+    #     if tropo_p and iono_p:
+    #         corrections = {
+    #             "troposphere": load_gdal(tropo_p),
+    #             "ionosphere": load_gdal(iono_p),
+    #         }
+    #     else:
+    #         logger.error(f"Missing {tropo_p = }, {iono_p = }. Creating empty layer.")
+    #         corrections = None
+
+    #     product.create_output_product(
+    #         output_name=output_name,
+    #         unw_filename=unw_p,
+    #         conncomp_filename=cc_p,
+    #         temp_coh_filename=out_paths.stitched_temp_coh_file,
+    #         ifg_corr_filename=s_corr_p,
+    #         ps_mask_filename=out_paths.stitched_ps_file,
+    #         pge_runconfig=pge_runconfig,
+    #         cslc_files=cur_slc_list,
+    #         corrections=corrections,
+    #     )
 
     if pge_runconfig.product_path_group.save_compressed_slc:
         logger.info(f"Saving {len(out_paths.comp_slc_dict.items())} compressed SLCs")

@@ -105,40 +105,6 @@ def run(
             corrections=corrections,
         )
 
-    # for unw_p, cc_p, s_corr_p, tropo_p, iono_p in zip(
-    #     out_paths.unwrapped_paths,
-    #     out_paths.conncomp_paths,
-    #     out_paths.stitched_cor_paths,
-    #     out_paths.tropospheric_corrections,
-    #     out_paths.ionospheric_corrections,
-    # ):
-    #     output_name = out_dir / unw_p.with_suffix(".nc").name
-    #     # Get the current list of acq times for this product
-    #     dair_pair = get_dates(output_name)
-    #     secondary_date = dair_pair[1]
-    #     cur_slc_list = date_to_slcs[(secondary_date,)]
-
-    #     if tropo_p and iono_p:
-    #         corrections = {
-    #             "troposphere": load_gdal(tropo_p),
-    #             "ionosphere": load_gdal(iono_p),
-    #         }
-    #     else:
-    #         logger.error(f"Missing {tropo_p = }, {iono_p = }. Creating empty layer.")
-    #         corrections = None
-
-    #     product.create_output_product(
-    #         output_name=output_name,
-    #         unw_filename=unw_p,
-    #         conncomp_filename=cc_p,
-    #         temp_coh_filename=out_paths.stitched_temp_coh_file,
-    #         ifg_corr_filename=s_corr_p,
-    #         ps_mask_filename=out_paths.stitched_ps_file,
-    #         pge_runconfig=pge_runconfig,
-    #         cslc_files=cur_slc_list,
-    #         corrections=corrections,
-    #     )
-
     if pge_runconfig.product_path_group.save_compressed_slc:
         logger.info(f"Saving {len(out_paths.comp_slc_dict.items())} compressed SLCs")
         output_dir = out_dir / "compressed_slcs"

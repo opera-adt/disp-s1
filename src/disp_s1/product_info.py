@@ -19,13 +19,13 @@ class DispProductInfo:
     attrs: dict
 
     @classmethod
-    def unwrapped_phase(cls):
-        """Return container of unwrapped phase specific information."""
+    def range_change(cls):
+        """Return container of range change specific information."""
         return cls(
-            name="unwrapped_phase",
-            description="Unwrapped phase",
+            name="range_change",
+            description="Range change",
             fillvalue=np.nan,
-            attrs={"units": "radians"},
+            attrs={"units": "meters"},
         )
 
     @classmethod
@@ -79,7 +79,7 @@ class DispProductInfo:
 class DispProductsInfo:
     """Container for instantiated displacement product dataset info containers."""
 
-    unwrapped_phase: DispProductInfo = DispProductInfo.unwrapped_phase()
+    range_change: DispProductInfo = DispProductInfo.range_change()
     connected_component_labels: DispProductInfo = (
         DispProductInfo.connected_component_labels()
     )

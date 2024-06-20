@@ -20,11 +20,11 @@ class DispProductInfo:
 
     @classmethod
     def displacement(cls):
-        """Return container of range change specific information."""
+        """Return container of displacement specific information."""
         return cls(
             name="displacement",
             description=(
-                "Displacement (w/noise) in LOS. "
+                "Displacement with noise in Line-of-Sight (LOS). "
                 "Positive values indicate apparent motion towards the platform."
             ),
             fillvalue=np.nan,

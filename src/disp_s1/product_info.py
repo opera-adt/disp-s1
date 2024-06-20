@@ -19,11 +19,14 @@ class DispProductInfo:
     attrs: dict
 
     @classmethod
-    def range_change(cls):
+    def displacement(cls):
         """Return container of range change specific information."""
         return cls(
-            name="range_change",
-            description="Range change",
+            name="displacement",
+            description=(
+                "Displacement (w/noise) in LOS. "
+                "Positive values indicate apparent motion towards the platform."
+            ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
         )
@@ -79,7 +82,7 @@ class DispProductInfo:
 class DispProductsInfo:
     """Container for instantiated displacement product dataset info containers."""
 
-    range_change: DispProductInfo = DispProductInfo.range_change()
+    displacement: DispProductInfo = DispProductInfo.displacement()
     connected_component_labels: DispProductInfo = (
         DispProductInfo.connected_component_labels()
     )

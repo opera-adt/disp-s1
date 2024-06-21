@@ -127,6 +127,10 @@ def create_output_product(
     ]
     end_time = max(end_times)
 
+    wavelength, _ = _parse_cslc_product.get_radar_wavelength(cslc_files[-1])
+    phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
+    disp_arr = unw_arr * phase2disp
+
     with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
         # Create the NetCDF file
         f.attrs.update(GLOBAL_ATTRS)
@@ -135,7 +139,7 @@ def create_output_product(
         _create_grid_mapping(group=f, crs=crs, gt=gt)
 
         # Set up the X/Y variables for each group
-        _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
+        _create_yx_dsets(group=f, gt=gt, shape=disp_arr.shape, include_time=True)
         _create_time_dset(
             group=f,
             time=start_time,
@@ -146,7 +150,7 @@ def create_output_product(
         # Write the displacement array / conncomp arrays
         disp_products_info = DISP_PRODUCTS_INFO
         disp_data = [
-            unw_arr,
+            disp_arr,
             conncomp_arr,
             temp_coh_arr,
             ifg_corr_arr,
@@ -169,7 +173,7 @@ def create_output_product(
     _create_corrections_group(
         output_name=output_name,
         corrections=corrections,
-        shape=unw_arr.shape,
+        shape=disp_arr.shape,
         gt=gt,
         crs=crs,
         start_time=min(start_times),

@@ -568,9 +568,19 @@ def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Va
 
 
 def create_compressed_products(
-    comp_slc_dict: dict[str, list[Path]], output_dir: Filename
+    comp_slc_dict: dict[str, list[Path]],
+    output_dir: Filename,
 ):
-    """Make the compressed SLC output product."""
+    """Make the compressed SLC output product.
+
+    Parameters
+    ----------
+    comp_slc_dict : dict[str, list[Path]]
+        A dictionary mapping burst IDs to lists of compressed SLC files.
+    output_dir : Filename
+        The directory to write the compressed SLC products to.
+
+    """
 
     def form_name(filename: Path, burst: str):
         # filename: compressed_20180222_20180716.tif
@@ -580,6 +590,7 @@ def create_compressed_products(
     attrs = GLOBAL_ATTRS.copy()
     attrs["title"] = "Compressed SLC"
     *parts, dset_name = OPERA_DATASET_NAME.split("/")
+    dispersion_dset_name = "amplitude_dispersion"
     group_name = "/".join(parts)
 
     for burst, comp_slc_files in comp_slc_dict.items():
@@ -591,7 +602,7 @@ def create_compressed_products(
 
             crs = io.get_raster_crs(comp_slc_file)
             gt = io.get_raster_gt(comp_slc_file)
-            data = io.load_gdal(comp_slc_file)
+            data = io.load_gdal(comp_slc_file, band=1)
             truncate_mantissa(data)
 
             # Input metadata is stored within the GDAL "DOLPHIN" domain
@@ -620,4 +631,15 @@ def create_compressed_products(
                     description="Compressed SLC product",
                     fillvalue=np.nan + 0j,
                     attrs=attrs,
+                )
+                # Add the amplitude dispersion
+                amp_dispersion_data = io.load_gdal(comp_slc_file, band=2)
+                truncate_mantissa(amp_dispersion_data)
+                _create_geo_dataset(
+                    group=data_group,
+                    name=dispersion_dset_name,
+                    data=amp_dispersion_data,
+                    description="Amplitude dispersion for the compressed SLC files.",
+                    fillvalue=np.nan,
+                    attrs={"units": "unitless"},
                 )

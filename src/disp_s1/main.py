@@ -32,7 +32,7 @@ def run(
         PGE-specific metadata for the output product.
 
     """
-    setup_logging(name="disp_s1", debug=debug)
+    setup_logging(debug=debug, filename=cfg.log_file)
     # ######################################
     # 1. Run dolphin's displacement workflow
     # ######################################

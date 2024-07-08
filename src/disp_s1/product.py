@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 from io import StringIO
 from pathlib import Path
 from typing import Any, Optional, Sequence, Union
@@ -13,7 +14,6 @@ import numpy as np
 import pyproj
 from dolphin import __version__ as dolphin_version
 from dolphin import io
-from dolphin._log import get_log
 from dolphin._types import Filename
 from dolphin.utils import format_dates
 from isce3.core.types import truncate_mantissa
@@ -27,7 +27,7 @@ from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
 from .product_info import DISP_PRODUCTS_INFO
 
-logger = get_log(__name__)
+logger = logging.getLogger(__name__)
 
 CORRECTIONS_GROUP_NAME = "corrections"
 IDENTIFICATION_GROUP_NAME = "identification"

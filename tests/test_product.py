@@ -60,10 +60,15 @@ def comp_slc(tmp_path) -> str:
     shape = (256, 256)
 
     data = np.random.randn(*shape).astype(np.complex64)
-    date_pair = "20220101_20220102"
-    filename = tmp_path / f"compressed_{date_pair}.tif"
+    date_str = "20220101_20220102_20220103"
+    filename = tmp_path / f"compressed_{date_str}.tif"
+    amp_disp = np.random.randn(*shape).astype(np.complex64) ** 2
+    data_stack = np.stack([data, amp_disp])
     io.write_arr(
-        arr=data, output_name=filename, geotransform=geotransform, projection=srs
+        arr=data_stack,
+        output_name=filename,
+        geotransform=geotransform,
+        projection=srs,
     )
     return filename
 

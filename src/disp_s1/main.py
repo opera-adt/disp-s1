@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dolphin._log import get_log, log_runtime
+import logging
+
+from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import run as run_displacement
@@ -8,6 +10,8 @@ from opera_utils import get_dates, group_by_date
 
 from disp_s1 import product
 from disp_s1.pge_runconfig import RunConfig
+
+logger = logging.getLogger(__name__)
 
 
 @log_runtime
@@ -28,6 +32,7 @@ def run(
         PGE-specific metadata for the output product.
 
     """
+    setup_logging(debug=debug, filename=cfg.log_file)
     # ######################################
     # 1. Run dolphin's displacement workflow
     # ######################################
@@ -43,7 +48,6 @@ def run(
         date_idx=0,
     )
 
-    logger = get_log(name="disp_s1", debug=debug)
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")

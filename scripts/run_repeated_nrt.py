@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from itertools import chain
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from dolphin import io, ps, stack, utils
-from dolphin._log import get_log, log_runtime
+from dolphin._log import log_runtime, setup_logging
 from dolphin._types import Filename
 from dolphin.workflows import s1_disp
 from dolphin.workflows.config import (
@@ -18,7 +19,7 @@ from dolphin.workflows.config import (
 )
 from opera_utils import OPERA_DATASET_NAME, group_by_burst, make_nodata_mask
 
-logger = get_log("dolphin.run_repeated_nrt")
+logger = logging.getLogger("dolphin")
 
 
 def _create_cfg(
@@ -375,6 +376,7 @@ def _run_one_stack(
 @log_runtime
 def main(arg_dict: dict) -> None:
     """Get the command line arguments and run the workflow."""
+    setup_logging(filename=__name__ + ".log")
     arg_dict = vars(args)
     ministack_size = arg_dict.pop("ministack_size")
     # TODO: verify this is fine to sort them by date?

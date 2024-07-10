@@ -26,9 +26,6 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         f" --ministack-size 20 {single_flag}"
         # Dynamic ancillary files #
         ###########################
-        # PS mean/dispersion files:
-        " --amplitude-mean-files ./dynamic_ancillary_files/ps_files/*mean*"
-        " --amplitude-dispersion-files ./dynamic_ancillary_files/ps_files/*dispersion*"
         # TODO # seasonal coherence averages
         # Troposphere files:
         " --troposphere-files ./dynamic_ancillary_files/troposphere_files/*"

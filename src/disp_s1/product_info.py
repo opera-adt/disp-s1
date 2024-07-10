@@ -19,13 +19,16 @@ class DispProductInfo:
     attrs: dict
 
     @classmethod
-    def unwrapped_phase(cls):
-        """Return container of unwrapped phase specific information."""
+    def displacement(cls):
+        """Return container of displacement specific information."""
         return cls(
-            name="unwrapped_phase",
-            description="Unwrapped phase",
+            name="displacement",
+            description=(
+                "Displacement with noise in Line-of-Sight (LOS). "
+                "Positive values indicate apparent motion towards the platform."
+            ),
             fillvalue=np.nan,
-            attrs={"units": "radians"},
+            attrs={"units": "meters"},
         )
 
     @classmethod
@@ -79,17 +82,17 @@ class DispProductInfo:
 class DispProductsInfo:
     """Container for instantiated displacement product dataset info containers."""
 
-    unwrapped_phase: DispProductInfo = DispProductInfo.unwrapped_phase()
-    connected_component_labels: (
-        DispProductInfo
-    ) = DispProductInfo.connected_component_labels()
+    displacement: DispProductInfo = DispProductInfo.displacement()
+    connected_component_labels: DispProductInfo = (
+        DispProductInfo.connected_component_labels()
+    )
     temporal_coherence: DispProductInfo = DispProductInfo.temporal_coherence()
-    interferometric_correlation: (
-        DispProductInfo
-    ) = DispProductInfo.interferometric_correlation()
-    persistent_scatterer_mask: (
-        DispProductInfo
-    ) = DispProductInfo.persistent_scatterer_mask()
+    interferometric_correlation: DispProductInfo = (
+        DispProductInfo.interferometric_correlation()
+    )
+    persistent_scatterer_mask: DispProductInfo = (
+        DispProductInfo.persistent_scatterer_mask()
+    )
 
     def as_list(self):
         """Return all displacement dataset info containers as a list."""

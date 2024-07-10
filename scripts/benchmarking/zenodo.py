@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional, Union
 
 import pooch
 import requests
-from dolphin._log import get_log
 from dolphin._types import Filename
 
-logger = get_log(__name__)
+logger = logging.getLogger(__name__)
 # This DOI represents all versions, and will always resolve to the latest one
 RECORD_ID = "1171148"
 

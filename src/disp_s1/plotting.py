@@ -50,7 +50,7 @@ def plot_product(
         "interferometric_correlation",
         "persistent_scatterer_mask",
     ]
-    cmaps = [unwrapped_phase_cmap, "tab10", "viridis", "plasma", "gray"]
+    cmaps = [unwrapped_phase_cmap, "tab10", "viridis", "plasma", "plasma_r"]
 
     vms = [unwrapped_phase_limits, (0, None), (0, 1), (0, 1), (0, 1)]
 
@@ -139,7 +139,10 @@ class _HDF5GroupExplorer:
 
 
 def create_explorer_widget(
-    hf: h5py.File, load_less_than: float = 1e3
+    hf: h5py.File,
+    load_less_than: float = 1e3,
+    subsample_factor: tuple[int, int] = (20, 20),
+    thumbnail_width="600px",
 ) -> widgets.Widget:
     """Make a widget in Jupyter to explore a h5py file.
 
@@ -152,8 +155,10 @@ def create_explorer_widget(
 
     def _make_thumbnail(image) -> widgets.Image:
         # Create a thumbnail of the dataset
-        fig, ax = plt.subplots(figsize=(5, 5))
-        ax.imshow(image, cmap="gray", vmax=np.nanpercentile(image, 99))
+        fig, ax = plt.subplots(figsize=(5, 4))
+        vmax = np.nanpercentile(image, 99)
+        vmin = np.nanpercentile(image, 1)
+        ax.imshow(image, cmap="gray", vmax=vmax, vmin=vmin)
         ax.axis("off")
         buf = BytesIO()
         plt.savefig(buf, format="png", dpi=150)
@@ -182,11 +187,20 @@ def create_explorer_widget(
                 content += f"<br>Value: {item[()]}"
             html_widget = widgets.HTML(content)
 
-            if not item.ndim == 2 or not item.dtype == np.complex64:
+            if not item.ndim == 2:
                 return html_widget
-            # If the dataset is a 2D complex array, make a thumbnail
-            image_widget = _make_thumbnail(np.abs(item[::5, ::10]))
-            return widgets.VBox([image_widget, html_widget])
+            # make a thumbnail
+            # If the dataset is a 2D complex array, use abs
+            sub_r, sub_c = subsample_factor
+            arr = item[::sub_r, ::sub_c]
+            if item.dtype == np.complex64:
+                image_widget = _make_thumbnail(np.abs(arr))
+            else:
+                image_widget = _make_thumbnail(arr)
+            return widgets.VBox(
+                [image_widget, html_widget],
+                layout=widgets.Layout(width=thumbnail_width),
+            )
 
         else:
             # Other types of items

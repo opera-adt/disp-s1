@@ -60,10 +60,16 @@ def comp_slc(tmp_path) -> str:
     shape = (256, 256)
 
     data = np.random.randn(*shape).astype(np.complex64)
-    date_pair = "20220101_20220102"
-    filename = tmp_path / f"compressed_{date_pair}.tif"
+    date_str = "20220101_20220102_20220103"
+    burst = "t123_123456_iw1"
+    filename = tmp_path / f"compressed_{burst}_{date_str}.tif"
+    amp_disp = np.random.randn(*shape).astype(np.complex64) ** 2
+    data_stack = np.stack([data, amp_disp])
     io.write_arr(
-        arr=data, output_name=filename, geotransform=geotransform, projection=srs
+        arr=data_stack,
+        output_name=filename,
+        geotransform=geotransform,
+        projection=srs,
     )
     return filename
 
@@ -72,13 +78,13 @@ def test_create_compressed_slc(
     tmp_path,
     comp_slc,
 ):
+    # date_str = "20220101_20220102_20220103"
     burst = "t123_123456_iw1"
-    date_pair = "20220101_20220102"
     comp_slc_dict = {burst: [comp_slc]}
 
     create_compressed_products(comp_slc_dict, output_dir=tmp_path)
 
-    expected_name = tmp_path / f"compressed_{burst}_{date_pair}.h5"
+    expected_name = tmp_path / (comp_slc.with_suffix(".h5").name)
     assert expected_name.exists()
     # Check product structure
     with h5py.File(expected_name) as hf:

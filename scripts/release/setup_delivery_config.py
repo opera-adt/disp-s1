@@ -26,9 +26,6 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         f" --ministack-size 20 {single_flag}"
         # Dynamic ancillary files #
         ###########################
-        # PS mean/dispersion files:
-        " --amplitude-mean-files ./dynamic_ancillary_files/ps_files/*mean*"
-        " --amplitude-dispersion-files ./dynamic_ancillary_files/ps_files/*dispersion*"
         # TODO # seasonal coherence averages
         # Troposphere files:
         " --troposphere-files ./dynamic_ancillary_files/troposphere_files/*"
@@ -43,7 +40,7 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         # Unwrapping stuff
         " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5"
         # Worker stuff
-        " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 2 --no-gpu"
+        " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 2 "
         f" --log-file scratch/{mode.value}/log_sas.log"
         f" -o {outfile}"
     )

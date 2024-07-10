@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dolphin._log import get_log, log_runtime
+import logging
+
+from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import run as run_displacement
@@ -8,6 +10,8 @@ from opera_utils import get_dates, group_by_date
 
 from disp_s1 import product
 from disp_s1.pge_runconfig import RunConfig
+
+logger = logging.getLogger(__name__)
 
 
 @log_runtime
@@ -28,6 +32,7 @@ def run(
         PGE-specific metadata for the output product.
 
     """
+    setup_logging(debug=debug, filename=cfg.log_file)
     # ######################################
     # 1. Run dolphin's displacement workflow
     # ######################################
@@ -43,37 +48,61 @@ def run(
         date_idx=0,
     )
 
-    logger = get_log(name="disp_s1", debug=debug)
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
-    for unw_p, cc_p, s_corr_p, tropo_p, iono_p in zip(
-        out_paths.unwrapped_paths,
-        out_paths.conncomp_paths,
-        out_paths.stitched_cor_paths,
-        out_paths.tropospheric_corrections,
-        out_paths.ionospheric_corrections,
-    ):
+
+    # group dataset based on date to find corresponding files and set None
+    # for the layers that do not exist: correction layers specifically
+    grouped_unwrapped_paths = group_by_date(out_paths.unwrapped_paths)
+    grouped_conncomp_paths = group_by_date(out_paths.conncomp_paths)
+    grouped_cor_paths = group_by_date(out_paths.stitched_cor_paths)
+    grouped_tropospheric_corrections = None
+    grouped_ionospheric_corrections = None
+
+    if out_paths.tropospheric_corrections is not None:
+        grouped_tropospheric_corrections = group_by_date(
+            out_paths.tropospheric_corrections
+        )
+
+    if out_paths.ionospheric_corrections is not None:
+        grouped_ionospheric_corrections = group_by_date(
+            out_paths.ionospheric_corrections
+        )
+
+    corrections = {}
+
+    # Package the existing layers for each interferogram
+    # TODO: we need to think about how to package if a network
+    # inversion is applied and interferograms are not single reference
+    for key in grouped_unwrapped_paths.keys():
+        if grouped_tropospheric_corrections is not None:
+            corrections["troposphere"] = load_gdal(
+                grouped_tropospheric_corrections.get(key)[0]
+            )
+        else:
+            logger.warning("Missing tropospheric correction. Creating empty layer.")
+
+        if grouped_ionospheric_corrections is not None:
+            corrections["ionosphere"] = load_gdal(
+                grouped_ionospheric_corrections.get(key)[0]
+            )
+        else:
+            logger.warning("Missing ionospheric correction. Creating empty layer.")
+
+        unw_p = grouped_unwrapped_paths.get(key)[0]
         output_name = out_dir / unw_p.with_suffix(".nc").name
         # Get the current list of acq times for this product
         dair_pair = get_dates(output_name)
         secondary_date = dair_pair[1]
         cur_slc_list = date_to_slcs[(secondary_date,)]
 
-        if tropo_p and iono_p:
-            corrections = {
-                "troposphere": load_gdal(tropo_p),
-                "ionosphere": load_gdal(iono_p),
-            }
-        else:
-            logger.error(f"Missing {tropo_p = }, {iono_p = }. Creating empty layer.")
-
         product.create_output_product(
             output_name=output_name,
             unw_filename=unw_p,
-            conncomp_filename=cc_p,
+            conncomp_filename=grouped_conncomp_paths.get(key)[0],
             temp_coh_filename=out_paths.stitched_temp_coh_file,
-            ifg_corr_filename=s_corr_p,
+            ifg_corr_filename=grouped_cor_paths.get(key)[0],
             ps_mask_filename=out_paths.stitched_ps_file,
             pge_runconfig=pge_runconfig,
             cslc_files=cur_slc_list,

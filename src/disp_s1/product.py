@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 from io import StringIO
 from pathlib import Path
 from typing import Any, Optional, Sequence, Union
@@ -13,21 +14,25 @@ import numpy as np
 import pyproj
 from dolphin import __version__ as dolphin_version
 from dolphin import io
-from dolphin._log import get_log
 from dolphin._types import Filename
 from dolphin.utils import format_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
-from opera_utils import OPERA_DATASET_NAME, get_dates, get_union_polygon
+from opera_utils import (
+    OPERA_DATASET_NAME,
+    get_dates,
+    get_radar_wavelength,
+    get_union_polygon,
+    get_zero_doppler_time,
+)
 
 from . import __version__ as disp_s1_version
-from . import _parse_cslc_product
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
 from .product_info import DISP_PRODUCTS_INFO
 
-logger = get_log(__name__)
+logger = logging.getLogger(__name__)
 
 CORRECTIONS_GROUP_NAME = "corrections"
 IDENTIFICATION_GROUP_NAME = "identification"
@@ -115,15 +120,14 @@ def create_output_product(
     unw_arr[mask] = np.nan
 
     assert unw_arr.shape == conncomp_arr.shape == temp_coh_arr.shape
-
-    start_times = [
-        _parse_cslc_product.get_zero_doppler_time(f, type_="start") for f in cslc_files
-    ]
+    start_times = [get_zero_doppler_time(f, type_="start") for f in cslc_files]
     start_time = min(start_times)
-    end_times = [
-        _parse_cslc_product.get_zero_doppler_time(f, type_="end") for f in cslc_files
-    ]
+    end_times = [get_zero_doppler_time(f, type_="end") for f in cslc_files]
     end_time = max(end_times)
+
+    wavelength, _ = get_radar_wavelength(cslc_files[-1])
+    phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
+    disp_arr = unw_arr * phase2disp
 
     with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
         # Create the NetCDF file
@@ -133,7 +137,7 @@ def create_output_product(
         _create_grid_mapping(group=f, crs=crs, gt=gt)
 
         # Set up the X/Y variables for each group
-        _create_yx_dsets(group=f, gt=gt, shape=unw_arr.shape, include_time=True)
+        _create_yx_dsets(group=f, gt=gt, shape=disp_arr.shape, include_time=True)
         _create_time_dset(
             group=f,
             time=start_time,
@@ -144,7 +148,7 @@ def create_output_product(
         # Write the displacement array / conncomp arrays
         disp_products_info = DISP_PRODUCTS_INFO
         disp_data = [
-            unw_arr,
+            disp_arr,
             conncomp_arr,
             temp_coh_arr,
             ifg_corr_arr,
@@ -169,7 +173,7 @@ def create_output_product(
     _create_corrections_group(
         output_name=output_name,
         corrections=corrections,
-        shape=unw_arr.shape,
+        shape=disp_arr.shape,
         gt=gt,
         crs=crs,
         start_time=min(start_times),
@@ -197,9 +201,9 @@ def _create_corrections_group(
     with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
-        corrections_group.attrs[
-            "description"
-        ] = "Phase corrections applied to the unwrapped_phase"
+        corrections_group.attrs["description"] = (
+            "Phase corrections applied to the unwrapped_phase"
+        )
         empty_arr = np.zeros(shape, dtype="float32")
 
         # TODO: Are we going to downsample these for space?
@@ -334,7 +338,7 @@ def _create_identification_group(
             attrs={"units": "degrees"},
         )
 
-        wavelength, attrs = _parse_cslc_product.get_radar_wavelength(cslc_files[-1])
+        wavelength, attrs = get_radar_wavelength(cslc_files[-1])
         desc = attrs.pop("description")
         _create_dataset(
             group=identification_group,
@@ -568,9 +572,19 @@ def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Va
 
 
 def create_compressed_products(
-    comp_slc_dict: dict[str, list[Path]], output_dir: Filename
+    comp_slc_dict: dict[str, list[Path]],
+    output_dir: Filename,
 ):
-    """Make the compressed SLC output product."""
+    """Make the compressed SLC output product.
+
+    Parameters
+    ----------
+    comp_slc_dict : dict[str, list[Path]]
+        A dictionary mapping burst IDs to lists of compressed SLC files.
+    output_dir : Filename
+        The directory to write the compressed SLC products to.
+
+    """
 
     def form_name(filename: Path, burst: str):
         # filename: compressed_20180222_20180716.tif
@@ -580,6 +594,7 @@ def create_compressed_products(
     attrs = GLOBAL_ATTRS.copy()
     attrs["title"] = "Compressed SLC"
     *parts, dset_name = OPERA_DATASET_NAME.split("/")
+    dispersion_dset_name = "amplitude_dispersion"
     group_name = "/".join(parts)
 
     for burst, comp_slc_files in comp_slc_dict.items():
@@ -591,7 +606,7 @@ def create_compressed_products(
 
             crs = io.get_raster_crs(comp_slc_file)
             gt = io.get_raster_gt(comp_slc_file)
-            data = io.load_gdal(comp_slc_file)
+            data = io.load_gdal(comp_slc_file, band=1)
             truncate_mantissa(data)
 
             # Input metadata is stored within the GDAL "DOLPHIN" domain
@@ -620,4 +635,17 @@ def create_compressed_products(
                     description="Compressed SLC product",
                     fillvalue=np.nan + 0j,
                     attrs=attrs,
+                )
+                # Add the amplitude dispersion
+                amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype(
+                    "float32"
+                )
+                truncate_mantissa(amp_dispersion_data)
+                _create_geo_dataset(
+                    group=data_group,
+                    name=dispersion_dset_name,
+                    data=amp_dispersion_data,
+                    description="Amplitude dispersion for the compressed SLC files.",
+                    fillvalue=np.nan,
+                    attrs={"units": "unitless"},
                 )

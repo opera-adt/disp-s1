@@ -16,11 +16,10 @@ from dolphin.workflows.config import (
     WorkerSettings,
 )
 from dolphin.workflows.config._yaml_model import YamlModel
-from opera_utils import OPERA_DATASET_NAME
+from opera_utils import OPERA_DATASET_NAME, get_frame_bbox
 from pydantic import ConfigDict, Field
 
 from .enums import ProcessingMode
-from .utils import get_frame_bbox
 
 
 class InputFileGroup(YamlModel):

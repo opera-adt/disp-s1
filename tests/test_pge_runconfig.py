@@ -52,7 +52,6 @@ def dynamic_ancillary_file_group(algorithm_parameters_file):
 
 
 @pytest.fixture
-@pytest.mark.vcr
 def frame_to_burst_json_file():
     return opera_utils.datasets.fetch_frame_to_burst_mapping_file()
 

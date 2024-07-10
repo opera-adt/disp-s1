@@ -18,10 +18,15 @@ from dolphin._types import Filename
 from dolphin.utils import format_dates
 from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
-from opera_utils import OPERA_DATASET_NAME, get_dates, get_union_polygon
+from opera_utils import (
+    OPERA_DATASET_NAME,
+    get_dates,
+    get_radar_wavelength,
+    get_union_polygon,
+    get_zero_doppler_time,
+)
 
 from . import __version__ as disp_s1_version
-from . import _parse_cslc_product
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
@@ -117,17 +122,12 @@ def create_output_product(
     unw_arr[mask] = np.nan
 
     assert unw_arr.shape == conncomp_arr.shape == temp_coh_arr.shape
-
-    start_times = [
-        _parse_cslc_product.get_zero_doppler_time(f, type_="start") for f in cslc_files
-    ]
+    start_times = [get_zero_doppler_time(f, type_="start") for f in cslc_files]
     start_time = min(start_times)
-    end_times = [
-        _parse_cslc_product.get_zero_doppler_time(f, type_="end") for f in cslc_files
-    ]
+    end_times = [get_zero_doppler_time(f, type_="end") for f in cslc_files]
     end_time = max(end_times)
 
-    wavelength, _ = _parse_cslc_product.get_radar_wavelength(cslc_files[-1])
+    wavelength, _ = get_radar_wavelength(cslc_files[-1])
     phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
     disp_arr = unw_arr * phase2disp
 
@@ -334,7 +334,7 @@ def _create_identification_group(
             attrs={"units": "degrees"},
         )
 
-        wavelength, attrs = _parse_cslc_product.get_radar_wavelength(cslc_files[-1])
+        wavelength, attrs = get_radar_wavelength(cslc_files[-1])
         desc = attrs.pop("description")
         _create_dataset(
             group=identification_group,

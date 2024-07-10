@@ -11,7 +11,7 @@ from dolphin._types import Filename
 from numpy.typing import ArrayLike
 from PIL import Image
 
-from .product_info import DISP_PRODUCT_NAMES
+from .product_info import DISPLACEMENT_PRODUCTS
 
 
 def _normalize_apply_gamma(arr: ArrayLike, gamma=1.0) -> np.ndarray:
@@ -146,7 +146,7 @@ def make_browse_image_from_nc(
         Image gets rescaled with same aspect ratio.
 
     """
-    if dataset_name not in DISP_PRODUCT_NAMES:
+    if dataset_name not in DISPLACEMENT_PRODUCTS.names:
         raise ValueError(f"{args.dataset_name} is not a valid dataset name")
 
     # get dataset as array from input NC file
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         "--dataset-name",
-        choices=DISP_PRODUCT_NAMES,
+        choices=DISPLACEMENT_PRODUCTS.names,
         help="Name of dataset to plot from NetCDF file",
     )
     parser.add_argument(

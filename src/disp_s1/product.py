@@ -15,8 +15,8 @@ import pyproj
 from dolphin import __version__ as dolphin_version
 from dolphin import io
 from dolphin._types import Filename
+from dolphin.io import round_mantissa
 from dolphin.utils import format_dates
-from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import (
     OPERA_DATASET_NAME,
@@ -30,7 +30,7 @@ from . import __version__ as disp_s1_version
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
-from .product_info import DISP_PRODUCTS_INFO
+from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
 
 logger = logging.getLogger(__name__)
 
@@ -146,28 +146,28 @@ def create_output_product(
 
         # ######## Main datasets ###########
         # Write the displacement array / conncomp arrays
-        disp_products_info = DISP_PRODUCTS_INFO
-        disp_data = [
+        disp_data: list[np.ndarray] = [
             disp_arr,
             conncomp_arr,
             temp_coh_arr,
             ifg_corr_arr,
             io.load_gdal(ps_mask_filename),
         ]
-        disp_products = list(zip(disp_products_info, disp_data))
-        for nfo, data in disp_products:
+
+        product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
+        for info, data in zip(product_infos, disp_data):
             if np.issubdtype(data.dtype, np.floating):
-                truncate_mantissa(data)
+                round_mantissa(data)
             _create_geo_dataset(
                 group=f,
-                name=nfo.name,
+                name=info.name,
                 data=data,
-                description=nfo.description,
-                fillvalue=nfo.fillvalue,
-                attrs=nfo.attrs,
+                description=info.description,
+                fillvalue=info.fillvalue,
+                attrs=info.attrs,
             )
             make_browse_image_from_arr(
-                Path(output_name).with_suffix(f".{nfo.name}.png"), data
+                Path(output_name).with_suffix(f".{info.name}.png"), data
             )
 
     _create_corrections_group(
@@ -216,7 +216,7 @@ def _create_corrections_group(
             long_name="time corresponding to beginning of Displacement frame",
         )
         troposphere = corrections.get("troposphere", empty_arr)
-        truncate_mantissa(troposphere)
+        round_mantissa(troposphere)
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
@@ -226,7 +226,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         ionosphere = corrections.get("ionosphere", empty_arr)
-        truncate_mantissa(ionosphere)
+        round_mantissa(ionosphere)
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
@@ -236,7 +236,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         solid_earth = corrections.get("solid_earth", empty_arr)
-        truncate_mantissa(solid_earth)
+        round_mantissa(solid_earth)
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
@@ -246,7 +246,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         plate_motion = corrections.get("plate_motion", empty_arr)
-        truncate_mantissa(plate_motion)
+        round_mantissa(plate_motion)
         _create_geo_dataset(
             group=corrections_group,
             name="plate_motion",
@@ -607,7 +607,7 @@ def create_compressed_products(
             crs = io.get_raster_crs(comp_slc_file)
             gt = io.get_raster_gt(comp_slc_file)
             data = io.load_gdal(comp_slc_file, band=1)
-            truncate_mantissa(data)
+            round_mantissa(data)
 
             # Input metadata is stored within the GDAL "DOLPHIN" domain
             metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
@@ -640,7 +640,7 @@ def create_compressed_products(
                 amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype(
                     "float32"
                 )
-                truncate_mantissa(amp_dispersion_data)
+                round_mantissa(amp_dispersion_data)
                 _create_geo_dataset(
                     group=data_group,
                     name=dispersion_dset_name,

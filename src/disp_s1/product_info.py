@@ -1,107 +1,87 @@
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field
 
 import numpy as np
 from dolphin.unwrap import DEFAULT_CCL_NODATA
 from numpy.typing import DTypeLike
 
 
-@dataclass(frozen=True)
-class DispProductInfo:
-    """Container for items used in creating displacement product datasets."""
+@dataclass
+class ProductInfo:
+    """Information about a displacement product dataset."""
 
-    # Name of of the dataset.
     name: str
-    # Description of the dataset.
     description: str
-    # Fill value of the dataset.
     fillvalue: DTypeLike
-    # Attributes of the dataset.
-    attrs: dict
+    attrs: dict[str, str] = field(default_factory=dict)
 
-    @classmethod
-    def displacement(cls):
-        """Return container of displacement specific information."""
-        return cls(
+
+@dataclass
+class DisplacementProducts:
+    """Container for displacement product dataset info."""
+
+    displacement: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
             name="displacement",
             description=(
-                "Displacement with noise in Line-of-Sight (LOS). "
-                "Positive values indicate apparent motion towards the platform."
+                "Displacement with noise in Line-of-Sight (LOS)."
+                " Positive values indicate apparent motion towards the platform."
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
         )
+    )
 
-    @classmethod
-    def connected_component_labels(cls):
-        """Return container of connected component label specific information."""
-        return cls(
+    connected_component_labels: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
             name="connected_component_labels",
             description="Connected component labels of the unwrapped phase",
             fillvalue=DEFAULT_CCL_NODATA,
             attrs={"units": "unitless"},
         )
+    )
 
-    @classmethod
-    def temporal_coherence(cls):
-        """Return container of temporal coherence specific information."""
-        return cls(
+    temporal_coherence: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
             name="temporal_coherence",
             description="Temporal coherence of phase inversion",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
         )
+    )
 
-    @classmethod
-    def interferometric_correlation(cls):
-        """Return container of interferometric correlation specific information."""
-        return cls(
+    interferometric_correlation: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
             name="interferometric_correlation",
             description=(
-                "Estimate of interferometric correlation derived from"
-                " multilooked interferogram."
+                "Estimate of interferometric correlation derived from multilooked"
+                " interferogram."
             ),
             fillvalue=np.nan,
             attrs={"units": "unitless"},
         )
+    )
 
-    @classmethod
-    def persistent_scatterer_mask(cls):
-        """Return container of persistent scatterer mask specific information."""
-        return cls(
+    persistent_scatterer_mask: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
             name="persistent_scatterer_mask",
             description=(
-                "Mask of persistent scatterers downsampled to the multilooked"
-                " output grid."
+                "Mask of persistent scatterers downsampled to the multilooked output"
+                " grid."
             ),
             fillvalue=255,
             attrs={"units": "unitless"},
         )
-
-
-@dataclass(frozen=True)
-class DispProductsInfo:
-    """Container for instantiated displacement product dataset info containers."""
-
-    displacement: DispProductInfo = DispProductInfo.displacement()
-    connected_component_labels: DispProductInfo = (
-        DispProductInfo.connected_component_labels()
-    )
-    temporal_coherence: DispProductInfo = DispProductInfo.temporal_coherence()
-    interferometric_correlation: DispProductInfo = (
-        DispProductInfo.interferometric_correlation()
-    )
-    persistent_scatterer_mask: DispProductInfo = (
-        DispProductInfo.persistent_scatterer_mask()
     )
 
-    def as_list(self):
-        """Return all displacement dataset info containers as a list."""
-        return [getattr(self, field.name) for field in fields(self)]
+    def __iter__(self):
+        """Return all displacement dataset info as an iterable."""
+        return iter(self.__dict__.values())
 
-    def product_names(self):
+    @property
+    def names(self) -> list[str]:
         """Return all displacement dataset names as a list."""
-        return [field.name for field in fields(self)]
+        return list(self.__dict__.keys())
 
 
-DISP_PRODUCTS_INFO = DispProductsInfo().as_list()
-DISP_PRODUCT_NAMES = DispProductsInfo().product_names()
+# Create a single instance to be used throughout the application
+DISPLACEMENT_PRODUCTS = DisplacementProducts()

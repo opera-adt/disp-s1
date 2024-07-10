@@ -633,7 +633,9 @@ def create_compressed_products(
                     attrs=attrs,
                 )
                 # Add the amplitude dispersion
-                amp_dispersion_data = io.load_gdal(comp_slc_file, band=2)
+                amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype(
+                    "float32"
+                )
                 truncate_mantissa(amp_dispersion_data)
                 _create_geo_dataset(
                     group=data_group,

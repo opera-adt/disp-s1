@@ -47,20 +47,6 @@ class DynamicAncillaryFileGroup(YamlModel):
         default=...,
         description="Path to file containing SAS algorithm parameters.",
     )
-    amplitude_dispersion_files: List[Path] = Field(
-        default_factory=list,
-        description=(
-            "Paths to existing Amplitude Dispersion files (1 per burst) for PS update"
-            " calculation. If none provided, computed using the input SLC stack."
-        ),
-    )
-    amplitude_mean_files: List[Path] = Field(
-        default_factory=list,
-        description=(
-            "Paths to an existing Amplitude Mean files (1 per burst) for PS update"
-            " calculation. If none provided, computed using the input SLC stack."
-        ),
-    )
     geometry_files: List[Path] = Field(
         default_factory=list,
         alias="static_layers_files",
@@ -241,10 +227,6 @@ class RunConfig(YamlModel):
         troposphere_files = self.dynamic_ancillary_file_group.troposphere_files
         ionosphere_files = self.dynamic_ancillary_file_group.ionosphere_files
         dem_file = self.dynamic_ancillary_file_group.dem_file
-        amplitude_mean_files = self.dynamic_ancillary_file_group.amplitude_mean_files
-        amplitude_dispersion_files = (
-            self.dynamic_ancillary_file_group.amplitude_dispersion_files
-        )
 
         # Load the algorithm parameters from the file
         algorithm_parameters = AlgorithmParameters.from_yaml(
@@ -268,8 +250,6 @@ class RunConfig(YamlModel):
             input_options=input_options,
             mask_file=mask_file,
             work_directory=scratch_directory,
-            amplitude_mean_files=amplitude_mean_files,
-            amplitude_dispersion_files=amplitude_dispersion_files,
             # These ones directly translate
             worker_settings=self.worker_settings,
             correction_options=CorrectionOptions(
@@ -323,8 +303,6 @@ class RunConfig(YamlModel):
             ),
             dynamic_ancillary_file_group=DynamicAncillaryFileGroup(
                 algorithm_parameters_file=algorithm_parameters_file,
-                amplitude_dispersion_files=workflow.amplitude_dispersion_files,
-                amplitude_mean_files=workflow.amplitude_mean_files,
                 mask_file=workflow.mask_file,
                 ionosphere_files=workflow.correction_options.ionosphere_files,
                 troposphere_files=workflow.correction_options.troposphere_files,

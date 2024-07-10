@@ -19,7 +19,7 @@ jobs:
           - label: Latest
             tag: "main"
           - label: Last Release
-            tag: v0.15.3
+            tag: v0.20.0
 
       fail-fast: true
     name: ${{ matrix.os }} • ${{ matrix.dolphin.label }}

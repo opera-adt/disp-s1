@@ -70,7 +70,7 @@ RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 # --no-deps because they are installed with conda
 RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.18.0
-RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.3.0
+RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.5.0
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .

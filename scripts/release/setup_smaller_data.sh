@@ -12,14 +12,9 @@ pattern="*08890[56]_iw1*"
 
 # Layout
 mkdir -p $new_dir/input_slcs
-mkdir -p $new_dir/dynamic_ancillary_files/ps_files
 mkdir -p $new_dir/dynamic_ancillary_files/static_layers
 mkdir -p $new_dir/dynamic_ancillary_files/troposphere_files
 mkdir -p $new_dir/dynamic_ancillary_files/ionosphere_files
-
-# Copy the PS files matching the pattern
-find "${full_dir}/dynamic_ancillary_files/ps_files/" -name "$pattern" \
-    -exec cp {} "$new_dir/dynamic_ancillary_files/ps_files/" \;
 
 find "${full_dir}/dynamic_ancillary_files/static_layers/" -name "$pattern" \
     -exec cp {} "$new_dir/dynamic_ancillary_files/static_layers/" \;

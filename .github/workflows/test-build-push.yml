@@ -42,7 +42,7 @@ jobs:
       - name: Install
         # TODO:  remove the `tqdm` once dolphin tqdm req is in conda
         run: |
-          python -m pip install tqdm "opera-utils>=0.3.0" git+https://github.com/isce-framework/dolphin@${{ matrix.dolphin.tag }}
+          python -m pip install tqdm "opera-utils>=0.5.0" git+https://github.com/isce-framework/dolphin@${{ matrix.dolphin.tag }}
           pip install --no-deps .
       - name: Install test dependencies
         run: |

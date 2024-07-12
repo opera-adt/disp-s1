@@ -13,6 +13,7 @@ class ProductInfo:
     description: str
     fillvalue: DTypeLike
     attrs: dict[str, str] = field(default_factory=dict)
+    keep_bits: int = 10
 
 
 @dataclass
@@ -28,6 +29,7 @@ class DisplacementProducts:
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
+            keep_bits=12,
         )
     )
 
@@ -46,6 +48,8 @@ class DisplacementProducts:
             description="Temporal coherence of phase inversion",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
+            # 8 bits (between 0 and 1) is at least 1/2**8 = .004 precision
+            keep_bits=8,
         )
     )
 
@@ -58,6 +62,8 @@ class DisplacementProducts:
             ),
             fillvalue=np.nan,
             attrs={"units": "unitless"},
+            # 8 bits (between 0 and 1) is at least 1/2**8 = .004 precision
+            keep_bits=8,
         )
     )
 

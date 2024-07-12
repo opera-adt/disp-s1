@@ -159,7 +159,7 @@ def create_output_product(
         product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
         for info, data in zip(product_infos, disp_data):
             if np.issubdtype(data.dtype, np.floating):
-                round_mantissa(data)
+                round_mantissa(data, keep_bits=info.keep_bits)
             _create_geo_dataset(
                 group=f,
                 name=info.name,
@@ -200,6 +200,13 @@ def _create_corrections_group(
     crs: pyproj.CRS,
     start_time: datetime.datetime,
 ) -> None:
+    keep_bits = 10
+    logger.info("Rounding mantissa in corrections to %s bits", keep_bits)
+    for data in corrections.values():
+        # Use same amount of truncation for all correction layers
+        if np.issubdtype(data.dtype, np.floating):
+            round_mantissa(data, keep_bits=keep_bits)
+    logger.info("Creating corrections group")
     with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
@@ -207,8 +214,6 @@ def _create_corrections_group(
             "Phase corrections applied to the unwrapped_phase"
         )
         empty_arr = np.zeros(shape, dtype="float32")
-        # Use same amount of truncation for all correction layers
-        keep_bits = 10
 
         # TODO: Are we going to downsample these for space?
         # if so, they need they're own X/Y variables and GeoTransform
@@ -220,7 +225,6 @@ def _create_corrections_group(
             long_name="time corresponding to beginning of Displacement frame",
         )
         troposphere = corrections.get("troposphere", empty_arr)
-        round_mantissa(troposphere, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
@@ -230,7 +234,6 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         ionosphere = corrections.get("ionosphere", empty_arr)
-        round_mantissa(ionosphere, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
@@ -240,7 +243,6 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         solid_earth = corrections.get("solid_earth", empty_arr)
-        round_mantissa(solid_earth, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
@@ -250,7 +252,6 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         plate_motion = corrections.get("plate_motion", empty_arr)
-        round_mantissa(plate_motion, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="plate_motion",
@@ -611,7 +612,8 @@ def create_compressed_products(
             crs = io.get_raster_crs(comp_slc_file)
             gt = io.get_raster_gt(comp_slc_file)
             data = io.load_gdal(comp_slc_file, band=1)
-            round_mantissa(data)
+            # COMPASS used `truncate_mantissa` default, 10 bits
+            round_mantissa(data, keep_bits=10)
 
             # Input metadata is stored within the GDAL "DOLPHIN" domain
             metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
@@ -644,7 +646,7 @@ def create_compressed_products(
                 amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype(
                     "float32"
                 )
-                round_mantissa(amp_dispersion_data)
+                round_mantissa(amp_dispersion_data, keep_bits=10)
                 _create_geo_dataset(
                     group=data_group,
                     name=dispersion_dset_name,

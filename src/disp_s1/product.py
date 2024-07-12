@@ -205,6 +205,8 @@ def _create_corrections_group(
             "Phase corrections applied to the unwrapped_phase"
         )
         empty_arr = np.zeros(shape, dtype="float32")
+        # Use same amount of truncation for all correction layers
+        keep_bits = 10
 
         # TODO: Are we going to downsample these for space?
         # if so, they need they're own X/Y variables and GeoTransform
@@ -216,7 +218,7 @@ def _create_corrections_group(
             long_name="time corresponding to beginning of Displacement frame",
         )
         troposphere = corrections.get("troposphere", empty_arr)
-        round_mantissa(troposphere)
+        round_mantissa(troposphere, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
@@ -226,7 +228,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         ionosphere = corrections.get("ionosphere", empty_arr)
-        round_mantissa(ionosphere)
+        round_mantissa(ionosphere, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
@@ -236,7 +238,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         solid_earth = corrections.get("solid_earth", empty_arr)
-        round_mantissa(solid_earth)
+        round_mantissa(solid_earth, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
@@ -246,7 +248,7 @@ def _create_corrections_group(
             attrs={"units": "radians"},
         )
         plate_motion = corrections.get("plate_motion", empty_arr)
-        round_mantissa(plate_motion)
+        round_mantissa(plate_motion, keep_bits=keep_bits)
         _create_geo_dataset(
             group=corrections_group,
             name="plate_motion",

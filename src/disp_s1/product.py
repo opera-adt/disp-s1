@@ -48,11 +48,13 @@ GLOBAL_ATTRS = {
 
 # Use the "paging file space strategy"
 # https://docs.h5py.org/en/stable/high/file.html#h5py.File
+# Page size should be larger than the largest chunk in the file
 FILE_OPTS = {"fs_strategy": "page", "fs_page_size": 2**22}
+CHUNK_SHAPE = (128, 128)
 
 # Convert chunks to a tuple or h5py errors
 HDF5_OPTS = io.DEFAULT_HDF5_OPTIONS.copy()
-HDF5_OPTS["chunks"] = tuple(HDF5_OPTS["chunks"])  # type: ignore
+HDF5_OPTS["chunks"] = tuple(CHUNK_SHAPE)  # type: ignore
 # The GRID_MAPPING_DSET variable is used to store the name of the dataset containing
 # the grid mapping information, which includes the coordinate reference system (CRS)
 # and the GeoTransform. This is in accordance with the CF 1.8 conventions for adding

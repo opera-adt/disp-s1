@@ -15,8 +15,8 @@ import pyproj
 from dolphin import __version__ as dolphin_version
 from dolphin import io
 from dolphin._types import Filename
+from dolphin.io import round_mantissa
 from dolphin.utils import format_dates
-from isce3.core.types import truncate_mantissa
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import (
     OPERA_DATASET_NAME,
@@ -30,7 +30,7 @@ from . import __version__ as disp_s1_version
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
-from .product_info import DISP_PRODUCTS_INFO
+from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +48,13 @@ GLOBAL_ATTRS = {
 
 # Use the "paging file space strategy"
 # https://docs.h5py.org/en/stable/high/file.html#h5py.File
+# Page size should be larger than the largest chunk in the file
 FILE_OPTS = {"fs_strategy": "page", "fs_page_size": 2**22}
+CHUNK_SHAPE = (128, 128)
 
 # Convert chunks to a tuple or h5py errors
 HDF5_OPTS = io.DEFAULT_HDF5_OPTIONS.copy()
-HDF5_OPTS["chunks"] = tuple(HDF5_OPTS["chunks"])  # type: ignore
+HDF5_OPTS["chunks"] = tuple(CHUNK_SHAPE)  # type: ignore
 # The GRID_MAPPING_DSET variable is used to store the name of the dataset containing
 # the grid mapping information, which includes the coordinate reference system (CRS)
 # and the GeoTransform. This is in accordance with the CF 1.8 conventions for adding
@@ -112,9 +114,7 @@ def create_output_product(
 
     conncomp_arr = io.load_gdal(conncomp_filename)
     temp_coh_arr = io.load_gdal(temp_coh_filename)
-    truncate_mantissa(temp_coh_arr)
     ifg_corr_arr = io.load_gdal(ifg_corr_filename)
-    truncate_mantissa(ifg_corr_arr)
 
     # Get the nodata mask (which for snaphu is 0)
     mask = unw_arr == 0
@@ -148,26 +148,28 @@ def create_output_product(
 
         # ######## Main datasets ###########
         # Write the displacement array / conncomp arrays
-        disp_products_info = DISP_PRODUCTS_INFO
-        disp_data = [
+        disp_data: list[np.ndarray] = [
             disp_arr,
             conncomp_arr,
             temp_coh_arr,
             ifg_corr_arr,
             io.load_gdal(ps_mask_filename),
         ]
-        disp_products = list(zip(disp_products_info, disp_data))
-        for nfo, data in disp_products:
+
+        product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
+        for info, data in zip(product_infos, disp_data):
+            if np.issubdtype(data.dtype, np.floating):
+                round_mantissa(data, keep_bits=info.keep_bits)
             _create_geo_dataset(
                 group=f,
-                name=nfo.name,
+                name=info.name,
                 data=data,
-                description=nfo.description,
-                fillvalue=nfo.fillvalue,
-                attrs=nfo.attrs,
+                description=info.description,
+                fillvalue=info.fillvalue,
+                attrs=info.attrs,
             )
             make_browse_image_from_arr(
-                Path(output_name).with_suffix(f".{nfo.name}.png"), data
+                Path(output_name).with_suffix(f".{info.name}.png"), data
             )
 
     _create_corrections_group(
@@ -198,6 +200,13 @@ def _create_corrections_group(
     crs: pyproj.CRS,
     start_time: datetime.datetime,
 ) -> None:
+    keep_bits = 10
+    logger.info("Rounding mantissa in corrections to %s bits", keep_bits)
+    for data in corrections.values():
+        # Use same amount of truncation for all correction layers
+        if np.issubdtype(data.dtype, np.floating):
+            round_mantissa(data, keep_bits=keep_bits)
+    logger.info("Creating corrections group")
     with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
@@ -603,7 +612,8 @@ def create_compressed_products(
             crs = io.get_raster_crs(comp_slc_file)
             gt = io.get_raster_gt(comp_slc_file)
             data = io.load_gdal(comp_slc_file, band=1)
-            truncate_mantissa(data)
+            # COMPASS used `truncate_mantissa` default, 10 bits
+            round_mantissa(data, keep_bits=10)
 
             # Input metadata is stored within the GDAL "DOLPHIN" domain
             metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
@@ -636,7 +646,7 @@ def create_compressed_products(
                 amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype(
                     "float32"
                 )
-                truncate_mantissa(amp_dispersion_data)
+                round_mantissa(amp_dispersion_data, keep_bits=10)
                 _create_geo_dataset(
                     group=data_group,
                     name=dispersion_dset_name,

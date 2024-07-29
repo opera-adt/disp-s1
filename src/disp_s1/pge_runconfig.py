@@ -243,7 +243,7 @@ class RunConfig(YamlModel):
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
-        param_dict["output_options"]["bounds_epsg"] = bounds_epsg
+        param_dict["output_options"]["add_overviews"] = False
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
         return DisplacementWorkflow(

@@ -29,6 +29,8 @@ class DisplacementProducts:
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
+            # 12 bits, for random values in meters from -1 to 1, has a max
+            # quantization error of about 0.06 millimeters
             keep_bits=12,
         )
     )
@@ -48,7 +50,7 @@ class DisplacementProducts:
             description="Temporal coherence of phase inversion",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
-            # 8 bits (between 0 and 1) is at least 1/2**8 = .004 precision
+            # 8 bits (between 0 and 1) is around .001 precision
             keep_bits=8,
         )
     )
@@ -62,7 +64,7 @@ class DisplacementProducts:
             ),
             fillvalue=np.nan,
             attrs={"units": "unitless"},
-            # 8 bits (between 0 and 1) is at least 1/2**8 = .004 precision
+            # 8 bits (between 0 and 1) is around .001 precision
             keep_bits=8,
         )
     )

@@ -171,9 +171,6 @@ def create_output_product(
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
             )
-            make_browse_image_from_arr(
-                Path(output_name).with_suffix(f".{info.name}.png"), data
-            )
             del data  # Free up memory
 
     _create_corrections_group(

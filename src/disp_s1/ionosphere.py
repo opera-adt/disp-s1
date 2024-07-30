@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Sequence
 
 from dolphin._types import Filename
-from dolphin.utils import group_by_date
+from opera_utils import group_by_date
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

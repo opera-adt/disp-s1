@@ -13,7 +13,6 @@ from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
 from tqdm.contrib.concurrent import thread_map
-from tqdm.contrib.logging import logging_redirect_tqdm
 
 from disp_s1 import __version__, product
 from disp_s1.pge_runconfig import RunConfig
@@ -187,7 +186,7 @@ def run_parallel_processing(
     out_dir: Path,
     date_to_slcs: dict,
     pge_runconfig: RunConfig,
-    max_workers: int = 5,
+    max_workers: int = 3,
 ) -> None:
     """Run parallel processing for all interferograms.
 
@@ -203,7 +202,7 @@ def run_parallel_processing(
         Configuration object for the PGE run.
     max_workers : int
         Number of parallel products to process.
-        Default is 5.
+        Default is 3.
 
     """
     tropo_files = out_paths.tropospheric_corrections or [None] * len(
@@ -231,10 +230,9 @@ def run_parallel_processing(
         )
     ]
 
-    with logging_redirect_tqdm():
-        _results = thread_map(
-            lambda x: process_product(x, out_dir, date_to_slcs, pge_runconfig),
-            files,
-            max_workers=max_workers,
-            desc="Processing products",
-        )
+    _results = thread_map(
+        lambda x: process_product(x, out_dir, date_to_slcs, pge_runconfig),
+        files,
+        max_workers=max_workers,
+        desc="Processing products",
+    )

@@ -4,14 +4,13 @@ import logging
 
 from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
+from dolphin.utils import get_max_memory_usage
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
 
-from disp_s1 import product
+from disp_s1 import __version__, product
 from disp_s1.pge_runconfig import RunConfig
-
-logger = logging.getLogger(__name__)
 
 
 @log_runtime
@@ -32,7 +31,10 @@ def run(
         PGE-specific metadata for the output product.
 
     """
-    setup_logging(debug=debug, filename=cfg.log_file)
+    setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
+
+    logger = logging.getLogger(__name__)
+
     # ######################################
     # 1. Run dolphin's displacement workflow
     # ######################################
@@ -120,3 +122,7 @@ def run(
 
     logger.info(f"Product type: {pge_runconfig.primary_executable.product_type}")
     logger.info(f"Product version: {pge_runconfig.product_path_group.product_version}")
+    max_mem = get_max_memory_usage(units="GB")
+    logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
+    logger.info(f"Config file dolphin version: {cfg._dolphin_version}")
+    logger.info(f"Current running disp_s1 version: {__version__}")

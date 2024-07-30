@@ -72,8 +72,6 @@ def run(
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
 
-    run_parallel_processing(out_paths, out_dir, date_to_slcs, pge_runconfig)
-
     # group dataset based on date to find corresponding files and set None
     # for the layers that do not exist: correction layers specifically
     grouped_unwrapped_paths = group_by_date(out_paths.unwrapped_paths)
@@ -85,76 +83,15 @@ def run(
         _assert_dates_match(
             unw_date_keys, out_paths.tropospheric_corrections, "troposphere"
         )
-    else:
-        [None] * len(unw_date_keys)
 
     if out_paths.ionospheric_corrections is not None:
         _assert_dates_match(
             unw_date_keys, out_paths.ionospheric_corrections, "ionosphere"
         )
-    else:
-        [None] * len(unw_date_keys)
-
-    [out_paths.stitched_ps_file] * len(out_paths.unwrapped_paths)
-    [out_paths.stitched_temp_coh_file] * len(out_paths.unwrapped_paths)
 
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
-
     run_parallel_processing(out_paths, out_dir, date_to_slcs, pge_runconfig)
-    # # Package the existing layers for each interferogram
-    # grouped_files = zip(
-    #     out_paths.unwrapped_paths,
-    #     out_paths.conncomp_paths,
-    #     temp_coh_files,
-    #     out_paths.stitched_cor_paths,
-    #     ps_files,
-    #     tropo_paths,
-    #     iono_paths,
-    # )
-
-    # for files in grouped_files:
-    #     (
-    #         unw_path,
-    #         conncomp_path,
-    #         temp_coh_path,
-    #         cor_path,
-    #         ps_path,
-    #         tropo_path,
-    #         iono_path,
-    #     ) = files
-
-    #     if tropo_path is not None:
-    #         corrections["troposphere"] = load_gdal(tropo_path)
-    #     else:
-    #         logger.warning(
-    #             "Missing tropospheric correction for %s. Creating empty layer.",
-    #             unw_path,
-    #         )
-
-    #     if iono_path is not None:
-    #         corrections["ionosphere"] = load_gdal(iono_path)
-    #     else:
-    #         logger.warning(
-    #             "Missing ionospheric correction for %s. Creating empty layer.", unw_path
-    #         )
-
-    #     output_name = out_dir / unw_path.with_suffix(".nc").name
-    #     # Get the current list of acq times for this product
-    #     dair_pair = get_dates(output_name)
-    #     secondary_date = dair_pair[1]
-    #     cur_slc_list = date_to_slcs[(secondary_date,)]
-
-    #     product.create_output_product(
-    #         output_name=output_name,
-    #         unw_filename=unw_path,
-    #         conncomp_filename=conncomp_path,
-    #         temp_coh_filename=temp_coh_path,
-    #         ifg_corr_filename=cor_path,
-    #         ps_mask_filename=ps_path,
-    #         pge_runconfig=pge_runconfig,
-    #         cslc_files=cur_slc_list,
-    #         corrections=corrections,
-    #     )
+    logger.info("Finished creating output products.")
 
     if pge_runconfig.product_path_group.save_compressed_slc:
         logger.info(f"Saving {len(out_paths.comp_slc_dict.items())} compressed SLCs")
@@ -187,7 +124,7 @@ def process_product(
     out_dir: Path,
     date_to_slcs: dict,
     pge_runconfig: RunConfig,
-) -> str:
+) -> Path:
     """Process a single interferogram and create the output product.
 
     Parameters
@@ -203,8 +140,8 @@ def process_product(
 
     Returns
     -------
-    str
-        Message indicating the processed output name.
+    Path
+        Path to the processed output.
 
     """
     corrections = {}
@@ -242,7 +179,7 @@ def process_product(
         corrections=corrections,
     )
 
-    return f"Processed {output_name}"
+    return output_name
 
 
 def run_parallel_processing(
@@ -301,4 +238,3 @@ def run_parallel_processing(
             max_workers=max_workers,
             desc="Processing products",
         )
-    logger.info("Finished creating all output products.")

@@ -127,7 +127,7 @@ def create_output_product(
     end_times = [get_zero_doppler_time(f, type_="end") for f in cslc_files]
     end_time = max(end_times)
 
-    wavelength, _ = get_radar_wavelength(cslc_files[-1])
+    wavelength = get_radar_wavelength(cslc_files[-1])
     phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
     disp_arr = unw_arr * phase2disp
 
@@ -343,16 +343,15 @@ def _create_identification_group(
             attrs={"units": "degrees"},
         )
 
-        wavelength, attrs = get_radar_wavelength(cslc_files[-1])
-        desc = attrs.pop("description")
+        wavelength = get_radar_wavelength(cslc_files[-1])
         _create_dataset(
             group=identification_group,
             name="radar_wavelength",
             dimensions=(),
             data=wavelength,
             fillvalue=None,
-            description=desc,
-            attrs=attrs,
+            description="Wavelength of the transmitted signal",
+            attrs={"units": "meters"},
         )
 
         reference_date, secondary_date = get_dates(output_name)[:2]

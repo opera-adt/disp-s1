@@ -151,7 +151,7 @@ def create_output_product(
         del disp_arr
 
         # Load and save each other dataset individually
-        product_infos = list(DISPLACEMENT_PRODUCTS)
+        product_infos = list(DISPLACEMENT_PRODUCTS)[1:]
         data_files = [
             conncomp_filename,
             temp_coh_filename,

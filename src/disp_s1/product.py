@@ -30,7 +30,7 @@ from . import __version__ as disp_s1_version
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
-from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
+from .product_info import DISPLACEMENT_PRODUCTS
 
 logger = logging.getLogger(__name__)
 
@@ -104,24 +104,11 @@ def create_output_product(
         Used to add extra metadata to the output file.
 
     """
-    # Read the Geotiff file and its metadata
     if corrections is None:
         corrections = {}
     crs = io.get_raster_crs(unw_filename)
     gt = io.get_raster_gt(unw_filename)
-    unw_arr_ma = io.load_gdal(unw_filename, masked=True)
-    unw_arr = np.ma.filled(unw_arr_ma, 0)
 
-    conncomp_arr = io.load_gdal(conncomp_filename)
-    temp_coh_arr = io.load_gdal(temp_coh_filename)
-    ifg_corr_arr = io.load_gdal(ifg_corr_filename)
-
-    # Get the nodata mask (which for snaphu is 0)
-    mask = unw_arr == 0
-    # Set to NaN for final output
-    unw_arr[mask] = np.nan
-
-    assert unw_arr.shape == conncomp_arr.shape == temp_coh_arr.shape
     start_times = [get_zero_doppler_time(f, type_="start") for f in cslc_files]
     start_time = min(start_times)
     end_times = [get_zero_doppler_time(f, type_="end") for f in cslc_files]
@@ -129,35 +116,51 @@ def create_output_product(
 
     wavelength = get_radar_wavelength(cslc_files[-1])
     phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
-    disp_arr = unw_arr * phase2disp
 
     with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
-        # Create the NetCDF file
         f.attrs.update(GLOBAL_ATTRS)
-
-        # Set up the grid mapping variable for each group with rasters
         _create_grid_mapping(group=f, crs=crs, gt=gt)
 
-        # Set up the X/Y variables for each group
-        _create_yx_dsets(group=f, gt=gt, shape=disp_arr.shape, include_time=True)
+        # Load and process unwrapped phase data, needs more custom masking
+        unw_arr_ma = io.load_gdal(unw_filename, masked=True)
+        unw_arr = np.ma.filled(unw_arr_ma, 0)
+        mask = unw_arr == 0
+        unw_arr[mask] = np.nan
+        disp_arr = unw_arr * phase2disp
+
+        shape = unw_arr.shape
+        _create_yx_dsets(group=f, gt=gt, shape=shape, include_time=True)
         _create_time_dset(
             group=f,
             time=start_time,
             long_name="Time corresponding to beginning of Displacement frame",
         )
+        info = DISPLACEMENT_PRODUCTS.displacement
+        round_mantissa(disp_arr, keep_bits=info.keep_bits)
+        _create_geo_dataset(
+            group=f,
+            name=info.name,
+            data=disp_arr,
+            description=info.description,
+            fillvalue=info.fillvalue,
+            attrs=info.attrs,
+        )
+        make_browse_image_from_arr(
+            Path(output_name).with_suffix(f".{info.name}.png"), disp_arr
+        )
+        del disp_arr
 
-        # ######## Main datasets ###########
-        # Write the displacement array / conncomp arrays
-        disp_data: list[np.ndarray] = [
-            disp_arr,
-            conncomp_arr,
-            temp_coh_arr,
-            ifg_corr_arr,
-            io.load_gdal(ps_mask_filename),
+        # Load and save each other dataset individually
+        product_infos = list(DISPLACEMENT_PRODUCTS)
+        data_files = [
+            conncomp_filename,
+            temp_coh_filename,
+            ifg_corr_filename,
+            ps_mask_filename,
         ]
 
-        product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
-        for info, data in zip(product_infos, disp_data):
+        for info, filename in zip(product_infos, data_files):
+            data = io.load_gdal(filename)
             if np.issubdtype(data.dtype, np.floating):
                 round_mantissa(data, keep_bits=info.keep_bits)
             _create_geo_dataset(
@@ -171,11 +174,12 @@ def create_output_product(
             make_browse_image_from_arr(
                 Path(output_name).with_suffix(f".{info.name}.png"), data
             )
+            del data  # Free up memory
 
     _create_corrections_group(
         output_name=output_name,
         corrections=corrections,
-        shape=disp_arr.shape,
+        shape=shape,
         gt=gt,
         crs=crs,
         start_time=min(start_times),
@@ -201,12 +205,12 @@ def _create_corrections_group(
     start_time: datetime.datetime,
 ) -> None:
     keep_bits = 10
-    logger.info("Rounding mantissa in corrections to %s bits", keep_bits)
+    logger.debug("Rounding mantissa in corrections to %s bits", keep_bits)
     for data in corrections.values():
         # Use same amount of truncation for all correction layers
         if np.issubdtype(data.dtype, np.floating):
             round_mantissa(data, keep_bits=keep_bits)
-    logger.info("Creating corrections group")
+    logger.info("Creating corrections group in %s", output_name)
     with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
@@ -641,6 +645,7 @@ def create_compressed_products(
                     fillvalue=np.nan + 0j,
                     attrs=attrs,
                 )
+                del data
                 # Add the amplitude dispersion
                 amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype(
                     "float32"

@@ -12,6 +12,8 @@ from opera_utils import get_dates, group_by_date
 from disp_s1 import __version__, product
 from disp_s1.pge_runconfig import RunConfig
 
+logger = logging.getLogger(__name__)
+
 
 @log_runtime
 def run(
@@ -32,8 +34,6 @@ def run(
 
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
-
-    logger = logging.getLogger(__name__)
 
     # ######################################
     # 1. Run dolphin's displacement workflow
@@ -83,14 +83,18 @@ def run(
                 grouped_tropospheric_corrections.get(key)[0]
             )
         else:
-            logger.warning("Missing tropospheric correction. Creating empty layer.")
+            logger.warning(
+                "Missing tropospheric correction for %s. Creating empty layer.", key
+            )
 
         if grouped_ionospheric_corrections is not None:
             corrections["ionosphere"] = load_gdal(
                 grouped_ionospheric_corrections.get(key)[0]
             )
         else:
-            logger.warning("Missing ionospheric correction. Creating empty layer.")
+            logger.warning(
+                "Missing ionospheric correction for %s. Creating empty layer.", key
+            )
 
         unw_p = grouped_unwrapped_paths.get(key)[0]
         output_name = out_dir / unw_p.with_suffix(".nc").name

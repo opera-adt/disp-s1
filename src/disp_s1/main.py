@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple
@@ -12,7 +13,7 @@ from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
-from tqdm.contrib.concurrent import thread_map
+from tqdm import tqdm
 
 from disp_s1 import __version__, product
 from disp_s1.pge_runconfig import RunConfig
@@ -186,7 +187,7 @@ def run_parallel_processing(
     out_dir: Path,
     date_to_slcs: dict,
     pge_runconfig: RunConfig,
-    max_workers: int = 3,
+    max_workers: int = 5,
 ) -> None:
     """Run parallel processing for all interferograms.
 
@@ -230,9 +231,25 @@ def run_parallel_processing(
         )
     ]
 
-    _results = thread_map(
-        lambda x: process_product(x, out_dir, date_to_slcs, pge_runconfig),
-        files,
-        max_workers=max_workers,
-        desc="Processing products",
+    _results = _process_with_executor(
+        files, out_dir, date_to_slcs, pge_runconfig, max_workers
     )
+
+
+def _process_with_executor(files, out_dir, date_to_slcs, pge_runconfig, max_workers):
+    _results = []
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        future_to_file = {
+            executor.submit(
+                process_product, file, out_dir, date_to_slcs, pge_runconfig
+            ): file
+            for file in files
+        }
+
+        with tqdm(total=len(files), desc="Processing products") as pbar:
+            for future in as_completed(future_to_file):
+                result = future.result()
+                _results.append(result)
+                pbar.update(1)
+
+    return _results

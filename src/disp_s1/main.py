@@ -21,18 +21,6 @@ from disp_s1.pge_runconfig import RunConfig
 logger = logging.getLogger(__name__)
 
 
-class ProductFiles(NamedTuple):
-    """Named tuple to hold the files for each NetCDF product."""
-
-    unwrapped: Path
-    conncomp: Path
-    temp_coh: Path
-    correlation: Path
-    ps_mask: Path
-    troposphere: Path | None
-    ionosphere: Path | None
-
-
 @log_runtime
 def run(
     cfg: DisplacementWorkflow,
@@ -90,7 +78,7 @@ def run(
         )
 
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
-    run_parallel_processing(out_paths, out_dir, date_to_slcs, pge_runconfig)
+    create_displacement_products(out_paths, out_dir, date_to_slcs, pge_runconfig)
     logger.info("Finished creating output products.")
 
     if pge_runconfig.product_path_group.save_compressed_slc:
@@ -119,22 +107,34 @@ def _assert_dates_match(
         raise ValueError(msg)
 
 
+class ProductFiles(NamedTuple):
+    """Named tuple to hold the files for each NetCDF product."""
+
+    unwrapped: Path
+    conncomp: Path
+    temp_coh: Path
+    correlation: Path
+    ps_mask: Path
+    troposphere: Path | None
+    ionosphere: Path | None
+
+
 def process_product(
     files: ProductFiles,
     out_dir: Path,
     date_to_slcs: dict,
     pge_runconfig: RunConfig,
 ) -> Path:
-    """Process a single interferogram and create the output product.
+    """Create a single displacement product.
 
     Parameters
     ----------
     files : ProductFiles
-        NamedTuple containing paths for all interferogram-related files.
+        NamedTuple containing paths for all displacement-related files.
     out_dir : Path
         Output directory for the product.
     date_to_slcs : dict
-        Dictionary mapping dates to corresponding SLC files.
+        Dictionary mapping dates to corresponding CSLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
 
@@ -182,7 +182,7 @@ def process_product(
     return output_name
 
 
-def run_parallel_processing(
+def create_displacement_products(
     out_paths: OutputPaths,
     out_dir: Path,
     date_to_slcs: dict,
@@ -231,25 +231,13 @@ def run_parallel_processing(
         )
     ]
 
-    _results = _process_with_executor(
-        files, out_dir, date_to_slcs, pge_runconfig, max_workers
-    )
-
-
-def _process_with_executor(files, out_dir, date_to_slcs, pge_runconfig, max_workers):
-    _results = []
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_file = {
-            executor.submit(
-                process_product, file, out_dir, date_to_slcs, pge_runconfig
-            ): file
+        futures = [
+            executor.submit(process_product, file, out_dir, date_to_slcs, pge_runconfig)
             for file in files
-        }
+        ]
 
         with tqdm(total=len(files), desc="Processing products") as pbar:
-            for future in as_completed(future_to_file):
-                result = future.result()
-                _results.append(result)
+            for future in as_completed(futures):
+                future.result()
                 pbar.update(1)
-
-    return _results

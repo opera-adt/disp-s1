@@ -679,7 +679,51 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             attrs={"units": "unitless"},
         )
 
+    copy_opera_cslc_metadata(comp_slc_file, outname)
+
     return outname
+
+
+def copy_opera_cslc_metadata(comp_slc_file: Filename, outname: Filename) -> None:
+    """Copy orbit and metadata datasets from the input CSLC file the compressed SLC.
+
+    Parameters
+    ----------
+    comp_slc_file : Filename
+        Path to the input CSLC file.
+    outname : Filename
+        Path to the output compressed SLC file.
+
+    """
+    dsets_to_copy = [
+        "/metadata/processing_information/input_burst_metadata/wavelength",
+        "/identification/zero_doppler_end_time",
+        "/identification/zero_doppler_start_time",
+        "/metadata/orbit",  #          Group
+    ]
+
+    with h5py.File(comp_slc_file, "r") as src, h5py.File(outname, "a") as dst:
+        for dset_path in dsets_to_copy:
+            if dset_path in src:
+                # Create parent group if it doesn't exist
+                dst.require_group(str(Path(dset_path).parent))
+
+                # Remove existing dataset/group if it exists
+                if dset_path in dst:
+                    del dst[dset_path]
+
+                # Copy the dataset or group
+                src.copy(
+                    src[dset_path],
+                    dst[str(Path(dset_path).parent)],
+                    name=Path(dset_path).name,
+                )
+            else:
+                logger.warning(
+                    f"Dataset or group {dset_path} not found in {comp_slc_file}"
+                )
+
+    logger.info(f"Copied metadata from {comp_slc_file} to {outname}")
 
 
 def create_compressed_products(

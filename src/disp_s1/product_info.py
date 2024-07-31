@@ -12,8 +12,9 @@ class ProductInfo:
     name: str
     description: str
     fillvalue: DTypeLike
+    dtype: DTypeLike
     attrs: dict[str, str] = field(default_factory=dict)
-    keep_bits: int = 10
+    keep_bits: int | None = None
 
 
 @dataclass
@@ -32,6 +33,7 @@ class DisplacementProducts:
             # 12 bits, for random values in meters from -1 to 1, has a max
             # quantization error of about 0.06 millimeters
             keep_bits=12,
+            dtype=np.float32,
         )
     )
 
@@ -48,6 +50,7 @@ class DisplacementProducts:
             # 12 bits, for random values in meters from -1 to 1, has a max
             # quantization error of about 0.06 millimeters
             keep_bits=12,
+            dtype=np.float32,
         )
     )
 
@@ -57,6 +60,7 @@ class DisplacementProducts:
             description="Connected component labels of the unwrapped phase",
             fillvalue=DEFAULT_CCL_NODATA,
             attrs={"units": "unitless"},
+            dtype=np.uint16,
         )
     )
 
@@ -68,6 +72,7 @@ class DisplacementProducts:
             attrs={"units": "unitless"},
             # 8 bits (between 0 and 1) is around .001 precision
             keep_bits=8,
+            dtype=np.float32,
         )
     )
 
@@ -82,6 +87,7 @@ class DisplacementProducts:
             attrs={"units": "unitless"},
             # 8 bits (between 0 and 1) is around .001 precision
             keep_bits=8,
+            dtype=np.float32,
         )
     )
 
@@ -94,6 +100,17 @@ class DisplacementProducts:
             ),
             fillvalue=255,
             attrs={"units": "unitless"},
+            dtype=np.uint8,
+        )
+    )
+
+    unwrapper_mask: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
+            name="unwrapper_mask",
+            description="Mask used during phase unwrapping to ignore input pixels.",
+            fillvalue=255,
+            attrs={"units": "unitless"},
+            dtype=np.uint8,
         )
     )
 

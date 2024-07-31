@@ -125,6 +125,7 @@ class ProductFiles(NamedTuple):
     ps_mask: Path
     troposphere: Path | None
     ionosphere: Path | None
+    unwrapper_mask: Path | None
 
 
 def process_product(
@@ -185,6 +186,7 @@ def process_product(
         temp_coh_filename=files.temp_coh,
         ifg_corr_filename=files.correlation,
         ps_mask_filename=files.ps_mask,
+        unwrapper_mask_filename=files.unwrapper_mask,
         pge_runconfig=pge_runconfig,
         cslc_files=cur_slc_list,
         corrections=corrections,
@@ -237,6 +239,9 @@ def create_displacement_products(
             ps_mask=out_paths.stitched_ps_file,
             troposphere=tropo,
             ionosphere=iono,
+            # TODO: we should save/use the "combined_mask" from dolphin
+            # This may have other pixels used in addition to the water mask provided
+            unwrapper_mask=pge_runconfig.dynamic_ancillary_file_group.mask_file,
         )
         for unw, cc, cor, tropo, iono in zip(
             out_paths.unwrapped_paths,

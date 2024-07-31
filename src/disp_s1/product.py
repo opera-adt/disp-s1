@@ -31,7 +31,7 @@ from . import __version__ as disp_s1_version
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
-from .product_info import DISPLACEMENT_PRODUCTS
+from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,7 @@ def create_output_product(
     temp_coh_filename: Filename,
     ifg_corr_filename: Filename,
     ps_mask_filename: Filename,
+    unwrapper_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     cslc_files: Sequence[Filename],
     corrections: Optional[dict[str, ArrayLike]] = None,
@@ -97,6 +98,8 @@ def create_output_product(
         The path to the input interferometric correlation image.
     ps_mask_filename : Filename
         The path to the input persistent scatterer mask image.
+    unwrapper_mask_filename : Filename, optional
+        The path to the boolean mask used during unwrapping to ignore pixels.
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
@@ -153,7 +156,8 @@ def create_output_product(
     disp_arr[mask] = np.nan
     filtered_disp_arr[mask] = np.nan
 
-    product_infos = list(DISPLACEMENT_PRODUCTS)
+    product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
+
     with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
         f.attrs.update(GLOBAL_ATTRS)
         _create_grid_mapping(group=f, crs=crs, gt=gt)
@@ -186,12 +190,18 @@ def create_output_product(
             temp_coh_filename,
             ifg_corr_filename,
             ps_mask_filename,
+            unwrapper_mask_filename,
         ]
 
         for info, filename in zip(product_infos[2:], data_files):
-            data = io.load_gdal(filename)
-            if np.issubdtype(data.dtype, np.floating):
+            if filename is None:
+                data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
+            else:
+                data = io.load_gdal(filename)
+
+            if info.keep_bits is not None:
                 round_mantissa(data, keep_bits=info.keep_bits)
+
             _create_geo_dataset(
                 group=f,
                 name=info.name,

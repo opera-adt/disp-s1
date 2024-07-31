@@ -35,6 +35,22 @@ class DisplacementProducts:
         )
     )
 
+    short_wavelength_displacement: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
+            name="displacement",
+            description=(
+                "Displacement in Line-of-Sight (LOS) with long-wavelength signals"
+                " removed. Positive values indicate apparent motion towards the"
+                " platform."
+            ),
+            fillvalue=np.nan,
+            attrs={"units": "meters"},
+            # 12 bits, for random values in meters from -1 to 1, has a max
+            # quantization error of about 0.06 millimeters
+            keep_bits=12,
+        )
+    )
+
     connected_component_labels: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="connected_component_labels",

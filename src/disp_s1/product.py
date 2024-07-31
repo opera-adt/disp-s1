@@ -127,7 +127,7 @@ def create_output_product(
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
     unw_arr = np.ma.filled(unw_arr_ma, 0)
     mask = unw_arr == 0
-    unw_arr[mask] = np.nan
+
     disp_arr = unw_arr * phase2disp
     shape = unw_arr.shape
 
@@ -138,14 +138,21 @@ def create_output_product(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,
     )
-    filtering.filter_long_wavelength(
-        unwrapped_phase=unw_arr,
+    filtered_disp_arr = filtering.filter_long_wavelength(
+        unwrapped_phase=disp_arr,
         correlation=io.load_gdal(ifg_corr_filename),
         mask_cutoff=0.5,
         wavelength_cutoff=wavelength_cutoff,
         pixel_spacing=pixel_spacing,
     )
+    DISPLACEMENT_PRODUCTS.short_wavelength_displacement.attrs |= {
+        "wavelength_cutoff": str(wavelength_cutoff)
+    }
 
+    disp_arr[mask] = np.nan
+    filtered_disp_arr[mask] = np.nan
+
+    product_infos = list(DISPLACEMENT_PRODUCTS)
     with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
         f.attrs.update(GLOBAL_ATTRS)
         _create_grid_mapping(group=f, crs=crs, gt=gt)
@@ -156,23 +163,23 @@ def create_output_product(
             time=start_time,
             long_name="Time corresponding to beginning of Displacement frame",
         )
-        info = DISPLACEMENT_PRODUCTS.displacement
-        round_mantissa(disp_arr, keep_bits=info.keep_bits)
-        _create_geo_dataset(
-            group=f,
-            name=info.name,
-            data=disp_arr,
-            description=info.description,
-            fillvalue=info.fillvalue,
-            attrs=info.attrs,
-        )
-        make_browse_image_from_arr(
-            Path(output_name).with_suffix(f".{info.name}.png"), disp_arr
-        )
-        del disp_arr
+        for info, data in zip(product_infos[:2], [disp_arr, filtered_disp_arr]):
+            round_mantissa(data, keep_bits=info.keep_bits)
+            _create_geo_dataset(
+                group=f,
+                name=info.name,
+                data=data,
+                description=info.description,
+                fillvalue=info.fillvalue,
+                attrs=info.attrs,
+            )
 
-        # Load and save each other dataset individually
-        product_infos = list(DISPLACEMENT_PRODUCTS)[1:]
+            make_browse_image_from_arr(
+                Path(output_name).with_suffix(f".{info.name}.png"), data
+            )
+            del data  # Free up memory
+
+        # For the others, load and save each individually
         data_files = [
             conncomp_filename,
             temp_coh_filename,
@@ -180,7 +187,7 @@ def create_output_product(
             ps_mask_filename,
         ]
 
-        for info, filename in zip(product_infos, data_files):
+        for info, filename in zip(product_infos[2:], data_files):
             data = io.load_gdal(filename)
             if np.issubdtype(data.dtype, np.floating):
                 round_mantissa(data, keep_bits=info.keep_bits)

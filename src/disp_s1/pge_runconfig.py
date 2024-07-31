@@ -137,7 +137,7 @@ class ProductPathGroup(YamlModel):
         alias="sas_output_path",
     )
     product_version: str = Field(
-        default="0.2",
+        default="0.3",
         description="Version of the product, in <major>.<minor> format.",
     )
     save_compressed_slc: bool = Field(

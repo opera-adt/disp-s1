@@ -6,7 +6,7 @@ import datetime
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Any, Optional, Sequence, Union
+from typing import Any, NamedTuple, Optional, Sequence, Union
 
 import h5netcdf
 import h5py
@@ -25,12 +25,13 @@ from opera_utils import (
     get_union_polygon,
     get_zero_doppler_time,
 )
+from tqdm.contrib.concurrent import process_map
 
 from . import __version__ as disp_s1_version
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
-from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
+from .product_info import DISPLACEMENT_PRODUCTS
 
 logger = logging.getLogger(__name__)
 
@@ -104,24 +105,11 @@ def create_output_product(
         Used to add extra metadata to the output file.
 
     """
-    # Read the Geotiff file and its metadata
     if corrections is None:
         corrections = {}
     crs = io.get_raster_crs(unw_filename)
     gt = io.get_raster_gt(unw_filename)
-    unw_arr_ma = io.load_gdal(unw_filename, masked=True)
-    unw_arr = np.ma.filled(unw_arr_ma, 0)
 
-    conncomp_arr = io.load_gdal(conncomp_filename)
-    temp_coh_arr = io.load_gdal(temp_coh_filename)
-    ifg_corr_arr = io.load_gdal(ifg_corr_filename)
-
-    # Get the nodata mask (which for snaphu is 0)
-    mask = unw_arr == 0
-    # Set to NaN for final output
-    unw_arr[mask] = np.nan
-
-    assert unw_arr.shape == conncomp_arr.shape == temp_coh_arr.shape
     start_times = [get_zero_doppler_time(f, type_="start") for f in cslc_files]
     start_time = min(start_times)
     end_times = [get_zero_doppler_time(f, type_="end") for f in cslc_files]
@@ -129,35 +117,51 @@ def create_output_product(
 
     wavelength = get_radar_wavelength(cslc_files[-1])
     phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
-    disp_arr = unw_arr * phase2disp
 
     with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
-        # Create the NetCDF file
         f.attrs.update(GLOBAL_ATTRS)
-
-        # Set up the grid mapping variable for each group with rasters
         _create_grid_mapping(group=f, crs=crs, gt=gt)
 
-        # Set up the X/Y variables for each group
-        _create_yx_dsets(group=f, gt=gt, shape=disp_arr.shape, include_time=True)
+        # Load and process unwrapped phase data, needs more custom masking
+        unw_arr_ma = io.load_gdal(unw_filename, masked=True)
+        unw_arr = np.ma.filled(unw_arr_ma, 0)
+        mask = unw_arr == 0
+        unw_arr[mask] = np.nan
+        disp_arr = unw_arr * phase2disp
+
+        shape = unw_arr.shape
+        _create_yx_dsets(group=f, gt=gt, shape=shape, include_time=True)
         _create_time_dset(
             group=f,
             time=start_time,
             long_name="Time corresponding to beginning of Displacement frame",
         )
+        info = DISPLACEMENT_PRODUCTS.displacement
+        round_mantissa(disp_arr, keep_bits=info.keep_bits)
+        _create_geo_dataset(
+            group=f,
+            name=info.name,
+            data=disp_arr,
+            description=info.description,
+            fillvalue=info.fillvalue,
+            attrs=info.attrs,
+        )
+        make_browse_image_from_arr(
+            Path(output_name).with_suffix(f".{info.name}.png"), disp_arr
+        )
+        del disp_arr
 
-        # ######## Main datasets ###########
-        # Write the displacement array / conncomp arrays
-        disp_data: list[np.ndarray] = [
-            disp_arr,
-            conncomp_arr,
-            temp_coh_arr,
-            ifg_corr_arr,
-            io.load_gdal(ps_mask_filename),
+        # Load and save each other dataset individually
+        product_infos = list(DISPLACEMENT_PRODUCTS)[1:]
+        data_files = [
+            conncomp_filename,
+            temp_coh_filename,
+            ifg_corr_filename,
+            ps_mask_filename,
         ]
 
-        product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
-        for info, data in zip(product_infos, disp_data):
+        for info, filename in zip(product_infos, data_files):
+            data = io.load_gdal(filename)
             if np.issubdtype(data.dtype, np.floating):
                 round_mantissa(data, keep_bits=info.keep_bits)
             _create_geo_dataset(
@@ -168,14 +172,12 @@ def create_output_product(
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
             )
-            make_browse_image_from_arr(
-                Path(output_name).with_suffix(f".{info.name}.png"), data
-            )
+            del data  # Free up memory
 
     _create_corrections_group(
         output_name=output_name,
         corrections=corrections,
-        shape=disp_arr.shape,
+        shape=shape,
         gt=gt,
         crs=crs,
         start_time=min(start_times),
@@ -201,12 +203,12 @@ def _create_corrections_group(
     start_time: datetime.datetime,
 ) -> None:
     keep_bits = 10
-    logger.info("Rounding mantissa in corrections to %s bits", keep_bits)
+    logger.debug("Rounding mantissa in corrections to %s bits", keep_bits)
     for data in corrections.values():
         # Use same amount of truncation for all correction layers
         if np.issubdtype(data.dtype, np.floating):
             round_mantissa(data, keep_bits=keep_bits)
-    logger.info("Creating corrections group")
+    logger.info("Creating corrections group in %s", output_name)
     with h5netcdf.File(output_name, "a") as f:
         # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
@@ -575,11 +577,81 @@ def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Va
     return dset
 
 
+class CompressedSLCInfo(NamedTuple):
+    """Data for creating one compressed SLC HDF5."""
+
+    burst: str
+    comp_slc_file: Path
+    output_dir: Path
+
+
+def process_compressed_slc(info: CompressedSLCInfo) -> Path:
+    """Make one compressed SLC output product."""
+    burst, comp_slc_file, output_dir = info
+    date_str = format_dates(*get_dates(comp_slc_file.stem))
+    name = COMPRESSED_SLC_TEMPLATE.format(burst=burst, date_str=date_str)
+    outname = Path(output_dir) / name
+
+    if outname.exists():
+        logger.info(f"Skipping existing {outname}")
+
+    crs = io.get_raster_crs(comp_slc_file)
+    gt = io.get_raster_gt(comp_slc_file)
+    data = io.load_gdal(comp_slc_file, band=1)
+    # COMPASS used `truncate_mantissa` default, 10 bits
+    round_mantissa(data, keep_bits=10)
+
+    # Input metadata is stored within the GDAL "DOLPHIN" domain
+    metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
+    attrs = {"units": "unitless"}
+    attrs.update(metadata_dict)
+
+    *parts, dset_name = OPERA_DATASET_NAME.split("/")
+    dispersion_dset_name = "amplitude_dispersion"
+    group_name = "/".join(parts)
+    logger.info(f"Writing {outname}")
+    with h5py.File(outname, "w") as hf:
+        # add type to root for GDAL recognition of complex datasets in NetCDF
+        ctype = h5py.h5t.py_create(np.complex64)
+        ctype.commit(hf["/"].id, np.string_("complex64"))
+
+    with h5netcdf.File(outname, mode="a", invalid_netcdf=True) as f:
+        f.attrs.update(attrs)
+
+        data_group = f.create_group(group_name)
+        _create_grid_mapping(group=data_group, crs=crs, gt=gt)
+        _create_yx_dsets(group=data_group, gt=gt, shape=data.shape, include_time=False)
+        _create_geo_dataset(
+            group=data_group,
+            name=dset_name,
+            data=data,
+            description="Compressed SLC product",
+            fillvalue=np.nan + 0j,
+            attrs=attrs,
+        )
+        del data
+
+        # Add the amplitude dispersion
+        amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype("float32")
+        round_mantissa(amp_dispersion_data, keep_bits=10)
+        _create_geo_dataset(
+            group=data_group,
+            name=dispersion_dset_name,
+            data=amp_dispersion_data,
+            description="Amplitude dispersion for the compressed SLC files.",
+            fillvalue=np.nan,
+            attrs={"units": "unitless"},
+        )
+
+    return outname
+
+
 def create_compressed_products(
     comp_slc_dict: dict[str, list[Path]],
     output_dir: Filename,
-):
-    """Make the compressed SLC output product.
+    max_workers: int = 3,
+) -> list[Path]:
+    """Create all compressed SLC output products.
 
     Parameters
     ----------
@@ -587,70 +659,28 @@ def create_compressed_products(
         A dictionary mapping burst IDs to lists of compressed SLC files.
     output_dir : Filename
         The directory to write the compressed SLC products to.
+    max_workers : int
+        Number of parallel threads to use to create products.
+        Default is 3.
+
+    Returns
+    -------
+    list[Path]
+        Paths to output compressed SLC files
 
     """
+    compressed_slc_infos = [
+        CompressedSLCInfo(burst, comp_slc_file, output_dir)
+        for burst, comp_slc_files in comp_slc_dict.items()
+        for comp_slc_file in comp_slc_files
+    ]
 
-    def form_name(filename: Path, burst: str):
-        # filename: compressed_20180222_20180716.tif
-        date_str = format_dates(*get_dates(filename.stem))
-        return COMPRESSED_SLC_TEMPLATE.format(burst=burst, date_str=date_str)
+    results = process_map(
+        process_compressed_slc,
+        compressed_slc_infos,
+        max_workers=max_workers,
+        desc="Processing compressed SLCs",
+    )
 
-    attrs = GLOBAL_ATTRS.copy()
-    attrs["title"] = "Compressed SLC"
-    *parts, dset_name = OPERA_DATASET_NAME.split("/")
-    dispersion_dset_name = "amplitude_dispersion"
-    group_name = "/".join(parts)
-
-    for burst, comp_slc_files in comp_slc_dict.items():
-        for comp_slc_file in comp_slc_files:
-            outname = Path(output_dir) / form_name(comp_slc_file, burst)
-            if outname.exists():
-                logger.info(f"Skipping existing {outname}")
-                continue
-
-            crs = io.get_raster_crs(comp_slc_file)
-            gt = io.get_raster_gt(comp_slc_file)
-            data = io.load_gdal(comp_slc_file, band=1)
-            # COMPASS used `truncate_mantissa` default, 10 bits
-            round_mantissa(data, keep_bits=10)
-
-            # Input metadata is stored within the GDAL "DOLPHIN" domain
-            metadata_dict = io.get_raster_metadata(comp_slc_file, "DOLPHIN")
-            attrs = {"units": "unitless"}
-            attrs.update(metadata_dict)
-
-            logger.info(f"Writing {outname}")
-            with h5py.File(outname, "w") as hf:
-                # add type to root for GDAL recognition of complex datasets in NetCDF
-                ctype = h5py.h5t.py_create(np.complex64)
-                ctype.commit(hf["/"].id, np.string_("complex64"))
-
-            with h5netcdf.File(outname, mode="a", invalid_netcdf=True) as f:
-                f.attrs.update(attrs)
-
-                data_group = f.create_group(group_name)
-                _create_grid_mapping(group=data_group, crs=crs, gt=gt)
-                _create_yx_dsets(
-                    group=data_group, gt=gt, shape=data.shape, include_time=False
-                )
-                _create_geo_dataset(
-                    group=data_group,
-                    name=dset_name,
-                    data=data,
-                    description="Compressed SLC product",
-                    fillvalue=np.nan + 0j,
-                    attrs=attrs,
-                )
-                # Add the amplitude dispersion
-                amp_dispersion_data = io.load_gdal(comp_slc_file, band=2).real.astype(
-                    "float32"
-                )
-                round_mantissa(amp_dispersion_data, keep_bits=10)
-                _create_geo_dataset(
-                    group=data_group,
-                    name=dispersion_dset_name,
-                    data=amp_dispersion_data,
-                    description="Amplitude dispersion for the compressed SLC files.",
-                    fillvalue=np.nan,
-                    attrs={"units": "unitless"},
-                )
+    logger.info("Finished creating all compressed SLC products.")
+    return results

@@ -133,7 +133,7 @@ def create_output_product(
 
     _, x_res, _, _, _, y_res = gt
     # Average for the pixel spacing for filtering
-    pixel_spacing = (x_res + y_res) / 2
+    pixel_spacing = (abs(x_res) + abs(y_res)) / 2
     logger.info(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,

@@ -138,10 +138,11 @@ def create_output_product(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,
     )
+    bad_corr = io.load_gdal(ifg_corr_filename) < 0.5
+    bad_conncomp = io.load_gdal(conncomp_filename, masked=True).filled(0) == 0
     filtered_disp_arr = filtering.filter_long_wavelength(
         unwrapped_phase=disp_arr,
-        correlation=io.load_gdal(ifg_corr_filename),
-        mask_cutoff=0.5,
+        bad_pixel_mask=bad_corr | bad_conncomp,
         wavelength_cutoff=wavelength_cutoff,
         pixel_spacing=pixel_spacing,
     )

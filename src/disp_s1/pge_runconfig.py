@@ -12,6 +12,7 @@ from dolphin.workflows.config import (
     OutputOptions,
     PhaseLinkingOptions,
     PsOptions,
+    TimeseriesOptions,
     UnwrapOptions,
     WorkerSettings,
 )
@@ -160,7 +161,9 @@ class AlgorithmParameters(YamlModel):
         default_factory=InterferogramNetwork
     )
     unwrap_options: UnwrapOptions = Field(default_factory=UnwrapOptions)
+    timeseries_options: TimeseriesOptions = Field(default_factory=TimeseriesOptions)
     output_options: OutputOptions = Field(default_factory=OutputOptions)
+
     subdataset: str = Field(
         default=OPERA_DATASET_NAME,
         description="Name of the subdataset to use in the input NetCDF files.",
@@ -251,6 +254,8 @@ class RunConfig(YamlModel):
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
         param_dict["output_options"]["add_overviews"] = False
+        # Always turn off velocity (not used)
+        param_dict["timeseries_options"]["run_velocity"] = False
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
         return DisplacementWorkflow(

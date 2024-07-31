@@ -72,3 +72,6 @@ def test_create_compressed_slc(tmp_path):
     # Check product structure
     with h5py.File(expected_name) as hf:
         assert hf["/data/VV"].size > 0
+        assert "/metadata/orbit" in hf
+        assert "/identification/zero_doppler_start_time" in hf
+        assert "/metadata/processing_information/input_burst_metadata/wavelength" in hf

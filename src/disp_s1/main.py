@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -96,6 +97,7 @@ def run(
         product.create_compressed_products(
             comp_slc_dict=out_paths.comp_slc_dict,
             output_dir=output_dir,
+            cslc_file_list=cfg.cslc_file_list,
         )
 
     logger.info(f"Product type: {pge_runconfig.primary_executable.product_type}")
@@ -131,7 +133,7 @@ class ProductFiles(NamedTuple):
 def process_product(
     files: ProductFiles,
     out_dir: Path,
-    date_to_slcs: dict,
+    date_to_slcs: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     wavelength_cutoff: float,
 ) -> Path:
@@ -143,7 +145,7 @@ def process_product(
         NamedTuple containing paths for all displacement-related files.
     out_dir : Path
         Output directory for the product.
-    date_to_slcs : dict
+    date_to_slcs: Mapping[tuple[datetime], list[Path]]
         Dictionary mapping dates to corresponding CSLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.

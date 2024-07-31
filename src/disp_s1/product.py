@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
 from typing import Any, NamedTuple, Optional, Sequence, Union
@@ -20,6 +21,8 @@ from dolphin.utils import format_dates
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import (
     OPERA_DATASET_NAME,
+    filter_by_burst_id,
+    filter_by_date,
     get_dates,
     get_radar_wavelength,
     get_union_polygon,
@@ -66,7 +69,7 @@ HDF5_OPTS["chunks"] = tuple(CHUNK_SHAPE)  # type: ignore
 # https://github.com/corteva/rioxarray/blob/5783693895b4b055909c5758a72a5d40a365ef11/rioxarray/rioxarray.py#L34 # noqa
 GRID_MAPPING_DSET = "spatial_ref"
 
-COMPRESSED_SLC_TEMPLATE = "compressed_{burst}_{date_str}.h5"
+COMPRESSED_SLC_TEMPLATE = "compressed_{burst_id}_{date_str}.h5"
 
 
 def create_output_product(
@@ -616,16 +619,17 @@ def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Va
 class CompressedSLCInfo(NamedTuple):
     """Data for creating one compressed SLC HDF5."""
 
-    burst: str
+    burst_id: str
     comp_slc_file: Path
     output_dir: Path
+    opera_cslc_file: Path
 
 
 def process_compressed_slc(info: CompressedSLCInfo) -> Path:
     """Make one compressed SLC output product."""
-    burst, comp_slc_file, output_dir = info
+    burst_id, comp_slc_file, output_dir, opera_cslc_file = info
     date_str = format_dates(*get_dates(comp_slc_file.stem))
-    name = COMPRESSED_SLC_TEMPLATE.format(burst=burst, date_str=date_str)
+    name = COMPRESSED_SLC_TEMPLATE.format(burst_id=burst_id, date_str=date_str)
     outname = Path(output_dir) / name
 
     if outname.exists():
@@ -679,7 +683,7 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             attrs={"units": "unitless"},
         )
 
-    copy_opera_cslc_metadata(comp_slc_file, outname)
+    copy_opera_cslc_metadata(opera_cslc_file, outname)
 
     return outname
 
@@ -727,8 +731,9 @@ def copy_opera_cslc_metadata(comp_slc_file: Filename, outname: Filename) -> None
 
 
 def create_compressed_products(
-    comp_slc_dict: dict[str, list[Path]],
+    comp_slc_dict: Mapping[str, Sequence[Path]],
     output_dir: Filename,
+    cslc_file_list: Sequence[Path],
     max_workers: int = 3,
 ) -> list[Path]:
     """Create all compressed SLC output products.
@@ -736,9 +741,13 @@ def create_compressed_products(
     Parameters
     ----------
     comp_slc_dict : dict[str, list[Path]]
-        A dictionary mapping burst IDs to lists of compressed SLC files.
+        A dictionary mapping burst_id to lists of compressed SLC files.
     output_dir : Filename
         The directory to write the compressed SLC products to.
+    cslc_file_list : Sequence[Path]
+        Full set of input CSLCs used during processing.
+        Used to pick out metadata corresponding to each compressed SLC's
+        reference date.
     max_workers : int
         Number of parallel threads to use to create products.
         Default is 3.
@@ -749,11 +758,23 @@ def create_compressed_products(
         Paths to output compressed SLC files
 
     """
-    compressed_slc_infos = [
-        CompressedSLCInfo(burst, comp_slc_file, output_dir)
-        for burst, comp_slc_files in comp_slc_dict.items()
-        for comp_slc_file in comp_slc_files
-    ]
+    compressed_slc_infos = []
+    for burst_id, comp_slc_files in comp_slc_dict.items():
+        for comp_slc_file in comp_slc_files:
+            # Pick out the one that matches the current date/burst_id
+            ref_date = get_dates(comp_slc_file)[0]
+            valid_date_files = filter_by_date(cslc_file_list, [ref_date])
+            matching_files = filter_by_burst_id(valid_date_files, burst_id)
+            msg = (
+                f"Found {len(matching_files)} matching CSLC files for"
+                f" {burst_id} {ref_date}"
+            )
+            logger.info(msg)
+            logger.info(matching_files)
+
+            cur_opera_cslc = matching_files[-1]
+            c = CompressedSLCInfo(burst_id, comp_slc_file, output_dir, cur_opera_cslc)
+            compressed_slc_infos.append(c)
 
     results = process_map(
         process_compressed_slc,

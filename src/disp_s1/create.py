@@ -60,6 +60,10 @@ def get_params(
     cslc_files = sorted(cslc_list.read().splitlines())
     param_dict["cslc_files"] = cslc_files
 
+    # TODO: we should read in the configuration to see where the mask was?
+    # otherwise, need to figure out where that is
+    param_dict["unwrapper_mask_filename"] = None
+
     workflow = DisplacementWorkflow.from_yaml(param_dict["dolphin_config"])
     rc = RunConfig.from_workflow(
         workflow,
@@ -90,6 +94,7 @@ def make_product(param_dict: dict) -> None:
         output_name=param_dict["output_name"],
         corrections={},
         ps_mask_filename=param_dict["ps_mask_filename"],
+        unwrapper_mask_filename=param_dict["unwrapper_mask_filename"],
         pge_runconfig=param_dict["pge_runconfig"],
         cslc_files=param_dict["cslc_files"],
     )

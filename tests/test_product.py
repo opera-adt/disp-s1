@@ -1,10 +1,16 @@
+from pathlib import Path
+
 import h5py
-import numpy as np
 import pytest
-from dolphin import io
 
 from disp_s1.pge_runconfig import RunConfig
 from disp_s1.product import create_compressed_products, create_output_product
+
+TEST_FILE = (
+    Path(__file__).parent
+    / "data"
+    / "OPERA_L2_CSLC-S1_T087-185683-IW2_20221228T161651Z_20240504T181714Z_S1A_VV_v1.1.h5"  # noqa: E501
+)
 
 
 # Shapely runtime warning
@@ -52,34 +58,11 @@ def test_create_output_product(
     )
 
 
-@pytest.fixture
-def comp_slc(tmp_path) -> str:
-    # random place in hawaii
-    geotransform = [204500.0, 5.0, 0.0, 2151300.0, 0.0, -10.0]
-    srs = "EPSG:32605"
-    shape = (256, 256)
-
-    data = np.random.randn(*shape).astype(np.complex64)
-    date_str = "20220101_20220102_20220103"
-    burst = "t123_123456_iw1"
-    filename = tmp_path / f"compressed_{burst}_{date_str}.tif"
-    amp_disp = np.random.randn(*shape).astype(np.complex64) ** 2
-    data_stack = np.stack([data, amp_disp])
-    io.write_arr(
-        arr=data_stack,
-        output_name=filename,
-        geotransform=geotransform,
-        projection=srs,
-    )
-    return filename
-
-
-def test_create_compressed_slc(
-    tmp_path,
-    comp_slc,
-):
+def test_create_compressed_slc(tmp_path):
     # date_str = "20220101_20220102_20220103"
-    burst = "t123_123456_iw1"
+    # T087-185683-IW2
+    burst = "t087_185683_iw2"
+    comp_slc = TEST_FILE
     comp_slc_dict = {burst: [comp_slc]}
 
     create_compressed_products(comp_slc_dict, output_dir=tmp_path)

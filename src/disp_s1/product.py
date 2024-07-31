@@ -13,7 +13,7 @@ import h5py
 import numpy as np
 import pyproj
 from dolphin import __version__ as dolphin_version
-from dolphin import io
+from dolphin import filtering, io
 from dolphin._types import Filename
 from dolphin.io import round_mantissa
 from dolphin.utils import format_dates
@@ -79,11 +79,14 @@ def create_output_product(
     pge_runconfig: RunConfig,
     cslc_files: Sequence[Filename],
     corrections: Optional[dict[str, ArrayLike]] = None,
+    wavelength_cutoff: float = 50_000.0,
 ):
     """Create the OPERA output product in NetCDF format.
 
     Parameters
     ----------
+    output_name : Filename, optional
+        The path to the output NetCDF file.
     unw_filename : Filename
         The path to the input unwrapped phase image.
     conncomp_filename : Filename
@@ -94,15 +97,17 @@ def create_output_product(
         The path to the input interferometric correlation image.
     ps_mask_filename : Filename
         The path to the input persistent scatterer mask image.
-    output_name : Filename, optional
-        The path to the output NetCDF file, by default "output.nc"
-    corrections : dict[str, ArrayLike], optional
-        A dictionary of corrections to write to the output file, by default None
-    cslc_files : Sequence[Filename]
-        The list of input CSLC products used to generate the output product.
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
+    cslc_files : Sequence[Filename]
+        The list of input CSLC products used to generate the output product.
+    corrections : dict[str, ArrayLike], optional
+        A dictionary of corrections to write to the output file, by default None
+    wavelength_cutoff : float, optional
+        The wavelength cutoff for filtering long wavelengths.
+        Default is 50_000.0
+
 
     """
     if corrections is None:
@@ -118,18 +123,33 @@ def create_output_product(
     wavelength = get_radar_wavelength(cslc_files[-1])
     phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
 
+    # Load and process unwrapped phase data, needs more custom masking
+    unw_arr_ma = io.load_gdal(unw_filename, masked=True)
+    unw_arr = np.ma.filled(unw_arr_ma, 0)
+    mask = unw_arr == 0
+    unw_arr[mask] = np.nan
+    disp_arr = unw_arr * phase2disp
+    shape = unw_arr.shape
+
+    _, x_res, _, _, _, y_res = gt
+    # Average for the pixel spacing for filtering
+    pixel_spacing = (x_res + y_res) / 2
+    logger.info(
+        "Creating short wavelength displacement product with %s meter cutoff",
+        wavelength_cutoff,
+    )
+    filtering.filter_long_wavelength(
+        unwrapped_phase=unw_arr,
+        correlation=io.load_gdal(ifg_corr_filename),
+        mask_cutoff=0.5,
+        wavelength_cutoff=wavelength_cutoff,
+        pixel_spacing=pixel_spacing,
+    )
+
     with h5netcdf.File(output_name, "w", **FILE_OPTS) as f:
         f.attrs.update(GLOBAL_ATTRS)
         _create_grid_mapping(group=f, crs=crs, gt=gt)
 
-        # Load and process unwrapped phase data, needs more custom masking
-        unw_arr_ma = io.load_gdal(unw_filename, masked=True)
-        unw_arr = np.ma.filled(unw_arr_ma, 0)
-        mask = unw_arr == 0
-        unw_arr[mask] = np.nan
-        disp_arr = unw_arr * phase2disp
-
-        shape = unw_arr.shape
         _create_yx_dsets(group=f, gt=gt, shape=shape, include_time=True)
         _create_time_dset(
             group=f,
@@ -568,9 +588,7 @@ def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Va
         {
             "GeoTransform": gt_string,
             "units": "unitless",
-            "long_name": (
-                "Dummy variable containing geo-referencing metadata in attributes"
-            ),
+            "long_name": "Dummy variable with geo-referencing metadata in attributes",
         }
     )
 

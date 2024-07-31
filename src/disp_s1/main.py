@@ -41,14 +41,16 @@ def run(
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
 
-    # ######################################
-    # 1. Run dolphin's displacement workflow
-    # ######################################
+    # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
 
-    # #########################################
-    # 2. Finalize the output as an HDF5 product
-    # #########################################
+    # Create the short wavelength layer for the product
+    if hasattr(cfg, "spatial_wavelength_cutoff"):
+        wavelength_cutoff = cfg.spatial_wavelength_cutoff
+    else:
+        wavelength_cutoff = 50_000
+
+    # Finalize the output as an HDF5 product
     # Group all the non-compressed SLCs by date
     date_to_slcs = group_by_date(
         [p for p in cfg.cslc_file_list if "compressed" not in p.name],
@@ -78,7 +80,13 @@ def run(
         )
 
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
-    create_displacement_products(out_paths, out_dir, date_to_slcs, pge_runconfig)
+    create_displacement_products(
+        out_paths,
+        out_dir,
+        date_to_slcs,
+        pge_runconfig,
+        wavelength_cutoff=wavelength_cutoff,
+    )
     logger.info("Finished creating output products.")
 
     if pge_runconfig.product_path_group.save_compressed_slc:
@@ -124,6 +132,7 @@ def process_product(
     out_dir: Path,
     date_to_slcs: dict,
     pge_runconfig: RunConfig,
+    wavelength_cutoff: float,
 ) -> Path:
     """Create a single displacement product.
 
@@ -137,6 +146,8 @@ def process_product(
         Dictionary mapping dates to corresponding CSLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
+    wavelength_cutoff : float
+        Wavelength cutoff for filtering long wavelengths.
 
     Returns
     -------
@@ -177,6 +188,7 @@ def process_product(
         pge_runconfig=pge_runconfig,
         cslc_files=cur_slc_list,
         corrections=corrections,
+        wavelength_cutoff=wavelength_cutoff,
     )
 
     return output_name
@@ -187,6 +199,7 @@ def create_displacement_products(
     out_dir: Path,
     date_to_slcs: dict,
     pge_runconfig: RunConfig,
+    wavelength_cutoff: float = 50_000.0,
     max_workers: int = 5,
 ) -> None:
     """Run parallel processing for all interferograms.
@@ -201,6 +214,9 @@ def create_displacement_products(
         Dictionary mapping dates to corresponding SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
+    wavelength_cutoff : float
+        Wavelength cutoff (in meters) for filtering long wavelengths.
+        Default is 50_000.
     max_workers : int
         Number of parallel products to process.
         Default is 3.
@@ -233,7 +249,14 @@ def create_displacement_products(
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(process_product, file, out_dir, date_to_slcs, pge_runconfig)
+            executor.submit(
+                process_product,
+                file,
+                out_dir,
+                date_to_slcs,
+                pge_runconfig,
+                wavelength_cutoff,
+            )
             for file in files
         ]
 

@@ -37,7 +37,7 @@ class DisplacementProducts:
 
     short_wavelength_displacement: ProductInfo = field(
         default_factory=lambda: ProductInfo(
-            name="displacement",
+            name="short_wavelength_displacement",
             description=(
                 "Displacement in Line-of-Sight (LOS) with long-wavelength signals"
                 " removed. Positive values indicate apparent motion towards the"

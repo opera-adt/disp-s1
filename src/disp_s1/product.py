@@ -695,14 +695,16 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
     return outname
 
 
-def copy_opera_cslc_metadata(comp_slc_file: Filename, outname: Filename) -> None:
+def copy_opera_cslc_metadata(
+    comp_slc_file: Filename, output_hdf5_file: Filename
+) -> None:
     """Copy orbit and metadata datasets from the input CSLC file the compressed SLC.
 
     Parameters
     ----------
     comp_slc_file : Filename
         Path to the input CSLC file.
-    outname : Filename
+    output_hdf5_file : Filename
         Path to the output compressed SLC file.
 
     """
@@ -710,10 +712,11 @@ def copy_opera_cslc_metadata(comp_slc_file: Filename, outname: Filename) -> None
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
+        "/identification/bounding_polygon",
         "/metadata/orbit",  #          Group
     ]
 
-    with h5py.File(comp_slc_file, "r") as src, h5py.File(outname, "a") as dst:
+    with h5py.File(comp_slc_file, "r") as src, h5py.File(output_hdf5_file, "a") as dst:
         for dset_path in dsets_to_copy:
             if dset_path in src:
                 # Create parent group if it doesn't exist
@@ -734,7 +737,7 @@ def copy_opera_cslc_metadata(comp_slc_file: Filename, outname: Filename) -> None
                     f"Dataset or group {dset_path} not found in {comp_slc_file}"
                 )
 
-    logger.info(f"Copied metadata from {comp_slc_file} to {outname}")
+    logger.info(f"Copied metadata from {comp_slc_file} to {output_hdf5_file}")
 
 
 def create_compressed_products(

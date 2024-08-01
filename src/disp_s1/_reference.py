@@ -1,9 +1,18 @@
 from pathlib import Path
+from typing import NamedTuple
 
+import rasterio.warp
 from dolphin._types import PathOrStr
 
 
-def read_reference_point(timeseries_path: PathOrStr) -> tuple[int, int, float, float]:
+class ReferencePoint(NamedTuple):
+    row: int
+    col: int
+    lat: float
+    lon: float
+
+
+def read_reference_point(timeseries_path: PathOrStr) -> ReferencePoint:
     """Read the reference point metadata from dolphin's timeseries output.
 
     We also convert the row and column indices to latitude and longitude coordinates.
@@ -15,8 +24,8 @@ def read_reference_point(timeseries_path: PathOrStr) -> tuple[int, int, float, f
 
     Returns
     -------
-    Tuple[int, int, float, float]
-        A tuple containing (ref_row, ref_col, ref_lat, ref_lon).
+    NamedTuple[int, int, float, float]
+        A ReferencePoint tuple containing (row, col, lat, lon).
 
     Raises
     ------
@@ -54,12 +63,10 @@ def read_reference_point(timeseries_path: PathOrStr) -> tuple[int, int, float, f
 
     with rio.open(timeseries_files[0]) as src:
         crs = src.crs
+        # Convert row/col to x/y coordinates
         x, y = src.xy(ref_row, ref_col)
-
-    # Convert row/col to x/y coordinates
-    import rasterio.warp
 
     # Convert x/y to lat/lon
     ref_lon, ref_lat = rasterio.warp.transform(crs, rio.CRS.from_epsg(4326), [x], [y])
 
-    return ref_row, ref_col, ref_lat[0], ref_lon[0]
+    return ReferencePoint(ref_row, ref_col, ref_lat[0], ref_lon[0])

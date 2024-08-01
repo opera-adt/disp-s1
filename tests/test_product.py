@@ -1,10 +1,18 @@
-import h5py
-import numpy as np
-import pytest
-from dolphin import io
+from pathlib import Path
 
+import h5py
+import pytest
+
+from disp_s1 import product
 from disp_s1.pge_runconfig import RunConfig
-from disp_s1.product import create_compressed_products, create_output_product
+
+TEST_DATA_DIR = Path(__file__).parent / "data"
+TEST_CSLC_FILE = (
+    TEST_DATA_DIR
+    / "OPERA_L2_CSLC-S1_T087-185683-IW2_20221228T161651Z_20240504T181714Z_S1A_VV_v1.1.h5"  # noqa: E501
+)
+
+TEST_OUTPUT_CCSLC_FILE = TEST_DATA_DIR / "compressed_20221228_20230101_20230113.tif"
 
 
 # Shapely runtime warning
@@ -39,7 +47,7 @@ def test_create_output_product(
         test_data_dir / "delivery_data_small/config_files/runconfig_forward.yaml"
     )
 
-    create_output_product(
+    product.create_output_product(
         unw_filename=unw_filename,
         conncomp_filename=conncomp_filename,
         tcorr_filename=tcorr_filename,
@@ -52,40 +60,25 @@ def test_create_output_product(
     )
 
 
-@pytest.fixture
-def comp_slc(tmp_path) -> str:
-    # random place in hawaii
-    geotransform = [204500.0, 5.0, 0.0, 2151300.0, 0.0, -10.0]
-    srs = "EPSG:32605"
-    shape = (256, 256)
+def test_create_compressed_slc(tmp_path):
+    # OPERA_L2_CSLC-S1_T087-185683-IW2_20221228T161651Z_20240504T181714Z_S1A_VV_v1.1.h5
+    # compressed_20221228_20230101_20230113.tif
+    date_str = "20221228_20230101_20230113"
+    burst_id = "t087_185683_iw2"
+    processed_ccslc_file = TEST_OUTPUT_CCSLC_FILE
+    comp_slc_dict = {burst_id: [processed_ccslc_file]}
 
-    data = np.random.randn(*shape).astype(np.complex64)
-    date_str = "20220101_20220102_20220103"
-    burst = "t123_123456_iw1"
-    filename = tmp_path / f"compressed_{burst}_{date_str}.tif"
-    amp_disp = np.random.randn(*shape).astype(np.complex64) ** 2
-    data_stack = np.stack([data, amp_disp])
-    io.write_arr(
-        arr=data_stack,
-        output_name=filename,
-        geotransform=geotransform,
-        projection=srs,
+    product.create_compressed_products(
+        comp_slc_dict, cslc_file_list=[TEST_CSLC_FILE], output_dir=tmp_path
     )
-    return filename
 
-
-def test_create_compressed_slc(
-    tmp_path,
-    comp_slc,
-):
-    # date_str = "20220101_20220102_20220103"
-    burst = "t123_123456_iw1"
-    comp_slc_dict = {burst: [comp_slc]}
-
-    create_compressed_products(comp_slc_dict, output_dir=tmp_path)
-
-    expected_name = tmp_path / (comp_slc.with_suffix(".h5").name)
+    expected_name = tmp_path / product.COMPRESSED_SLC_TEMPLATE.format(
+        burst_id=burst_id, date_str=date_str
+    )
     assert expected_name.exists()
     # Check product structure
     with h5py.File(expected_name) as hf:
         assert hf["/data/VV"].size > 0
+        assert "/metadata/orbit" in hf
+        assert "/identification/zero_doppler_start_time" in hf
+        assert "/metadata/processing_information/input_burst_metadata/wavelength" in hf

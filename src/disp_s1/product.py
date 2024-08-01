@@ -319,7 +319,7 @@ def _create_corrections_group(
             data=troposphere,
             description="Tropospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
-            attrs={"units": "radians"},
+            attrs={"units": "meters"},
         )
         ionosphere = corrections.get("ionosphere", empty_arr)
         _create_geo_dataset(
@@ -328,7 +328,7 @@ def _create_corrections_group(
             data=ionosphere,
             description="Ionospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
-            attrs={"units": "radians"},
+            attrs={"units": "meters"},
         )
         solid_earth = corrections.get("solid_earth", empty_arr)
         _create_geo_dataset(
@@ -337,7 +337,7 @@ def _create_corrections_group(
             data=solid_earth,
             description="Solid Earth tide used to correct the unwrapped phase",
             fillvalue=np.nan,
-            attrs={"units": "radians"},
+            attrs={"units": "meters"},
         )
         plate_motion = corrections.get("plate_motion", empty_arr)
         _create_geo_dataset(
@@ -346,7 +346,7 @@ def _create_corrections_group(
             data=plate_motion,
             description="Phase ramp caused by tectonic plate motion",
             fillvalue=np.nan,
-            attrs={"units": "radians"},
+            attrs={"units": "meters"},
         )
         baseline = corrections.get("baseline", empty_arr)
         _create_geo_dataset(

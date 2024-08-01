@@ -237,7 +237,7 @@ def _validate_displacement(
     ref_conncomps: ArrayLike,
     nan_threshold: float = 0.01,
     atol: float = 1e-6,
-    wavelength: float = 0.056,
+    wavelength: float = 299_792_458 / 5.405e9,
 ) -> None:
     """Validate displacement values against a reference dataset.
 

@@ -32,6 +32,7 @@ from tqdm.contrib.concurrent import process_map
 from . import __version__ as disp_s1_version
 from ._baselines import _interpolate_data, compute_baselines
 from ._common import DATETIME_FORMAT
+from ._reference import ReferencePoint
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
 from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
@@ -83,6 +84,7 @@ def create_output_product(
     pge_runconfig: RunConfig,
     reference_cslc_file: Filename,
     secondary_cslc_file: Filename,
+    reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
     wavelength_cutoff: float = 50_000.0,
 ):
@@ -113,6 +115,9 @@ def create_output_product(
     secondary_cslc_file : Filename
         An input CSLC product corresponding to the secondary date.
         Used for metadata generation.
+    reference_point : ReferencePoint, optional
+        Named tuple with (row, col, lat, lon) of selected reference pixel.
+        If None, will record empty in the dataset's attributes
     corrections : dict[str, ArrayLike], optional
         A dictionary of corrections to write to the output file, by default None
     wavelength_cutoff : float, optional
@@ -258,6 +263,7 @@ def create_output_product(
         gt=gt,
         crs=crs,
         secondary_start_time=secondary_start_time,
+        reference_point=reference_point,
     )
 
     _create_identification_group(
@@ -280,6 +286,7 @@ def _create_corrections_group(
     gt: list[float],
     crs: pyproj.CRS,
     secondary_start_time: datetime.datetime,
+    reference_point: ReferencePoint | None,
 ) -> None:
     keep_bits = 10
     logger.debug("Rounding mantissa in corrections to %s bits", keep_bits)
@@ -353,12 +360,28 @@ def _create_corrections_group(
             attrs={"units": "meters"},
         )
         # Make a scalar dataset for the reference point
-        reference_point = corrections.get("reference_point", 0.0)
+        if reference_point is not None:
+            row, col, lat, lon = reference_point
+            ref_attrs = {
+                "rows": [row],
+                "cols": [col],
+                "latitudes": [lat],
+                "longitudes": [lon],
+                "units": "unitless",
+            }
+        else:
+            ref_attrs = {
+                "rows": [],
+                "cols": [],
+                "latitudes": [],
+                "longitudes": [],
+                "units": "unitless",
+            }
         _create_dataset(
             group=corrections_group,
             name="reference_point",
             dimensions=(),
-            data=reference_point,
+            data=0,
             fillvalue=0,
             description=(
                 "Dummy dataset containing attributes with the locations where the"
@@ -367,13 +390,7 @@ def _create_corrections_group(
             dtype=int,
             # Note: the dataset contains attributes with lists, since the reference
             # could have come from multiple points (e.g. boxcar average of an area).
-            attrs={
-                "units": "unitless",
-                "rows": [],
-                "cols": [],
-                "latitudes": [],
-                "longitudes": [],
-            },
+            attrs=ref_attrs,
         )
 
 

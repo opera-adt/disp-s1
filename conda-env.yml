@@ -1,6 +1,7 @@
 name: disp-s1-env
 channels:
   - conda-forge
+  - nodefaults
 dependencies:
   - python>=3.9
   - pip>=21.3  # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#editable-installation
@@ -21,6 +22,7 @@ dependencies:
   - snaphu>=0.4.0
   - isce3>=0.16.0
   - tophu
+  - cxx-compiler # for whirlwind
   # # Spurt is not yet on pip/conda, but only has one extra (...which also is badly supported on conda-forge)
   # - ortools==9.8.3296
   # - pip

@@ -19,6 +19,8 @@ from tqdm import tqdm
 from disp_s1 import __version__, product
 from disp_s1.pge_runconfig import RunConfig
 
+from ._reference import read_reference_point
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,6 +52,11 @@ def run(
         wavelength_cutoff = cfg.spatial_wavelength_cutoff
     else:
         wavelength_cutoff = 50_000
+
+    # Read the reference point
+    assert out_paths.timeseries_paths is not None
+    timeseries_dir = out_paths.timeseries_paths[0].parent
+    read_reference_point(timeseries_dir)
 
     # Finalize the output as an HDF5 product
     # Group all the CSLCs by date to pick out ref/secondaries

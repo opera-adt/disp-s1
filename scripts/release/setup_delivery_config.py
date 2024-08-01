@@ -23,7 +23,7 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         # Inputs:
         " --slc-files ./input_slcs/*h5 --subdataset /data/VV"
         # Phase linking stuff
-        f" --ministack-size 20 {single_flag}"
+        f" --ministack-size 15 {single_flag}"
         # Dynamic ancillary files #
         ###########################
         # TODO # seasonal coherence averages
@@ -35,12 +35,12 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         " --dem ./dynamic_ancillary_files/dem.tif"
         # Geometry files/static layers
         " --geometry-files ./dynamic_ancillary_files/static_layers/*"
-        " --mask-file ./dynamic_ancillary_files/watermask.tif"
+        " --mask-file ./dynamic_ancillary_files/water_mask.tif"
         #
         # Unwrapping stuff
         " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5"
         # Worker stuff
-        " --threads-per-worker 16 --n-parallel-bursts 2 --n-parallel-unwrap 2 "
+        " --threads-per-worker 16 --n-parallel-bursts 4 --n-parallel-unwrap 4 "
         f" --log-file scratch/{mode.value}/log_sas.log"
         f" -o {outfile}"
     )
@@ -52,7 +52,7 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
 if __name__ == "__main__":
     cfg_dir = Path("config_files")
     # California, track 42, bay area:
-    frame_id = 11114
+    frame_id = 7091
     # Creates one file for the forward mode and one for the historical mode.
     for mode in ProcessingMode:
         output_directory = Path(f"output/{mode.value}")

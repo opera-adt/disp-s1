@@ -57,11 +57,11 @@ def run(
 
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
-    logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
+    logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
 
     # group dataset based on date to find corresponding files and set None
     # for the layers that do not exist: correction layers specifically
-    grouped_unwrapped_paths = group_by_date(out_paths.unwrapped_paths)
+    grouped_unwrapped_paths = group_by_date(out_paths.timeseries_paths)
     unw_date_keys = list(grouped_unwrapped_paths.keys())
     _assert_dates_match(unw_date_keys, out_paths.conncomp_paths, "connected components")
     _assert_dates_match(unw_date_keys, out_paths.stitched_cor_paths, "correlation")
@@ -76,7 +76,7 @@ def run(
             unw_date_keys, out_paths.ionospheric_corrections, "ionosphere"
         )
 
-    logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
+    logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
     create_displacement_products(
         out_paths,
         out_dir=out_dir,
@@ -228,10 +228,10 @@ def create_displacement_products(
 
     """
     tropo_files = out_paths.tropospheric_corrections or [None] * len(
-        out_paths.unwrapped_paths
+        out_paths.timeseries_paths
     )
     iono_files = out_paths.ionospheric_corrections or [None] * len(
-        out_paths.unwrapped_paths
+        out_paths.timeseries_paths
     )
     files = [
         ProductFiles(
@@ -247,7 +247,7 @@ def create_displacement_products(
             unwrapper_mask=pge_runconfig.dynamic_ancillary_file_group.mask_file,
         )
         for unw, cc, cor, tropo, iono in zip(
-            out_paths.unwrapped_paths,
+            out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
             tropo_files,

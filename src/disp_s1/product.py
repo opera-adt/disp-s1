@@ -25,7 +25,6 @@ from opera_utils import (
     filter_by_date,
     get_dates,
     get_radar_wavelength,
-    get_union_polygon,
     get_zero_doppler_time,
 )
 from tqdm.contrib.concurrent import process_map
@@ -81,7 +80,8 @@ def create_output_product(
     ps_mask_filename: Filename,
     unwrapper_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
-    cslc_files: Sequence[Filename],
+    reference_cslc_file: Filename,
+    secondary_cslc_file: Filename,
     corrections: Optional[dict[str, ArrayLike]] = None,
     wavelength_cutoff: float = 50_000.0,
 ):
@@ -106,8 +106,12 @@ def create_output_product(
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
-    cslc_files : Sequence[Filename]
-        The list of input CSLC products used to generate the output product.
+    reference_cslc_file : Filename
+        An input CSLC product corresponding to the reference date.
+        Used for metadata generation.
+    secondary_cslc_file : Filename
+        An input CSLC product corresponding to the secondary date.
+        Used for metadata generation.
     corrections : dict[str, ArrayLike], optional
         A dictionary of corrections to write to the output file, by default None
     wavelength_cutoff : float, optional
@@ -121,13 +125,13 @@ def create_output_product(
     crs = io.get_raster_crs(unw_filename)
     gt = io.get_raster_gt(unw_filename)
 
-    start_times = [get_zero_doppler_time(f, type_="start") for f in cslc_files]
-    start_time = min(start_times)
-    end_times = [get_zero_doppler_time(f, type_="end") for f in cslc_files]
-    end_time = max(end_times)
+    reference_start_time = get_zero_doppler_time(reference_cslc_file, type_="start")
+    secondary_start_time = get_zero_doppler_time(secondary_cslc_file, type_="start")
+    secondary_end_time = get_zero_doppler_time(secondary_cslc_file, type_="end")
 
-    wavelength = get_radar_wavelength(cslc_files[-1])
-    phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
+    # TODO: get rid after https://github.com/isce-framework/dolphin/pull/367 merged
+    radar_wavelength = get_radar_wavelength(reference_cslc_file)
+    phase2disp = -1 * float(radar_wavelength) / (4.0 * np.pi)
 
     # Load and process unwrapped phase data, needs more custom masking
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
@@ -168,7 +172,7 @@ def create_output_product(
         _create_yx_dsets(group=f, gt=gt, shape=shape, include_time=True)
         _create_time_dset(
             group=f,
-            time=start_time,
+            time=secondary_start_time,
             long_name="Time corresponding to beginning of Displacement frame",
         )
         for info, data in zip(product_infos[:2], [disp_arr, filtered_disp_arr]):
@@ -221,15 +225,16 @@ def create_output_product(
         shape=shape,
         gt=gt,
         crs=crs,
-        start_time=min(start_times),
+        secondary_start_time=secondary_start_time,
     )
 
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
-        cslc_files=cslc_files,
-        start_time=start_time,
-        end_time=end_time,
+        radar_wavelength=radar_wavelength,
+        reference_start_time=reference_start_time,
+        secondary_start_time=secondary_start_time,
+        secondary_end_time=secondary_end_time,
     )
 
     _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
@@ -241,7 +246,7 @@ def _create_corrections_group(
     shape: tuple[int, int],
     gt: list[float],
     crs: pyproj.CRS,
-    start_time: datetime.datetime,
+    secondary_start_time: datetime.datetime,
 ) -> None:
     keep_bits = 10
     logger.debug("Rounding mantissa in corrections to %s bits", keep_bits)
@@ -264,7 +269,7 @@ def _create_corrections_group(
         _create_yx_dsets(group=corrections_group, gt=gt, shape=shape, include_time=True)
         _create_time_dset(
             group=corrections_group,
-            time=start_time,
+            time=secondary_start_time,
             long_name="time corresponding to beginning of Displacement frame",
         )
         troposphere = corrections.get("troposphere", empty_arr)
@@ -331,9 +336,10 @@ def _create_corrections_group(
 def _create_identification_group(
     output_name: Filename,
     pge_runconfig: RunConfig,
-    cslc_files: Sequence[Filename],
-    start_time: datetime.datetime,
-    end_time: datetime.datetime,
+    radar_wavelength: float,
+    reference_start_time: datetime.datetime,
+    secondary_start_time: datetime.datetime,
+    secondary_end_time: datetime.datetime,
 ) -> None:
     """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
@@ -359,20 +365,22 @@ def _create_identification_group(
             group=identification_group,
             name="zero_doppler_start_time",
             dimensions=(),
-            data=start_time.strftime(DATETIME_FORMAT),
+            data=secondary_start_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
-                "Zero doppler start time of the first burst contained in the frame."
+                "Zero doppler start time of the first burst contained in the frame for"
+                " the secondary acquisition."
             ),
         )
         _create_dataset(
             group=identification_group,
             name="zero_doppler_end_time",
             dimensions=(),
-            data=end_time.strftime(DATETIME_FORMAT),
+            data=secondary_end_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
-                "Zero doppler end time of the last burst contained in the frame."
+                "Zero doppler start time of the last burst contained in the frame for"
+                " the secondary acquisition."
             ),
         )
 
@@ -380,29 +388,28 @@ def _create_identification_group(
             group=identification_group,
             name="bounding_polygon",
             dimensions=(),
-            data=get_union_polygon(cslc_files).wkt,
+            data="",
+            # TODO: replace with `Footprint`
             fillvalue=None,
             description="WKT representation of bounding polygon of the image",
             attrs={"units": "degrees"},
         )
 
-        wavelength = get_radar_wavelength(cslc_files[-1])
         _create_dataset(
             group=identification_group,
             name="radar_wavelength",
             dimensions=(),
-            data=wavelength,
+            data=radar_wavelength,
             fillvalue=None,
             description="Wavelength of the transmitted signal",
             attrs={"units": "meters"},
         )
 
-        reference_date, secondary_date = get_dates(output_name)[:2]
         _create_dataset(
             group=identification_group,
             name="reference_datetime",
             dimensions=(),
-            data=reference_date.strftime(DATETIME_FORMAT),
+            data=reference_start_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
                 "UTC datetime of the acquisition sensing start of the reference epoch"
@@ -413,7 +420,7 @@ def _create_identification_group(
             group=identification_group,
             name="secondary_datetime",
             dimensions=(),
-            data=secondary_date.strftime(DATETIME_FORMAT),
+            data=secondary_start_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
             description=(
                 "UTC datetime of the acquisition sensing start of current acquisition"

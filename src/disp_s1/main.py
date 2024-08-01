@@ -177,9 +177,9 @@ def process_product(
     # The reference one could be compressed, or real
     # Also possible to have multiple compressed fiels with same reference date
     ref_slc_files = date_to_cslc_files[(ref_date,)]
-    logger.debug(f"Found {len(ref_slc_files)} for reference date {ref_date}")
+    logger.info(f"Found {len(ref_slc_files)} for reference date {ref_date}")
     secondary_slc_files = date_to_cslc_files[(secondary_date,)]
-    assert len(secondary_slc_files) == 1
+    logger.info(f"Found {len(secondary_slc_files)} for secondary date {secondary_date}")
 
     product.create_output_product(
         output_name=output_name,
@@ -190,7 +190,7 @@ def process_product(
         ps_mask_filename=files.ps_mask,
         unwrapper_mask_filename=files.unwrapper_mask,
         pge_runconfig=pge_runconfig,
-        reference_cslc_file=ref_slc_files[-1],
+        reference_cslc_file=ref_slc_files[0],
         secondary_cslc_file=secondary_slc_files[0],
         corrections=corrections,
         wavelength_cutoff=wavelength_cutoff,

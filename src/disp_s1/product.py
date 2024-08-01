@@ -30,6 +30,7 @@ from opera_utils import (
 from tqdm.contrib.concurrent import process_map
 
 from . import __version__ as disp_s1_version
+from ._baselines import _interpolate_data, compute_baselines
 from ._common import DATETIME_FORMAT
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
@@ -122,8 +123,11 @@ def create_output_product(
     """
     if corrections is None:
         corrections = {}
+
     crs = io.get_raster_crs(unw_filename)
     gt = io.get_raster_gt(unw_filename)
+    cols, rows = io.get_raster_xysize(unw_filename)
+    shape = (rows, cols)
 
     reference_start_time = get_zero_doppler_time(reference_cslc_file, type_="start")
     secondary_start_time = get_zero_doppler_time(secondary_cslc_file, type_="start")
@@ -133,19 +137,41 @@ def create_output_product(
     radar_wavelength = get_radar_wavelength(reference_cslc_file)
     phase2disp = -1 * float(radar_wavelength) / (4.0 * np.pi)
 
+    y, x = _create_yx_arrays(gt=gt, shape=shape)
+    # TODO: do we need all corrections/smaller grids to be same subsample factor?
+    subsample = 50
+    y, x = y[::subsample], x[::subsample]
+    try:
+        logger.info("Calculating perpendicular baselines subsampled by %s", subsample)
+        baseline_arr = compute_baselines(
+            reference_cslc_file,
+            secondary_cslc_file,
+            x=x,
+            y=y,
+            epsg=crs.to_epsg(),
+            height=0,
+        )
+    except Exception:
+        logger.error(
+            f"Failed to compute baselines for {reference_cslc_file},"
+            f" {secondary_cslc_file}",
+            exc_info=True,
+        )
+        baseline_arr = np.zeros((10, 10))
+    corrections["baseline"] = baseline_arr
+
+    logger.info("Extracting data footprint")
     try:
         footprint_wkt = extract_footprint(raster_path=unw_filename)
     except Exception:
         logger.error("Failed to extract raster footprint", exc_info=True)
         footprint_wkt = ""
-
     # Load and process unwrapped phase data, needs more custom masking
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
     unw_arr = np.ma.filled(unw_arr_ma, 0)
     mask = unw_arr == 0
 
     disp_arr = unw_arr * phase2disp
-    shape = unw_arr.shape
 
     _, x_res, _, _, _, y_res = gt
     # Average for the pixel spacing for filtering
@@ -314,6 +340,17 @@ def _create_corrections_group(
             description="Phase ramp caused by tectonic plate motion",
             fillvalue=np.nan,
             attrs={"units": "radians"},
+        )
+        baseline = corrections.get("baseline", empty_arr)
+        _create_geo_dataset(
+            group=corrections_group,
+            name="perpendicular_baseline",
+            data=_interpolate_data(baseline, shape=shape),
+            description=(
+                "Perpendicular baseline between reference and secondary acquisitions"
+            ),
+            fillvalue=np.nan,
+            attrs={"units": "meters"},
         )
         # Make a scalar dataset for the reference point
         reference_point = corrections.get("reference_point", 0.0)
@@ -517,13 +554,16 @@ def _create_geo_dataset(
     fillvalue: float,
     attrs: Optional[dict[str, Any]],
     include_time: bool = False,
+    x_name: str = "x",
+    y_name: str = "y",
+    grid_mapping_dset_name=GRID_MAPPING_DSET,
 ) -> h5netcdf.Variable:
     if include_time:
-        dimensions = ["time", "y", "x"]
+        dimensions = ["time", y_name, x_name]
         if data.ndim == 2:
             data = data[np.newaxis, :, :]
     else:
-        dimensions = ["y", "x"]
+        dimensions = [y_name, x_name]
     dset = _create_dataset(
         group=group,
         name=name,
@@ -533,7 +573,7 @@ def _create_geo_dataset(
         fillvalue=fillvalue,
         attrs=attrs,
     )
-    dset.attrs["grid_mapping"] = GRID_MAPPING_DSET
+    dset.attrs["grid_mapping"] = grid_mapping_dset_name
     return dset
 
 
@@ -558,21 +598,23 @@ def _create_yx_dsets(
     gt: list[float],
     shape: tuple[int, int],
     include_time: bool = False,
+    x_name: str = "x",
+    y_name: str = "y",
 ) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
     """Create the y, x, and coordinate datasets."""
     y, x = _create_yx_arrays(gt, shape)
 
     if not group.dimensions:
-        dims = {"y": y.size, "x": x.size}
+        dims = {y_name: y.size, x_name: x.size}
         if include_time:
             dims["time"] = 1
         group.dimensions = dims
 
     # Create the x/y datasets
-    y_ds = group.create_variable("y", ("y",), data=y, dtype=float)
-    x_ds = group.create_variable("x", ("x",), data=x, dtype=float)
+    y_ds = group.create_variable(y_name, (y_name,), data=y, dtype=float)
+    x_ds = group.create_variable(x_name, (x_name,), data=x, dtype=float)
 
-    for name, ds in zip(["y", "x"], [y_ds, x_ds]):
+    for name, ds in zip([y_name, x_name], [y_ds, x_ds]):
         ds.attrs["standard_name"] = f"projection_{name}_coordinate"
         ds.attrs["long_name"] = f"{name.replace('_', ' ')} coordinate of projection"
         ds.attrs["units"] = "m"
@@ -611,10 +653,12 @@ def _create_time_array(times: list[datetime.datetime]):
     return time, calendar, units
 
 
-def _create_grid_mapping(group, crs: pyproj.CRS, gt: list[float]) -> h5netcdf.Variable:
+def _create_grid_mapping(
+    group, crs: pyproj.CRS, gt: list[float], name: str = GRID_MAPPING_DSET
+) -> h5netcdf.Variable:
     """Set up the grid mapping variable."""
     # https://github.com/corteva/rioxarray/blob/21284f67db536d9c104aa872ab0bbc261259e59e/rioxarray/rioxarray.py#L34
-    dset = group.create_variable(GRID_MAPPING_DSET, (), data=0, dtype=int)
+    dset = group.create_variable(name, (), data=0, dtype=int)
 
     dset.attrs.update(crs.to_cf())
     # Also add the GeoTransform
@@ -669,12 +713,25 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
         ctype = h5py.h5t.py_create(np.complex64)
         ctype.commit(hf["/"].id, np.string_("complex64"))
 
+    # COMPASS used "_coordinates" instead of "x"/"y"
+    x_name, y_name = "x_coordinates", "y_coordinates"
+    grid_mapping_dset_name = "projection"
     with h5netcdf.File(outname, mode="a", invalid_netcdf=True) as f:
         f.attrs.update(attrs)
 
         data_group = f.create_group(group_name)
-        _create_grid_mapping(group=data_group, crs=crs, gt=gt)
-        _create_yx_dsets(group=data_group, gt=gt, shape=data.shape, include_time=False)
+        # COMPASS used "projection" instead of "spatial_ref"
+        _create_grid_mapping(
+            group=data_group, crs=crs, gt=gt, name=grid_mapping_dset_name
+        )
+        _create_yx_dsets(
+            group=data_group,
+            gt=gt,
+            shape=data.shape,
+            include_time=False,
+            x_name=x_name,
+            y_name=y_name,
+        )
         _create_geo_dataset(
             group=data_group,
             name=dset_name,
@@ -682,6 +739,9 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             description="Compressed SLC product",
             fillvalue=np.nan + 0j,
             attrs=attrs,
+            x_name=x_name,
+            y_name=y_name,
+            grid_mapping_dset_name=grid_mapping_dset_name,
         )
         del data
 
@@ -695,6 +755,9 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             description="Amplitude dispersion for the compressed SLC files.",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
+            x_name=x_name,
+            y_name=y_name,
+            grid_mapping_dset_name=grid_mapping_dset_name,
         )
 
     copy_opera_cslc_metadata(opera_cslc_file, outname)

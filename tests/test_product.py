@@ -41,7 +41,7 @@ def test_create_output_product(
     )
     assert len(cslc_files) > 0
 
-    output_name = tmp_path / "20221119_20221213.unw.nc"
+    output_name = tmp_path / "20221119_20221213.nc"
 
     pge_runconfig = RunConfig.from_yaml(
         test_data_dir / "delivery_data_small/config_files/runconfig_forward.yaml"

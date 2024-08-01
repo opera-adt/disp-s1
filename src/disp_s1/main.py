@@ -19,7 +19,7 @@ from tqdm import tqdm
 from disp_s1 import __version__, product
 from disp_s1.pge_runconfig import RunConfig
 
-from ._reference import read_reference_point
+from ._reference import ReferencePoint, read_reference_point
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ def run(
     # Read the reference point
     assert out_paths.timeseries_paths is not None
     timeseries_dir = out_paths.timeseries_paths[0].parent
-    read_reference_point(timeseries_dir)
+    ref_point = read_reference_point(timeseries_dir)
 
     # Finalize the output as an HDF5 product
     # Group all the CSLCs by date to pick out ref/secondaries
@@ -90,6 +90,7 @@ def run(
         date_to_cslc_files=date_to_cslc_files,
         pge_runconfig=pge_runconfig,
         wavelength_cutoff=wavelength_cutoff,
+        reference_point=ref_point,
     )
     logger.info("Finished creating output products.")
 
@@ -139,6 +140,7 @@ def process_product(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     wavelength_cutoff: float,
+    reference_point: ReferencePoint | None = None,
 ) -> Path:
     """Create a single displacement product.
 
@@ -154,6 +156,9 @@ def process_product(
         Configuration object for the PGE run.
     wavelength_cutoff : float
         Wavelength cutoff for filtering long wavelengths.
+    reference_point : ReferencePoint, optional
+        Reference point recorded from dolphin after unwrapping.
+        If none, leaves product attributes empty.
 
     Returns
     -------
@@ -201,6 +206,7 @@ def process_product(
         secondary_cslc_file=secondary_slc_files[0],
         corrections=corrections,
         wavelength_cutoff=wavelength_cutoff,
+        reference_point=reference_point,
     )
 
     return output_name
@@ -212,6 +218,7 @@ def create_displacement_products(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     wavelength_cutoff: float = 50_000.0,
+    reference_point: ReferencePoint | None = None,
     max_workers: int = 5,
 ) -> None:
     """Run parallel processing for all interferograms.
@@ -226,9 +233,15 @@ def create_displacement_products(
         Dictionary mapping dates to real/compressed SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
+    reference_point : ReferencePoint, optional
+        Named tuple with (row, col, lat, lon) of selected reference pixel.
+        If None, will record empty in the dataset's attributes
     wavelength_cutoff : float
         Wavelength cutoff (in meters) for filtering long wavelengths.
         Default is 50_000.
+    reference_point : ReferencePoint, optional
+        Reference point recorded from dolphin after unwrapping.
+        If none, leaves product attributes empty.
     max_workers : int
         Number of parallel products to process.
         Default is 3.
@@ -270,7 +283,8 @@ def create_displacement_products(
                 out_dir,
                 date_to_cslc_files,
                 pge_runconfig,
-                wavelength_cutoff,
+                wavelength_cutoff=wavelength_cutoff,
+                reference_point=reference_point,
             )
             for file in files
         ]

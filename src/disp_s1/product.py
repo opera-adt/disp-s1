@@ -157,8 +157,8 @@ def create_output_product(
             f" {secondary_cslc_file}",
             exc_info=True,
         )
-        baseline_arr = np.zeros((10, 10))
-    corrections["baseline"] = baseline_arr
+        baseline_arr = np.zeros((100, 100))
+    corrections["baseline"] = _interpolate_data(baseline_arr, shape=shape)
 
     logger.info("Extracting data footprint")
     try:
@@ -345,7 +345,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="perpendicular_baseline",
-            data=_interpolate_data(baseline, shape=shape),
+            data=baseline,
             description=(
                 "Perpendicular baseline between reference and secondary acquisitions"
             ),

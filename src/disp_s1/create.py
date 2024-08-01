@@ -58,7 +58,12 @@ def get_params(
 
     # Read CSLC list file
     cslc_files = sorted(cslc_list.read().splitlines())
-    param_dict["cslc_files"] = cslc_files
+    # there is no cslc_files in the function "create_out_put_product"
+    # instead we need reference and secondary
+    # so assuming the inputs are two files with the first one as reference:
+    # param_dict["cslc_files"] = cslc_files
+    param_dict["reference_cslc_file"] = cslc_files[0]
+    param_dict["secondary_cslc_file"] = cslc_files[1]
 
     # TODO: we should read in the configuration to see where the mask was?
     # otherwise, need to figure out where that is
@@ -96,6 +101,8 @@ def make_product(param_dict: dict) -> None:
         ps_mask_filename=param_dict["ps_mask_filename"],
         unwrapper_mask_filename=param_dict["unwrapper_mask_filename"],
         pge_runconfig=param_dict["pge_runconfig"],
-        cslc_files=param_dict["cslc_files"],
+        # cslc_files=param_dict["cslc_files"],
+        reference_cslc_file=param_dict["reference_cslc_file"],
+        secondary_cslc_file=param_dict["secondary_cslc_file"],
     )
     logger.info("DISP-S1 product created: %s", param_dict["output_name"])

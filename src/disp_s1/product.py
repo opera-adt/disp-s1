@@ -703,6 +703,7 @@ def copy_opera_cslc_metadata(comp_slc_file: Filename, outname: Filename) -> None
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
+        "/identification/bounding_polygon",
         "/metadata/orbit",  #          Group
     ]
 
@@ -785,3 +786,54 @@ def create_compressed_products(
 
     logger.info("Finished creating all compressed SLC products.")
     return results
+
+
+def extract_footprint(
+    raster_path: Filename, simplify_tolerance: float = 0.01
+) -> str | None:
+    """Extract a simplified footprint from a raster file.
+
+    This function opens a raster file, extracts its footprint, simplifies it,
+    and returns the a Polygon from the exterior ring as a WKT string.
+
+    Parameters
+    ----------
+    raster_path : str
+        Path to the input raster file.
+    simplify_tolerance : float, optional
+        Tolerance for simplification of the footprint geometry.
+        Default is 0.01.
+
+    Returns
+    -------
+    str
+        WKT string representing the simplified exterior footprint
+        in EPSG:4326 (lat/lon) coordinates.
+
+    Notes
+    -----
+    This function uses GDAL to open the raster and extract the footprint,
+    and Shapely to process the geometry.
+
+    """
+    from os import fspath
+
+    import shapely
+    from osgeo import gdal
+
+    # Extract the footprint as WKT string (don't save)
+    wkt = gdal.Footprint(
+        None,
+        fspath(raster_path),
+        format="WKT",
+        dstSRS="EPSG:4326",
+        simplify=simplify_tolerance,
+    )
+
+    # Convert WKT to Shapely geometry, extract exterior, and convert back to Polygon WKT
+    in_multi = shapely.from_wkt(wkt)
+
+    # This may have holes; get the exterior
+    # Largest polygon should be first in MultiPolygon returned by GDAL
+    footprint = shapely.Polygon(in_multi.geoms[0].exterior)
+    return footprint.wkt

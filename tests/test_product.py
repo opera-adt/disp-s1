@@ -3,14 +3,16 @@ from pathlib import Path
 import h5py
 import pytest
 
+from disp_s1 import product
 from disp_s1.pge_runconfig import RunConfig
-from disp_s1.product import create_compressed_products, create_output_product
 
-TEST_FILE = (
-    Path(__file__).parent
-    / "data"
+TEST_DATA_DIR = Path(__file__).parent / "data"
+TEST_CSLC_FILE = (
+    TEST_DATA_DIR
     / "OPERA_L2_CSLC-S1_T087-185683-IW2_20221228T161651Z_20240504T181714Z_S1A_VV_v1.1.h5"  # noqa: E501
 )
+
+TEST_OUTPUT_CCSLC_FILE = TEST_DATA_DIR / "compressed_20221228_20230101_20230113.tif"
 
 
 # Shapely runtime warning
@@ -45,7 +47,7 @@ def test_create_output_product(
         test_data_dir / "delivery_data_small/config_files/runconfig_forward.yaml"
     )
 
-    create_output_product(
+    product.create_output_product(
         unw_filename=unw_filename,
         conncomp_filename=conncomp_filename,
         tcorr_filename=tcorr_filename,
@@ -59,15 +61,20 @@ def test_create_output_product(
 
 
 def test_create_compressed_slc(tmp_path):
-    # date_str = "20220101_20220102_20220103"
-    # T087-185683-IW2
-    burst = "t087_185683_iw2"
-    comp_slc = TEST_FILE
-    comp_slc_dict = {burst: [comp_slc]}
+    # OPERA_L2_CSLC-S1_T087-185683-IW2_20221228T161651Z_20240504T181714Z_S1A_VV_v1.1.h5
+    # compressed_20221228_20230101_20230113.tif
+    date_str = "20221228_20230101_20230113"
+    burst_id = "t087_185683_iw2"
+    processed_ccslc_file = TEST_OUTPUT_CCSLC_FILE
+    comp_slc_dict = {burst_id: [processed_ccslc_file]}
 
-    create_compressed_products(comp_slc_dict, output_dir=tmp_path)
+    product.create_compressed_products(
+        comp_slc_dict, cslc_file_list=[TEST_CSLC_FILE], output_dir=tmp_path
+    )
 
-    expected_name = tmp_path / (comp_slc.with_suffix(".h5").name)
+    expected_name = tmp_path / product.COMPRESSED_SLC_TEMPLATE.format(
+        burst_id=burst_id, date_str=date_str
+    )
     assert expected_name.exists()
     # Check product structure
     with h5py.File(expected_name) as hf:

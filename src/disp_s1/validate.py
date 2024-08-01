@@ -11,7 +11,7 @@ from numpy.typing import ArrayLike
 logger = logging.getLogger(__name__)
 
 
-DSET_DEFAULT = "unwrapped_phase"
+DSET_DEFAULT = "displacement"
 
 
 class ValidationError(Exception):
@@ -69,10 +69,10 @@ def compare_groups(
 
             if key == "connected_component_labels":
                 _validate_conncomp_labels(test_dataset, golden_dataset)
-            elif key == "unwrapped_phase":
+            elif key == "displacement":
                 test_conncomps = test_group["connected_component_labels"]
                 golden_conncomps = golden_group["connected_component_labels"]
-                _validate_unwrapped_phase(
+                _validate_displacement(
                     test_dataset,
                     golden_dataset,
                     test_conncomps,
@@ -230,15 +230,16 @@ def _validate_conncomp_labels(
         raise ComparisonError(errmsg)
 
 
-def _validate_unwrapped_phase(
+def _validate_displacement(
     test_dataset: h5py.Dataset,
     ref_dataset: h5py.Dataset,
     test_conncomps: ArrayLike,
     ref_conncomps: ArrayLike,
     nan_threshold: float = 0.01,
     atol: float = 1e-6,
+    wavelength: float = 0.056,
 ) -> None:
-    """Validate unwrapped phase values against a reference dataset.
+    """Validate displacement values against a reference dataset.
 
     Checks that the phase values in the test dataset are congruent with the reference
     dataset -- that is, their values are approximately the same modulo 2pi.
@@ -246,9 +247,9 @@ def _validate_unwrapped_phase(
     Parameters
     ----------
     test_dataset : h5py.Dataset
-        HDF5 dataset containing unwrapped phase values to be validated.
+        HDF5 dataset containing displacement values to be validated.
     ref_dataset : h5py.Dataset
-        HDF5 dataset containing unwrapped phase values to use as reference. Must have
+        HDF5 dataset containing displacement values to use as reference. Must have
         the same shape as `test_dataset`.
     test_conncomps : array_like
         Connected component labels associated with `test_dataset`.
@@ -260,6 +261,8 @@ def _validate_unwrapped_phase(
     atol : float, optional
         Maximum allowable absolute error between the re-wrapped reference and test
         values, in radians. Must be nonnegative. Defaults to 1e-6.
+    wavelength : float
+        sensor wavelength to convert displacement to phase and rewrap
 
     Raises
     ------
@@ -269,7 +272,7 @@ def _validate_unwrapped_phase(
         If the two datasets were not congruent within the specified error tolerance.
 
     """
-    logger.info("Checking unwrapped phase...")
+    logger.info("Checking displacement...")
 
     if test_dataset.shape != ref_dataset.shape:
         errmsg = (
@@ -282,7 +285,7 @@ def _validate_unwrapped_phase(
         ref_dataset.shape != ref_conncomps.shape
     ):
         errmsg = (
-            "shape mismatch: unwrapped phase and connected component labels must have"
+            "shape mismatch: displacement and connected component labels must have"
             " the same shape"
         )
         raise ValidationError(errmsg)
@@ -328,7 +331,7 @@ def _validate_unwrapped_phase(
 
     if test_nan_frac > nan_threshold:
         errmsg = (
-            f"unwrapped phase dataset {test_dataset.name!r} failed validation: too"
+            f"displacement dataset {test_dataset.name!r} failed validation: too"
             f" many nan values ({test_nan_frac} > {nan_threshold})"
         )
         raise ValidationError(errmsg)
@@ -340,7 +343,7 @@ def _validate_unwrapped_phase(
     # Compute the difference between the test & reference values and wrap it to the
     # interval (-pi, pi].
     diff = np.subtract(ref_dataset, test_dataset)
-    wrapped_diff = rewrap(diff)
+    wrapped_diff = rewrap(diff * (-4 * np.pi) / wavelength)
 
     # Mask out invalid pixels and NaN-valued pixels.
     wrapped_diff = wrapped_diff[valid_mask & ~nan_mask]

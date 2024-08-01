@@ -133,6 +133,12 @@ def create_output_product(
     radar_wavelength = get_radar_wavelength(reference_cslc_file)
     phase2disp = -1 * float(radar_wavelength) / (4.0 * np.pi)
 
+    try:
+        footprint_wkt = extract_footprint(raster_path=unw_filename)
+    except Exception:
+        logger.error("Failed to extract raster footprint", exc_info=True)
+        footprint_wkt = ""
+
     # Load and process unwrapped phase data, needs more custom masking
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
     unw_arr = np.ma.filled(unw_arr_ma, 0)
@@ -235,6 +241,7 @@ def create_output_product(
         reference_start_time=reference_start_time,
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
+        footprint_wkt=footprint_wkt,
     )
 
     _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
@@ -340,6 +347,7 @@ def _create_identification_group(
     reference_start_time: datetime.datetime,
     secondary_start_time: datetime.datetime,
     secondary_end_time: datetime.datetime,
+    footprint_wkt: str,
 ) -> None:
     """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
@@ -388,8 +396,7 @@ def _create_identification_group(
             group=identification_group,
             name="bounding_polygon",
             dimensions=(),
-            data="",
-            # TODO: replace with `Footprint`
+            data=footprint_wkt,
             fillvalue=None,
             description="WKT representation of bounding polygon of the image",
             attrs={"units": "degrees"},
@@ -795,3 +802,52 @@ def create_compressed_products(
 
     logger.info("Finished creating all compressed SLC products.")
     return results
+
+
+def extract_footprint(raster_path: Filename, simplify_tolerance: float = 0.01) -> str:
+    """Extract a simplified footprint from a raster file.
+
+    This function opens a raster file, extracts its footprint, simplifies it,
+    and returns the a Polygon from the exterior ring as a WKT string.
+
+    Parameters
+    ----------
+    raster_path : str
+        Path to the input raster file.
+    simplify_tolerance : float, optional
+        Tolerance for simplification of the footprint geometry.
+        Default is 0.01.
+
+    Returns
+    -------
+    str
+        WKT string representing the simplified exterior footprint
+        in EPSG:4326 (lat/lon) coordinates.
+
+    Notes
+    -----
+    This function uses GDAL to open the raster and extract the footprint,
+    and Shapely to process the geometry.
+
+    """
+    from os import fspath
+
+    import shapely
+    from osgeo import gdal
+
+    # Extract the footprint as WKT string (don't save)
+    wkt = gdal.Footprint(
+        None,
+        fspath(raster_path),
+        format="WKT",
+        dstSRS="EPSG:4326",
+        simplify=simplify_tolerance,
+    )
+
+    # Convert WKT to Shapely geometry, extract exterior, and convert back to Polygon WKT
+    in_multi = shapely.from_wkt(wkt)
+
+    # This may have holes; get the exterior
+    # Largest polygon should be first in MultiPolygon returned by GDAL
+    footprint = shapely.Polygon(in_multi.geoms[0].exterior)
+    return footprint.wkt

@@ -52,12 +52,8 @@ def run(
         wavelength_cutoff = 50_000
 
     # Finalize the output as an HDF5 product
-    # Group all the non-compressed SLCs by date
-    date_to_slcs = group_by_date(
-        [p for p in cfg.cslc_file_list if "compressed" not in p.name],
-        # We only care about the product date, not the Generation Date
-        date_idx=0,
-    )
+    # Group all the CSLCs by date to pick out ref/secondaries
+    date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
 
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
@@ -83,9 +79,9 @@ def run(
     logger.info(f"Creating {len(out_paths.unwrapped_paths)} outputs in {out_dir}")
     create_displacement_products(
         out_paths,
-        out_dir,
-        date_to_slcs,
-        pge_runconfig,
+        out_dir=out_dir,
+        date_to_cslc_files=date_to_cslc_files,
+        pge_runconfig=pge_runconfig,
         wavelength_cutoff=wavelength_cutoff,
     )
     logger.info("Finished creating output products.")
@@ -133,7 +129,7 @@ class ProductFiles(NamedTuple):
 def process_product(
     files: ProductFiles,
     out_dir: Path,
-    date_to_slcs: Mapping[tuple[datetime], list[Path]],
+    date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     wavelength_cutoff: float,
 ) -> Path:
@@ -145,8 +141,8 @@ def process_product(
         NamedTuple containing paths for all displacement-related files.
     out_dir : Path
         Output directory for the product.
-    date_to_slcs: Mapping[tuple[datetime], list[Path]]
-        Dictionary mapping dates to corresponding CSLC files.
+    date_to_cslc_files: Mapping[tuple[datetime], list[Path]]
+        Dictionary mapping dates to real/compressed SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
     wavelength_cutoff : float
@@ -177,9 +173,13 @@ def process_product(
         )
 
     output_name = out_dir / files.unwrapped.with_suffix(".nc").name
-    dair_pair = get_dates(output_name)
-    secondary_date = dair_pair[1]
-    cur_slc_list = date_to_slcs[(secondary_date,)]
+    ref_date, secondary_date = get_dates(output_name)[:2]
+    # The reference one could be compressed, or real
+    # Also possible to have multiple compressed fiels with same reference date
+    ref_slc_files = date_to_cslc_files[(ref_date,)]
+    logger.info(f"Found {len(ref_slc_files)} for reference date {ref_date}")
+    secondary_slc_files = date_to_cslc_files[(secondary_date,)]
+    logger.info(f"Found {len(secondary_slc_files)} for secondary date {secondary_date}")
 
     product.create_output_product(
         output_name=output_name,
@@ -190,7 +190,8 @@ def process_product(
         ps_mask_filename=files.ps_mask,
         unwrapper_mask_filename=files.unwrapper_mask,
         pge_runconfig=pge_runconfig,
-        cslc_files=cur_slc_list,
+        reference_cslc_file=ref_slc_files[0],
+        secondary_cslc_file=secondary_slc_files[0],
         corrections=corrections,
         wavelength_cutoff=wavelength_cutoff,
     )
@@ -201,7 +202,7 @@ def process_product(
 def create_displacement_products(
     out_paths: OutputPaths,
     out_dir: Path,
-    date_to_slcs: dict,
+    date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     wavelength_cutoff: float = 50_000.0,
     max_workers: int = 5,
@@ -214,8 +215,8 @@ def create_displacement_products(
         Object containing paths for various output files.
     out_dir : Path
         Output directory for the products.
-    date_to_slcs : dict
-        Dictionary mapping dates to corresponding SLC files.
+    date_to_cslc_files: Mapping[tuple[datetime], list[Path]]
+        Dictionary mapping dates to real/compressed SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
     wavelength_cutoff : float
@@ -260,7 +261,7 @@ def create_displacement_products(
                 process_product,
                 file,
                 out_dir,
-                date_to_slcs,
+                date_to_cslc_files,
                 pge_runconfig,
                 wavelength_cutoff,
             )

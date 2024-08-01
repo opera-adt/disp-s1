@@ -187,7 +187,7 @@ def process_product(
     output_name = out_dir / files.unwrapped.with_suffix(".nc").name
     ref_date, secondary_date = get_dates(output_name)[:2]
     # The reference one could be compressed, or real
-    # Also possible to have multiple compressed fiels with same reference date
+    # Also possible to have multiple compressed files with same reference date
     ref_slc_files = date_to_cslc_files[(ref_date,)]
     logger.info(f"Found {len(ref_slc_files)} for reference date {ref_date}")
     secondary_slc_files = date_to_cslc_files[(secondary_date,)]

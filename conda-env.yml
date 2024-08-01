@@ -6,6 +6,7 @@ dependencies:
   - pip>=21.3  # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#editable-installation
   - git  # for pip install, due to setuptools_scm
   - click>=7.0
+  - gdal>=3.8  # For Footprint
   - dolphin>=0.22.0
   - h5netcdf>=1.0
   - pillow>=7.0

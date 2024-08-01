@@ -25,7 +25,6 @@ from opera_utils import (
     filter_by_date,
     get_dates,
     get_radar_wavelength,
-    get_union_polygon,
     get_zero_doppler_time,
 )
 from tqdm.contrib.concurrent import process_map
@@ -129,6 +128,12 @@ def create_output_product(
     wavelength = get_radar_wavelength(cslc_files[-1])
     phase2disp = -1 * float(wavelength) / (4.0 * np.pi)
 
+    try:
+        footprint_wkt = extract_footprint(raster_path=unw_filename)
+    except Exception:
+        logger.error("Failed to extract raster footprint", exc_info=True)
+        footprint_wkt = ""
+
     # Load and process unwrapped phase data, needs more custom masking
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
     unw_arr = np.ma.filled(unw_arr_ma, 0)
@@ -230,6 +235,7 @@ def create_output_product(
         cslc_files=cslc_files,
         start_time=start_time,
         end_time=end_time,
+        footprint_wkt=footprint_wkt,
     )
 
     _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
@@ -334,6 +340,7 @@ def _create_identification_group(
     cslc_files: Sequence[Filename],
     start_time: datetime.datetime,
     end_time: datetime.datetime,
+    footprint_wkt: str,
 ) -> None:
     """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
@@ -380,7 +387,7 @@ def _create_identification_group(
             group=identification_group,
             name="bounding_polygon",
             dimensions=(),
-            data=get_union_polygon(cslc_files).wkt,
+            data=footprint_wkt,
             fillvalue=None,
             description="WKT representation of bounding polygon of the image",
             attrs={"units": "degrees"},
@@ -788,9 +795,7 @@ def create_compressed_products(
     return results
 
 
-def extract_footprint(
-    raster_path: Filename, simplify_tolerance: float = 0.01
-) -> str | None:
+def extract_footprint(raster_path: Filename, simplify_tolerance: float = 0.01) -> str:
     """Extract a simplified footprint from a raster file.
 
     This function opens a raster file, extracts its footprint, simplifies it,

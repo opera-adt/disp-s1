@@ -19,7 +19,7 @@ jobs:
           - label: Latest
             tag: "main"
           - label: Last Release
-            tag: v0.24.0
+            tag: v0.25.0
 
       fail-fast: true
     name: ${{ matrix.os }} • ${{ matrix.dolphin.label }}
@@ -40,9 +40,8 @@ jobs:
             channels:
               - conda-forge
       - name: Install
-        # TODO:  remove the `tqdm` once dolphin tqdm req is in conda
         run: |
-          python -m pip install tqdm "opera-utils>=0.11.0" git+https://github.com/isce-framework/dolphin@${{ matrix.dolphin.tag }}
+          python -m pip install "opera-utils>=0.11.0" git+https://github.com/isce-framework/dolphin@${{ matrix.dolphin.tag }}
           pip install --no-deps .
       - name: Install test dependencies
         run: |

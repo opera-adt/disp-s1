@@ -71,7 +71,7 @@ ARG MAMBA_DOCKERFILE_ACTIVATE=1
 # Install whirlwind from source
 RUN pip install git+https://github.com/isce-framework/whirlwind@40defb38d2d6deca2819934788ebbc57e418e32d
 # --no-deps because they are installed with conda
-RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@d6ff5d71e5860752aad7c05d4f1ea34e167bfc0a
+RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.25.0
 RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.11.0
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .

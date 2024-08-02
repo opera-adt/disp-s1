@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
+from itertools import repeat
+from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
 from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
-from dolphin.utils import get_max_memory_usage
+from dolphin.utils import DummyProcessPoolExecutor, get_max_memory_usage
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
-from tqdm import tqdm
 
 from disp_s1 import __version__, product
 from disp_s1.pge_runconfig import RunConfig
@@ -219,7 +220,7 @@ def create_displacement_products(
     pge_runconfig: RunConfig,
     wavelength_cutoff: float = 50_000.0,
     reference_point: ReferencePoint | None = None,
-    max_workers: int = 5,
+    max_workers: int = 2,
 ) -> None:
     """Run parallel processing for all interferograms.
 
@@ -244,7 +245,7 @@ def create_displacement_products(
         If none, leaves product attributes empty.
     max_workers : int
         Number of parallel products to process.
-        Default is 3.
+        Default is 2.
 
     """
     tropo_files = out_paths.tropospheric_corrections or [None] * len(
@@ -275,21 +276,17 @@ def create_displacement_products(
         )
     ]
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = [
-            executor.submit(
-                process_product,
-                file,
-                out_dir,
-                date_to_cslc_files,
-                pge_runconfig,
-                wavelength_cutoff=wavelength_cutoff,
-                reference_point=reference_point,
-            )
-            for file in files
-        ]
-
-        with tqdm(total=len(files), desc="Processing products") as pbar:
-            for future in as_completed(futures):
-                future.result()
-                pbar.update(1)
+    executor_class = (
+        ProcessPoolExecutor if max_workers > 1 else DummyProcessPoolExecutor
+    )
+    ctx = get_context("spawn")
+    with executor_class(max_workers=max_workers, mp_context=ctx) as executor:
+        executor.map(
+            process_product,
+            files,
+            repeat(out_dir),
+            repeat(date_to_cslc_files),
+            repeat(pge_runconfig),
+            repeat(wavelength_cutoff),
+            repeat(reference_point),
+        )

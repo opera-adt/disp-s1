@@ -20,11 +20,11 @@ dependencies:
   - xarray
   # Unwrappers:
   - snaphu>=0.4.0
-  - isce3>=0.16.0
+  - isce3-cpu>=0.16.0
   - tophu
   - cxx-compiler # for whirlwind
   # # Spurt is not yet on pip/conda, but only has one extra (...which also is badly supported on conda-forge)
   # - ortools==9.8.3296
   # - pip
-  #   - dolphin>=0.25.0
+  #   - dolphin>=0.26.0
   #   - git+https://github.com/isce-framework/spurt@21720e6ad6763d38c428c07331c8cfd395cdacd3

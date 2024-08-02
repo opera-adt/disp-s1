@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
+from itertools import repeat
+from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
@@ -218,7 +220,7 @@ def create_displacement_products(
     pge_runconfig: RunConfig,
     wavelength_cutoff: float = 50_000.0,
     reference_point: ReferencePoint | None = None,
-    max_workers: int = 1,
+    max_workers: int = 2,
 ) -> None:
     """Run parallel processing for all interferograms.
 
@@ -243,7 +245,7 @@ def create_displacement_products(
         If none, leaves product attributes empty.
     max_workers : int
         Number of parallel products to process.
-        Default is 1.
+        Default is 2.
 
     """
     tropo_files = out_paths.tropospheric_corrections or [None] * len(
@@ -277,19 +279,14 @@ def create_displacement_products(
     executor_class = (
         ProcessPoolExecutor if max_workers > 1 else DummyProcessPoolExecutor
     )
-    with executor_class(max_workers=max_workers) as executor:
-        futures = [
-            executor.submit(
-                process_product,
-                file,
-                out_dir,
-                date_to_cslc_files,
-                pge_runconfig,
-                wavelength_cutoff=wavelength_cutoff,
-                reference_point=reference_point,
-            )
-            for file in files
-        ]
-
-        for future in as_completed(futures):
-            future.result()
+    ctx = get_context("spawn")
+    with executor_class(max_workers=max_workers, mp_context=ctx) as executor:
+        executor.map(
+            process_product,
+            files,
+            repeat(out_dir),
+            repeat(date_to_cslc_files),
+            repeat(pge_runconfig),
+            repeat(wavelength_cutoff),
+            repeat(reference_point),
+        )

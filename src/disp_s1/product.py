@@ -5,7 +5,9 @@ from __future__ import annotations
 import datetime
 import logging
 from collections.abc import Mapping
+from concurrent.futures import ProcessPoolExecutor
 from io import StringIO
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, NamedTuple, Optional, Sequence, Union
 
@@ -17,7 +19,7 @@ from dolphin import __version__ as dolphin_version
 from dolphin import filtering, io
 from dolphin._types import Filename
 from dolphin.io import round_mantissa
-from dolphin.utils import format_dates
+from dolphin.utils import DummyProcessPoolExecutor, format_dates
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import (
     OPERA_DATASET_NAME,
@@ -27,7 +29,6 @@ from opera_utils import (
     get_radar_wavelength,
     get_zero_doppler_time,
 )
-from tqdm.contrib.concurrent import process_map
 
 from . import __version__ as disp_s1_version
 from ._baselines import _interpolate_data, compute_baselines
@@ -831,7 +832,7 @@ def create_compressed_products(
     comp_slc_dict: Mapping[str, Sequence[Path]],
     output_dir: Filename,
     cslc_file_list: Sequence[Path],
-    max_workers: int = 3,
+    max_workers: int = 2,
 ) -> list[Path]:
     """Create all compressed SLC output products.
 
@@ -847,7 +848,7 @@ def create_compressed_products(
         reference date.
     max_workers : int
         Number of parallel threads to use to create products.
-        Default is 3.
+        Default is 2.
 
     Returns
     -------
@@ -873,12 +874,15 @@ def create_compressed_products(
             c = CompressedSLCInfo(burst_id, comp_slc_file, output_dir, cur_opera_cslc)
             compressed_slc_infos.append(c)
 
-    results = process_map(
-        process_compressed_slc,
-        compressed_slc_infos,
-        max_workers=max_workers,
-        desc="Processing compressed SLCs",
+    executor_class = (
+        ProcessPoolExecutor if max_workers > 1 else DummyProcessPoolExecutor
     )
+    ctx = get_context("spawn")
+    with executor_class(
+        max_workers=max_workers,
+        mp_context=ctx,
+    ) as executor:
+        results = executor.map(process_compressed_slc, compressed_slc_infos)
 
     logger.info("Finished creating all compressed SLC products.")
     return results

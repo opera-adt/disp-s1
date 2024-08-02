@@ -20,7 +20,7 @@ dependencies:
   - xarray
   # Unwrappers:
   - snaphu>=0.4.0
-  - isce3>=0.16.0
+  - isce3-cpu>=0.16.0
   - tophu
   - cxx-compiler # for whirlwind
   # # Spurt is not yet on pip/conda, but only has one extra (...which also is badly supported on conda-forge)

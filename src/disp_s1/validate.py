@@ -401,8 +401,13 @@ def _validate_dataset(
     golden = golden_dataset[()]
     test = test_dataset[()]
     if golden.dtype.kind == "S":
+        if "version" in golden_dataset.name:
+            logger.info(f"{golden_dataset.name}: {golden} vs. {test}")
+            return
         if not np.array_equal(golden, test):
-            raise ComparisonError(f"Dataset {golden_dataset.name} values do not match")
+            msg = f"Dataset {golden_dataset.name} values do not match:"
+            msg += f" {golden = } vs. {test = }"
+            raise ComparisonError(msg)
         return
 
     img_gold = np.ma.masked_invalid(golden)

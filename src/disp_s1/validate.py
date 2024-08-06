@@ -95,6 +95,7 @@ def _compare_datasets_attr(
             f"Dataset names do not match: {golden_dataset.name} vs {test_dataset.name}"
         )
     name = golden_dataset.name
+    is_version_dset = "version" in golden_dataset.name
 
     if golden_dataset.shape != test_dataset.shape:
         raise ComparisonError(
@@ -102,7 +103,8 @@ def _compare_datasets_attr(
             f" {test_dataset.shape}"
         )
 
-    if golden_dataset.dtype != test_dataset.dtype:
+    # Skip the dtype check for version datasets (we will just print these)
+    if golden_dataset.dtype != test_dataset.dtype and not is_version_dset:
         raise ComparisonError(
             f"{name} dtypes do not match: {golden_dataset.dtype} vs"
             f" {test_dataset.dtype}"

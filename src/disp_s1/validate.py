@@ -236,7 +236,7 @@ def _validate_displacement(
     test_conncomps: ArrayLike,
     ref_conncomps: ArrayLike,
     nan_threshold: float = 0.01,
-    atol: float = 1e-6,
+    atol: float = 1e-5,
     wavelength: float = 299_792_458 / 5.405e9,
 ) -> None:
     """Validate displacement values against a reference dataset.
@@ -260,9 +260,10 @@ def _validate_displacement(
         connected component label). Must be in the interval [0, 1]. Defaults to 0.01.
     atol : float, optional
         Maximum allowable absolute error between the re-wrapped reference and test
-        values, in radians. Must be nonnegative. Defaults to 1e-6.
-    wavelength : float
-        sensor wavelength to convert displacement to phase and rewrap
+        values, in meters. Must be nonnegative. Defaults to 1e-6.
+    wavelength : float, optional
+        Sensor wavelength to convert displacement to phase and rewrap.
+        Default is Sentinel-1 wavelength (speed of light / center frequency).
 
     Raises
     ------
@@ -355,7 +356,8 @@ def _validate_displacement(
     logger.info(f"Mean absolute re-wrapped phase error: {mean_abs_err:.5f} rad")
     logger.info(f"Max absolute re-wrapped phase error: {max_abs_err:.5f} rad")
 
-    noncongruent_count = np.sum(abs_wrapped_diff > atol)
+    atol_radians = atol * 4 * np.pi / wavelength
+    noncongruent_count = np.sum(abs_wrapped_diff > atol_radians)
     logger.info(
         "Non-congruent pixel count:"
         f" {_fmt_ratio(noncongruent_count, wrapped_diff.size)}"

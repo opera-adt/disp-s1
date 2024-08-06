@@ -260,7 +260,7 @@ def _validate_displacement(
         connected component label). Must be in the interval [0, 1]. Defaults to 0.01.
     atol : float, optional
         Maximum allowable absolute error between the re-wrapped reference and test
-        values, in meters. Must be nonnegative. Defaults to 1e-6.
+        values, in meters. Must be nonnegative. Defaults to 1e-5.
     wavelength : float, optional
         Sensor wavelength to convert displacement to phase and rewrap.
         Default is Sentinel-1 wavelength (speed of light / center frequency).

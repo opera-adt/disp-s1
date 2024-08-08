@@ -6,7 +6,6 @@ import h5py
 import numpy as np
 from dolphin import Filename, io
 from numpy.typing import ArrayLike
-
 from opera_utils import fetch_frame_to_burst_mapping_file, get_frame_bbox
 
 logger = logging.getLogger(__name__)

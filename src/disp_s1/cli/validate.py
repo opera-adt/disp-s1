@@ -13,7 +13,12 @@ from disp_s1.validate import validate as _validate
 @click.option("--data-dset", default=DSET_DEFAULT)
 @click.option("--debug", is_flag=True)
 def validate(
-    test: str, golden: str | None, igram: str | None, json: str | None, data_dset: str, debug: bool
+    test: str,
+    golden: str | None,
+    igram: str | None,
+    json: str | None,
+    data_dset: str,
+    debug: bool,
 ) -> None:
     """Validate an OPERA DISP-S1 product."""
     setup_logging(logger_name="disp_s1", debug=debug, filename=None)

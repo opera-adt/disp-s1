@@ -281,12 +281,14 @@ def create_displacement_products(
     )
     ctx = get_context("spawn")
     with executor_class(max_workers=max_workers, mp_context=ctx) as executor:
-        executor.map(
-            process_product,
-            files,
-            repeat(out_dir),
-            repeat(date_to_cslc_files),
-            repeat(pge_runconfig),
-            repeat(wavelength_cutoff),
-            repeat(reference_point),
+        list(  # Force evaluation to retrieve results/raise exceptions
+            executor.map(
+                process_product,
+                files,
+                repeat(out_dir),
+                repeat(date_to_cslc_files),
+                repeat(pge_runconfig),
+                repeat(wavelength_cutoff),
+                repeat(reference_point),
+            )
         )

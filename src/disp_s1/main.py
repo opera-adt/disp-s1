@@ -254,6 +254,12 @@ def create_displacement_products(
     iono_files = out_paths.ionospheric_corrections or [None] * len(
         out_paths.timeseries_paths
     )
+    unwrapper_mask_files = [
+        # TODO: probably relying too much on dolphin's internals to be safe
+        # we should figure out how to save/use the "combined_mask" from dolphin
+        Path(str(p).replace(".cor.tif", ".mask.tif"))
+        for p in out_paths.stitched_cor_paths
+    ]
     files = [
         ProductFiles(
             unwrapped=unw,
@@ -263,16 +269,15 @@ def create_displacement_products(
             ps_mask=out_paths.stitched_ps_file,
             troposphere=tropo,
             ionosphere=iono,
-            # TODO: we should save/use the "combined_mask" from dolphin
-            # This may have other pixels used in addition to the water mask provided
-            unwrapper_mask=pge_runconfig.dynamic_ancillary_file_group.mask_file,
+            unwrapper_mask=mask_f,
         )
-        for unw, cc, cor, tropo, iono in zip(
+        for unw, cc, cor, tropo, iono, mask_f in zip(
             out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
             tropo_files,
             iono_files,
+            unwrapper_mask_files,
         )
     ]
 

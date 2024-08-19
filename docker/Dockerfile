@@ -72,7 +72,7 @@ ARG MAMBA_DOCKERFILE_ACTIVATE=1
 RUN pip install git+https://github.com/isce-framework/whirlwind@40defb38d2d6deca2819934788ebbc57e418e32d
 # --no-deps because they are installed with conda
 RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.12.0
-RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@29824e4a8e7d92c82c2f7327f642af867d288c7f
+RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@efac0ee79abe1b09498ead57d2d46f1ac53cd70c
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .

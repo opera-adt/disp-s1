@@ -143,7 +143,7 @@ def calculate_solid_earth_tides_correction(
     los_north = io.load_gdal(los_north_file, masked=True)
     los_up = np.sqrt(1 - los_east**2 - los_north**2)
 
-    az_angle = -1 * np.rad2deg(np.arctan2(los_east, los_north)) % 360
+    az_angle = -1 * (np.rad2deg(np.arctan2(los_east, los_north)) % 360)
     inc_angle = np.rad2deg(np.arccos(los_up))
 
     # project ENU onto LOS

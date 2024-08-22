@@ -61,15 +61,20 @@ def interpolate_set_components(
     set_up: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Interpolate SET components to the unwrapped interferogram grid."""
-    set_east_interp = RegularGridInterpolator((lat_geo, lon_geo), set_east)(
-        np.stack((lat, lon), axis=-1)
-    )
-    set_north_interp = RegularGridInterpolator((lat_geo, lon_geo), set_north)(
-        np.stack((lat, lon), axis=-1)
-    )
-    set_up_interp = RegularGridInterpolator((lat_geo, lon_geo), set_up)(
-        np.stack((lat, lon), axis=-1)
-    )
+    # Interpolate SET components
+    set_east_interp = RegularGridInterpolator(
+        (lat_geo, lon_geo),
+        set_east,
+    )(np.stack((lat, lon), axis=-1))
+    set_north_interp = RegularGridInterpolator(
+        (lat_geo, lon_geo),
+        set_north,
+    )(np.stack((lat, lon), axis=-1))
+    set_up_interp = RegularGridInterpolator(
+        (lat_geo, lon_geo),
+        set_up,
+    )(np.stack((lat, lon), axis=-1))
+
     return set_east_interp, set_north_interp, set_up_interp
 
 
@@ -109,6 +114,9 @@ def calculate_solid_earth_tides_correction(
         atr["Y_FIRST"] + atr["Y_STEP"] * atr["LENGTH"],
         num=atr["LENGTH"],
     )
+    if np.sign(atr["Y_STEP"]) > 0:
+        lat_geo_array = lat_geo_array[::-1]
+
     lon_geo_array = np.linspace(
         atr["X_FIRST"], atr["X_FIRST"] + atr["X_STEP"] * atr["WIDTH"], num=atr["WIDTH"]
     )
@@ -116,12 +124,18 @@ def calculate_solid_earth_tides_correction(
     # Create a grid of coordinates for the original unwrapped interferogram
     y, x = np.mgrid[0:height, 0:width]
 
-    if crs.is_geographic:
-        lon, lat = rasterio.transform.xy(affine_transform, y, x)
-        lon, lat = np.array(lon), np.array(lat)
-    else:
-        lon, lat = warp_transform(crs, "EPSG:4326", x.flatten(), y.flatten())
-        lon, lat = np.array(lon).reshape(x.shape), np.array(lat).reshape(y.shape)
+    # Convert grid indices (x, y) to
+    lon, lat = rasterio.transform.xy(affine_transform, y, x)
+
+    # Convert the coordinates to numpy arrays
+    lon = np.array(lon)
+    lat = np.array(lat)
+
+    # If the CRS is not geographic, reproject the coordinates to EPSG:4326
+    if not crs.is_geographic:
+        lon, lat = warp_transform(crs, "EPSG:4326", lon.flatten(), lat.flatten())
+        lon = np.array(lon).reshape(x.shape)
+        lat = np.array(lat).reshape(y.shape)
 
     # Clip lat/lon to ensure they are within grid bounds
     lat = np.clip(lat, lat_geo_array.min(), lat_geo_array.max())
@@ -143,19 +157,11 @@ def calculate_solid_earth_tides_correction(
     los_north = io.load_gdal(los_north_file, masked=True)
     los_up = np.sqrt(1 - los_east**2 - los_north**2)
 
-    az_angle = -1 * (np.rad2deg(np.arctan2(los_east, los_north)) % 360)
-    inc_angle = np.rad2deg(np.arccos(los_up))
-
     # project ENU onto LOS
     set_los = (
-        set_east_interp
-        * np.sin(np.deg2rad(inc_angle))
-        * np.sin(np.deg2rad(az_angle))
-        * -1
-        + set_north_interp
-        * np.sin(np.deg2rad(inc_angle))
-        * np.cos(np.deg2rad(az_angle))
-        + set_up_interp * np.cos(np.deg2rad(inc_angle))
+        (set_east_interp * los_east)
+        + (set_north_interp * los_north)
+        + (set_up_interp * los_up)
     )
 
     if reference_point is None:

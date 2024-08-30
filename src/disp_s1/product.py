@@ -139,7 +139,6 @@ def create_output_product(
     secondary_start_time = get_zero_doppler_time(secondary_cslc_file, type_="start")
     secondary_end_time = get_zero_doppler_time(secondary_cslc_file, type_="end")
 
-    # TODO: get rid after https://github.com/isce-framework/dolphin/pull/367 merged
     radar_wavelength = get_radar_wavelength(reference_cslc_file)
     phase2disp = -1 * float(radar_wavelength) / (4.0 * np.pi)
 
@@ -177,7 +176,14 @@ def create_output_product(
     unw_arr = np.ma.filled(unw_arr_ma, 0)
     mask = unw_arr == 0
 
-    disp_arr = unw_arr * phase2disp
+    input_units = io.get_raster_units(unw_filename)
+    if not input_units or input_units not in ("meters", "radians"):
+        logger.warning(f"Unknown units for {unw_filename}: assuming radians")
+        disp_arr = unw_arr * phase2disp
+    elif input_units == "radians":
+        disp_arr = unw_arr * phase2disp
+    else:
+        disp_arr = unw_arr
 
     _, x_res, _, _, _, y_res = gt
     # Average for the pixel spacing for filtering

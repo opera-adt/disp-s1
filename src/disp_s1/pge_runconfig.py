@@ -203,17 +203,17 @@ class RunConfig(YamlModel):
     def model_construct(cls, **kwargs):
         """Recursively use model_construct without validation."""
         if "input_file_group" not in kwargs:
-            kwargs["input_file_group"] = InputFileGroup._construct_empty()
+            kwargs["input_file_group"] = InputFileGroup.model_construct()
         if "dynamic_ancillary_file_group" not in kwargs:
             kwargs["dynamic_ancillary_file_group"] = (
-                DynamicAncillaryFileGroup._construct_empty()
+                DynamicAncillaryFileGroup.model_construct()
             )
         if "static_ancillary_file_group" not in kwargs:
             kwargs["static_ancillary_file_group"] = (
-                StaticAncillaryFileGroup._construct_empty()
+                StaticAncillaryFileGroup.model_construct()
             )
         if "product_path_group" not in kwargs:
-            kwargs["product_path_group"] = ProductPathGroup._construct_empty()
+            kwargs["product_path_group"] = ProductPathGroup.model_construct()
         return super().model_construct(
             **kwargs,
         )

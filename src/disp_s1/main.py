@@ -18,6 +18,7 @@ from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
 
 from disp_s1 import __version__, product
+from disp_s1._masking import create_mask_from_distance
 from disp_s1.pge_runconfig import RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
@@ -44,6 +45,16 @@ def run(
 
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
+    # Setup the binary mask as dolphin expects
+    if pge_runconfig.dynamic_ancillary_file_group.mask_file:
+        water_binary_mask = cfg.work_directory / "water_binary_mask.tif"
+        create_mask_from_distance(
+            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
+            output_file=water_binary_mask,
+            land_buffer=2,
+            ocean_buffer=2,
+        )
+        cfg.mask_file = water_binary_mask
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)

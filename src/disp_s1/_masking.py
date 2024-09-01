@@ -101,7 +101,7 @@ def convert_distance_to_binary(
     binary_mask[inland_water_mask & (water_distance_data - 100 >= land_buffer)] = False
 
     # Mask ocean pixels (considering ocean buffer)
-    ocean_mask = (water_distance_data >= 1) & (water_distance_data <= 100)
+    ocean_mask = (water_distance_data >= 1) & (water_distance_data <= 99)
     # "very ocean" pixels (larger distance to shore than `ocean_buffer`) stay water
     binary_mask[ocean_mask & (water_distance_data >= ocean_buffer)] = False
 

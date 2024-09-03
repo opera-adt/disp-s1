@@ -13,11 +13,6 @@ def mask_file_zipped():
     return Path(__file__).parent / "data/water_distance.tif.zip"
 
 
-@pytest.fixture
-def expected_file_zipped():
-    return
-
-
 def test_bounds(tmp_path, mask_file_zipped):
     # Unzip to tmp_path
     with zipfile.ZipFile(mask_file_zipped, "r") as zip_ref:

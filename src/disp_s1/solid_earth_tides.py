@@ -114,8 +114,6 @@ def calculate_solid_earth_tides_correction(
         atr["Y_FIRST"] + atr["Y_STEP"] * atr["LENGTH"],
         num=atr["LENGTH"],
     )
-    if np.sign(atr["Y_STEP"]) > 0:
-        lat_geo_array = lat_geo_array[::-1]
 
     lon_geo_array = np.linspace(
         atr["X_FIRST"], atr["X_FIRST"] + atr["X_STEP"] * atr["WIDTH"], num=atr["WIDTH"]
@@ -157,11 +155,17 @@ def calculate_solid_earth_tides_correction(
     los_north = io.load_gdal(los_north_file, masked=True)
     los_up = np.sqrt(1 - los_east**2 - los_north**2)
 
-    # project ENU onto LOS
+    # Azimuth angle, the minus sign is because of the anti-clockwise positive definition
+    az_angle = -np.arctan2(los_east, los_north)
+
+    # Incidence angle in radians
+    inc_angle = np.deg2rad(np.arccos(los_up))
+
+    # Solidearth tides datacube along the LOS in meters
     set_los = (
-        (set_east_interp * los_east)
-        + (set_north_interp * los_north)
-        + (set_up_interp * los_up)
+        -set_east_interp * np.sin(inc_angle) * np.sin(az_angle)
+        + set_north_interp * np.sin(inc_angle) * np.cos(az_angle)
+        + set_up_interp * np.cos(inc_angle)
     )
 
     if reference_point is None:

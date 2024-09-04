@@ -4,9 +4,9 @@ from pathlib import Path
 
 import h5py
 import numpy as np
-from dolphin import Filename, io
+from dolphin import io
+from dolphin._types import Filename
 from numpy.typing import ArrayLike
-from opera_utils import fetch_frame_to_burst_mapping_file, get_frame_bbox
 
 logger = logging.getLogger(__name__)
 
@@ -297,6 +297,10 @@ def _validate_displacement(
         errmsg = f"nan_threshold must be between 0 and 1, got {nan_threshold}"
         raise ValueError(errmsg)
 
+    if atol < 0.0:
+        errmsg = f"atol must be >= 0, got {atol}"
+        raise ValueError(errmsg)
+
     # Get a mask of valid pixels (pixels that had nonzero connected component label) in
     # both the test & reference data.
     test_nodata = test_conncomps.attrs["_FillValue"]
@@ -335,63 +339,17 @@ def _validate_displacement(
         )
         raise ValidationError(errmsg)
 
-    # Convert displacement (in meters) to phase (in radians).
-    scale = 4 * np.pi / wavelength
-    unw = np.multiply(-scale, test_dataset)
-    ref = np.multiply(-scale, ref_dataset)
-    atol_radians = scale * atol
-
-    _check_phase_congruence(
-        unw=unw, ref=ref, mask=(valid_mask & ~nan_mask), atol=atol_radians
-    )
-
-
-def _check_phase_congruence(
-    unw: ArrayLike,
-    ref: ArrayLike,
-    mask: ArrayLike | None = None,
-    *,
-    atol: float = 1e-6,
-) -> None:
-    """Check unwrapped phase values for congruence with a reference dataset.
-
-    Parameters
-    ----------
-    unw : array_like
-        The unwrapped dataset, with phase values in radians, to validate.
-    ref : array_like
-        The reference (wrapped or unwrapped) dataset, with phase values in radians, to
-        compare against.
-    mask : array_like or None, optional
-        An optional binary mask of valid phase values. False elements in the mask
-        indicate phase values that are missing or invalid. If None, no mask is applied.
-        Defaults to None.
-    atol : float, optional
-        Maximum allowable absolute error between the unwrapped and reference phase
-        values (after re-wrapping), in radians. Must be nonnegative. Defaults to 1e-6.
-
-    Raises
-    ------
-    ComparisonError
-        If the two datasets were not congruent within the specified error tolerance.
-
-    """
-    if atol < 0.0:
-        errmsg = f"atol must be >= 0, got {atol}"
-        raise ValueError(errmsg)
-
     def rewrap(phi: np.ndarray) -> np.ndarray:
         tau = 2.0 * np.pi
         return phi - tau * np.ceil((phi - np.pi) / tau)
 
     # Compute the difference between the test & reference values and wrap it to the
     # interval (-pi, pi].
-    diff = np.subtract(ref, unw)
-    wrapped_diff = rewrap(diff)
+    diff = np.subtract(ref_dataset, test_dataset)
+    wrapped_diff = rewrap(diff * (-4 * np.pi) / wavelength)
 
-    # Exclude masked pixels.
-    if mask is not None:
-        wrapped_diff = wrapped_diff[mask]
+    # Mask out invalid pixels and NaN-valued pixels.
+    wrapped_diff = wrapped_diff[valid_mask & ~nan_mask]
 
     # Log some statistics about the deviation between the test & reference phase.
     abs_wrapped_diff = np.abs(wrapped_diff)
@@ -400,7 +358,8 @@ def _check_phase_congruence(
     logger.info(f"Mean absolute re-wrapped phase error: {mean_abs_err:.5f} rad")
     logger.info(f"Max absolute re-wrapped phase error: {max_abs_err:.5f} rad")
 
-    noncongruent_count = np.sum(abs_wrapped_diff > atol)
+    atol_radians = atol * 4 * np.pi / wavelength
+    noncongruent_count = np.sum(abs_wrapped_diff > atol_radians)
     logger.info(
         "Non-congruent pixel count:"
         f" {_fmt_ratio(noncongruent_count, wrapped_diff.size)}"
@@ -408,8 +367,8 @@ def _check_phase_congruence(
 
     if noncongruent_count != 0:
         errmsg = (
-            "unwrapped phase dataset failed validation: phase values were not"
-            " congruent with reference dataset"
+            f"unwrapped phase dataset {test_dataset.name!r} failed validation: phase"
+            " values were not congruent with reference dataset"
         )
         raise ComparisonError(errmsg)
 
@@ -545,205 +504,3 @@ def compare(golden: Filename, test: Filename, data_dset: str = DSET_DEFAULT) -> 
 
     logger.info(f"Files {golden} and {test} match.")
     _check_compressed_slc_dirs(golden, test)
-
-
-def _validate_against_igram(
-    product_file: Filename,
-    igram_file: Filename,
-    *,
-    atol: float = 1e-6,
-) -> None:
-    """Check that the unwrapped phase is congruent with the specified interferogram.
-
-    Parameters
-    ----------
-    product_file : Filename
-        The file path of the product to validate.
-    igram_file : Filename
-        The file path of an interferogram dataset that the unwrapped phase must be
-        congruent with.
-    atol : float, optional
-        Maximum allowable absolute error between the unwrapped and reference phase
-        values (after re-wrapping), in radians. Must be nonnegative. Defaults to 1e-6.
-
-    """
-    logger.info("Checking for congruence with wrapped phase...")
-
-    # Get displacement and connected component label data from the product.
-    with h5py.File(product_file, mode="r") as f:
-        disp = f["displacement"][()]
-        conncomp = f["connected_component_labels"][()]
-        wavelength = f["identification/radar_wavelength"][()]
-
-    # Convert displacement (in meters) to phase (in radians).
-    unw = disp * (-4 * np.pi / wavelength)
-
-    # Get a mask of valid pixels (that had nonzero CC label) and NaN-valued pixels.
-    valid_mask = conncomp != 0
-    nan_mask = np.isnan(unw)
-
-    # Get wrapped phase data, in radians.
-    logger.info(f"Interferogram file: {igram_file}")
-    igram = io.load_gdal(igram_file)
-    wrapped = np.angle(igram)
-
-    # Check that the unwrapped phase is congruent with the wrapped phase.
-    _check_phase_congruence(
-        unw=unw,
-        ref=wrapped,
-        mask=(valid_mask & ~nan_mask),
-        atol=atol,
-    )
-
-
-def _get_frame_id(hdf5_file: Filename) -> int:
-    """Get the frame ID of an OPERA DISP-S1 product.
-
-    Parameters
-    ----------
-    hdf5_file : Filename
-        The product file path.
-
-    Returns
-    -------
-    int
-        The frame ID number of the product.
-
-    """
-    with h5py.File(hdf5_file, mode="r") as f:
-        return f["identification/frame_id"][()]
-
-
-def _check_frame_bounds(
-    filename: Filename,
-    frame_id: int,
-    json_file: Filename | None = None,
-    *,
-    atol: float = 1e-6,
-) -> None:
-    """Validate a dataset's spatial reference and bounding box.
-
-    Compare the EPSG code and spatial extents of the product with the expected bounds
-    from the frame-to-burst JSON file.
-
-    Parameters
-    ----------
-    filename : Filename
-        The file path of the raster dataset to validate.
-    frame_id : int
-        The frame ID number of the dataset.
-    json_file : Filename or None, optional
-        The file path of the frame-to-burst JSON file. If None, uses the vendored
-        frame-to-burst file. Defaults to None.
-    atol : float, optional
-        The absolute tolerance used for comparing bounding box coordinates. Must be
-        nonnegative. Defaults to 1e-6.
-
-    Raises
-    ------
-    ValidationError
-        If the EPSG code of the raster dataset did not match the EPSG code of the
-        corresponding frame in the JSON file.
-    ValidationError
-        If the bounding box of the raster dataset did not match the bounding box of the
-        corresponding frame in the JSON file.
-
-    """
-    logger.info("Checking frame bounds again JSON file...")
-
-    if atol < 0.0:
-        errmsg = f"atol must be >= 0, got {atol}"
-        raise ValueError(errmsg)
-
-    if json_file is None:
-        json_file = fetch_frame_to_burst_mapping_file()
-
-    logger.info(f"Dataset name: {filename}")
-    logger.info(f"Frame ID: {frame_id}")
-    logger.info(f"Frame-to-burst JSON file: {json_file}")
-
-    # Extract the EPSG code and bounding box for this frame from the JSON file.
-    json_epsg, json_bbox = get_frame_bbox(frame_id=frame_id, json_file=json_file)
-
-    # Check EPSG code.
-    data_epsg = io.get_raster_crs(filename=filename).to_epsg()
-    logger.info(f"Product EPSG code: {data_epsg}")
-    logger.info(f"Expected frame EPSG code: {json_epsg}")
-    if data_epsg != json_epsg:
-        errmsg = (
-            f"product EPSG code ({data_epsg}) did not match expected EPSG code"
-            f" {json_epsg}"
-        )
-        raise ValidationError(errmsg)
-
-    # Check bounding box.
-    data_bbox = io.get_raster_bounds(filename=filename)
-    logger.info(f"Product bounds: {data_bbox}")
-    logger.info(f"Expected frame bounds: {json_bbox}")
-    if not np.allclose(data_bbox, json_bbox, rtol=0.0, atol=atol):
-        errmsg = (
-            "product bounding box did not match expected bounding box with absolute"
-            f" tolerance {atol}\nproduct bbox: {data_bbox}\nexpected bbox: {json_bbox}"
-        )
-        raise ValidationError(errmsg)
-
-
-def validate(
-    product_file: Filename,
-    golden_file: Filename | None = None,
-    igram_file: Filename | None = None,
-    json_file: Filename | None = None,
-    data_dset: str = DSET_DEFAULT,
-) -> None:
-    r"""Validate an OPERA DISP-S1 product.
-
-    The following validation checks are performed:
-
-    1. Compares the product contents with a "golden" reference dataset, if one is
-       provided.
-    2. Optionally checks that the unwrapped phase is congruent with a supplied
-       interferogram (i.e. their phase values differ only by integer multiples of
-       :math:`2\pi`).
-    3. Checks the frame spatial reference and bounds against the frame-to-burst JSON
-       file.
-
-    Parameters
-    ----------
-    product_file : Filename
-        The file path of the product to validate.
-    golden_file : Filename or None, optional
-        The file path of a reference product to compare against. If none is specified,
-        this check is skipped. Defaults to None.
-    igram_file : Filename or None, optional
-        The file path of an interferogram dataset that the unwrapped phase must be
-        congruent with. If None, this check is skipped. Defaults to None.
-    json_file : Filename or None, optional
-        The file path of the frame-to-burst JSON file. If None, uses the vendored
-        frame-to-burst file. Defaults to None.
-    data_dset : str, optional
-        The name of a particular dataset within the product to validate. Defaults to the
-        unwrapped phase dataset.
-
-    """
-    # Compare product against golden reference.
-    if golden_file is not None:
-        compare(golden=golden_file, test=product_file, data_dset=data_dset)
-
-    # Check the unwrapped phase data for congruence with the specified interferogram.
-    # XXX Use a high tolerance here due to a known issue with SNAPHU that may cause
-    # relatively large numerical errors (on the order of ~1e-3 radians) in the unwrapped
-    # phase.
-    if igram_file is not None:
-        _validate_against_igram(
-            product_file=product_file,
-            igram_file=igram_file,
-            atol=0.01,
-        )
-
-    # Check spatial reference & bounding box against frame-to-burst JSON file.
-    frame_id = _get_frame_id(product_file)
-    _check_frame_bounds(
-        filename=io.format_nc_filename(product_file, data_dset),
-        frame_id=frame_id,
-        json_file=json_file,
-    )

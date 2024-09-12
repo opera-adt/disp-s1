@@ -346,15 +346,6 @@ def _create_corrections_group(
             fillvalue=np.nan,
             attrs={"units": "meters"},
         )
-        plate_motion = corrections.get("plate_motion", empty_arr)
-        _create_geo_dataset(
-            group=corrections_group,
-            name="plate_motion",
-            data=plate_motion,
-            description="Phase ramp caused by tectonic plate motion",
-            fillvalue=np.nan,
-            attrs={"units": "meters"},
-        )
         baseline = corrections.get("baseline", empty_arr)
         _create_geo_dataset(
             group=corrections_group,

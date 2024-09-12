@@ -1,12 +1,13 @@
-from typing import Tuple
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, Tuple
 
 import numpy as np
-import pysolid
+import pandas as pd
 import rasterio
 from dolphin import Filename, io
 from opera_utils import get_zero_doppler_time
+from pysolid.solid import solid_grid
 from rasterio.coords import BoundingBox
-from rasterio.warp import transform as warp_transform
 from rasterio.warp import transform_bounds
 from scipy.interpolate import RegularGridInterpolator
 
@@ -17,12 +18,15 @@ def load_raster_bounds_and_transform(
     filename: Filename,
 ) -> Tuple[BoundingBox, rasterio.crs.CRS, rasterio.Affine, Tuple[int, int]]:
     """Load bounds, transform, CRS, and shape from a raster file."""
-    with rasterio.open(filename) as src:
-        bounds = src.bounds
-        crs = src.crs
-        affine_transform = src.transform  # Rename to avoid conflict
-        height, width = src.shape
-    return bounds, crs, affine_transform, (height, width)
+    try:
+        with rasterio.open(filename) as src:
+            bounds = src.bounds
+            crs = src.crs
+            affine_transform = src.transform
+            height, width = src.shape
+        return bounds, crs, affine_transform, (height, width)
+    except Exception as e:
+        raise RuntimeError(f"Error loading raster file {filename}: {e}") from e
 
 
 def transform_bounds_to_epsg4326(
@@ -38,9 +42,10 @@ def transform_bounds_to_epsg4326(
 def generate_atr(
     bounds: BoundingBox, height: int, width: int, margin_degrees: float = 0.1
 ) -> dict:
-    """Generate the ATR dictionary for pysolid."""
-    height_small = max(25, height // 100)
-    width_small = max(25, width // 100)
+    """Generate the ATR dictionary for pysolid grid."""
+    min_grid_size = 25
+    height_small = max(min_grid_size, height // 100)
+    width_small = max(min_grid_size, width // 100)
     return {
         "LENGTH": height_small,
         "WIDTH": width_small,
@@ -52,60 +57,93 @@ def generate_atr(
 
 
 def interpolate_set_components(
-    lat: np.ndarray,
-    lon: np.ndarray,
-    lat_geo: np.ndarray,
-    lon_geo: np.ndarray,
+    n: np.ndarray,
+    e: np.ndarray,
+    y_arr: np.ndarray,
+    x_arr: np.ndarray,
     set_east: np.ndarray,
     set_north: np.ndarray,
     set_up: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Interpolate SET components to the unwrapped interferogram grid."""
-    # Interpolate SET components
-    set_east_interp = RegularGridInterpolator(
-        (lat_geo, lon_geo),
-        set_east,
-    )(np.stack((lat, lon), axis=-1))
-    set_north_interp = RegularGridInterpolator(
-        (lat_geo, lon_geo),
-        set_north,
-    )(np.stack((lat, lon), axis=-1))
-    set_up_interp = RegularGridInterpolator(
-        (lat_geo, lon_geo),
-        set_up,
-    )(np.stack((lat, lon), axis=-1))
+    points = np.stack((n, e), axis=-1)
+    return (
+        RegularGridInterpolator((y_arr, x_arr), set_east)(points),
+        RegularGridInterpolator((y_arr, x_arr), set_north)(points),
+        RegularGridInterpolator((y_arr, x_arr), set_up)(points),
+    )
 
-    return set_east_interp, set_north_interp, set_up_interp
+
+def run_solid_grid(az_time, lat, lon, res_lat, res_lon):
+    """Run solid_grid from pysolid."""
+    az_time = pd.to_datetime(az_time)
+    return solid_grid(
+        az_time.year,
+        az_time.month,
+        az_time.day,
+        az_time.hour,
+        az_time.minute,
+        az_time.second,
+        lat,
+        res_lat,
+        1,
+        lon,
+        res_lon,
+        1,
+    )
+
+
+def calculate_time_ranges(
+    reference_start_time: pd.Timestamp,
+    reference_stop_time: pd.Timestamp,
+    secondary_start_time: pd.Timestamp,
+    secondary_stop_time: pd.Timestamp,
+    atr: dict,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate time ranges for reference and secondary files."""
+    ref_time_range = pd.to_datetime(
+        np.linspace(
+            reference_start_time.value, reference_stop_time.value, atr["LENGTH"]
+        )
+    )
+    sec_time_range = pd.to_datetime(
+        np.linspace(
+            secondary_start_time.value, secondary_stop_time.value, atr["LENGTH"]
+        )
+    )
+    ref_time_tile = np.tile(ref_time_range, (atr["WIDTH"], 1)).T
+    sec_time_tile = np.tile(sec_time_range, (atr["WIDTH"], 1)).T
+    return ref_time_tile, sec_time_tile
 
 
 def calculate_solid_earth_tides_correction(
-    unw_filename: Filename,
+    ifgram_filename: Filename,
     reference_cslc_file: Filename,
     secondary_cslc_file: Filename,
     los_east_file: Filename,
     los_north_file: Filename,
-    reference_point: ReferencePoint | None = None,
+    reference_point: Optional[ReferencePoint] = None,
 ) -> np.ndarray:
     """Calculate the relative displacement correction for solid earth tides."""
     # Load bounds, transform, CRS, and shape from the unwrapped interferogram
     bounds, crs, affine_transform, (height, width) = load_raster_bounds_and_transform(
-        unw_filename
+        ifgram_filename
     )
-    bounds = transform_bounds_to_epsg4326(bounds, crs)
+    bounds_geo = transform_bounds_to_epsg4326(bounds, crs)
+    atr = generate_atr(bounds_geo, height, width)
 
     # Extract timing information from the CSLC files
-    reference_start_time = get_zero_doppler_time(reference_cslc_file, type_="start")
-    secondary_start_time = get_zero_doppler_time(secondary_cslc_file, type_="start")
-
-    # Create the ATR object for pysolid
-    atr = generate_atr(bounds, height, width)
-
-    # Run pysolid to get SET in ENU coordinate system for both times
-    set_east, set_north, set_up = pysolid.calc_solid_earth_tides_grid(
-        secondary_start_time, atr, display=False, verbose=True
+    reference_start_time = pd.to_datetime(
+        get_zero_doppler_time(reference_cslc_file, type_="start")
     )
-    set_east_ref, set_north_ref, set_up_ref = pysolid.calc_solid_earth_tides_grid(
-        reference_start_time, atr, display=False, verbose=True
+    reference_stop_time = pd.to_datetime(
+        get_zero_doppler_time(reference_cslc_file, type_="end")
+    )
+    secondary_start_time = pd.to_datetime(
+        get_zero_doppler_time(secondary_cslc_file, type_="start")
+    )
+    secondary_stop_time = pd.to_datetime(
+        get_zero_doppler_time(secondary_cslc_file, type_="end")
     )
 
     # Generate the lat/lon arrays for the SET geogrid
@@ -114,40 +152,79 @@ def calculate_solid_earth_tides_correction(
         atr["Y_FIRST"] + atr["Y_STEP"] * atr["LENGTH"],
         num=atr["LENGTH"],
     )
-
     lon_geo_array = np.linspace(
         atr["X_FIRST"], atr["X_FIRST"] + atr["X_STEP"] * atr["WIDTH"], num=atr["WIDTH"]
     )
+    lat_geo_mesh, lon_geo_mesh = np.meshgrid(
+        lat_geo_array, lon_geo_array, indexing="ij"
+    )
 
-    # Create a grid of coordinates for the original unwrapped interferogram
-    y, x = np.mgrid[0:height, 0:width]
+    # Generate time ranges
+    ref_time_tile, sec_time_tile = calculate_time_ranges(
+        reference_start_time,
+        reference_stop_time,
+        secondary_start_time,
+        secondary_stop_time,
+        atr,
+    )
 
-    # Convert grid indices (x, y) to
-    lon, lat = rasterio.transform.xy(affine_transform, y, x)
+    # Prepare resolution arrays
+    res_lat_arr = np.ones(ref_time_tile.shape) * atr["Y_STEP"]
+    res_lon_arr = np.ones(ref_time_tile.shape) * atr["X_STEP"]
 
-    # Convert the coordinates to numpy arrays
-    lon = np.array(lon)
-    lat = np.array(lat)
+    # Parallelize grid calculation using ThreadPoolExecutor
+    with ThreadPoolExecutor() as executor:
+        ref_input_data = zip(
+            ref_time_tile.ravel(),
+            lat_geo_mesh.ravel(),
+            lon_geo_mesh.ravel(),
+            res_lat_arr.ravel(),
+            res_lon_arr.ravel(),
+        )
+        sec_input_data = zip(
+            sec_time_tile.ravel(),
+            lat_geo_mesh.ravel(),
+            lon_geo_mesh.ravel(),
+            res_lat_arr.ravel(),
+            res_lon_arr.ravel(),
+        )
 
-    # If the CRS is not geographic, reproject the coordinates to EPSG:4326
-    if not crs.is_geographic:
-        lon, lat = warp_transform(crs, "EPSG:4326", lon.flatten(), lat.flatten())
-        lon = np.array(lon).reshape(x.shape)
-        lat = np.array(lat).reshape(y.shape)
+        ref_results = list(executor.map(lambda x: run_solid_grid(*x), ref_input_data))
+        sec_results = list(executor.map(lambda x: run_solid_grid(*x), sec_input_data))
 
-    # Clip lat/lon to ensure they are within grid bounds
-    lat = np.clip(lat, lat_geo_array.min(), lat_geo_array.max())
-    lon = np.clip(lon, lon_geo_array.min(), lon_geo_array.max())
+    ref_e_flat, ref_n_flat, ref_u_flat = zip(*ref_results)
+    set_east_ref, set_north_ref, set_up_ref = (
+        np.array(ref_e_flat).reshape(atr["LENGTH"], atr["WIDTH"]),
+        np.array(ref_n_flat).reshape(atr["LENGTH"], atr["WIDTH"]),
+        np.array(ref_u_flat).reshape(atr["LENGTH"], atr["WIDTH"]),
+    )
+
+    sec_e_flat, sec_n_flat, sec_u_flat = zip(*sec_results)
+    set_east_sec, set_north_sec, set_up_sec = (
+        np.array(sec_e_flat).reshape(atr["LENGTH"], atr["WIDTH"]),
+        np.array(sec_n_flat).reshape(atr["LENGTH"], atr["WIDTH"]),
+        np.array(sec_u_flat).reshape(atr["LENGTH"], atr["WIDTH"]),
+    )
+
+    # Generate coordinate arrays for the original unwrapped interferogram
+    y_coord_array = np.linspace(bounds.top, bounds.bottom, num=atr["LENGTH"])
+    x_coord_array = np.linspace(bounds.left, bounds.right, num=atr["WIDTH"])
+    id_y, id_x = np.mgrid[0:height, 0:width]
+
+    # Convert grid indices (x, y) to UTM
+    x, y = rasterio.transform.xy(affine_transform, id_y, id_x)
+    e_arr = np.clip(np.array(x), x_coord_array.min(), x_coord_array.max())
+    n_arr = np.clip(np.array(y), y_coord_array.min(), y_coord_array.max())
 
     # Interpolate SET components
     set_east_interp, set_north_interp, set_up_interp = interpolate_set_components(
-        lat,
-        lon,
-        lat_geo_array,
-        lon_geo_array,
-        set_east - set_east_ref,
-        set_north - set_north_ref,
-        set_up - set_up_ref,
+        n_arr,
+        e_arr,
+        y_coord_array,
+        x_coord_array,
+        set_east_sec - set_east_ref,
+        set_north_sec - set_north_ref,
+        set_up_sec - set_up_ref,
     )
 
     # Load LOS components
@@ -155,17 +232,11 @@ def calculate_solid_earth_tides_correction(
     los_north = io.load_gdal(los_north_file, masked=True)
     los_up = np.sqrt(1 - los_east**2 - los_north**2)
 
-    # Azimuth angle, the minus sign is because of the anti-clockwise positive definition
-    az_angle = -np.arctan2(los_east, los_north)
-
-    # Incidence angle in radians
-    inc_angle = np.deg2rad(np.arccos(los_up))
-
-    # Solidearth tides datacube along the LOS in meters
+    # Solid earth tides datacube along the LOS in meters
     set_los = (
-        -set_east_interp * np.sin(inc_angle) * np.sin(az_angle)
-        + set_north_interp * np.sin(inc_angle) * np.cos(az_angle)
-        + set_up_interp * np.cos(inc_angle)
+        set_east_interp * los_east
+        + set_north_interp * los_north
+        + set_up_interp * los_up
     )
 
     if reference_point is None:

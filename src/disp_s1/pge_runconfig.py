@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import datetime
+import json
 from pathlib import Path
-from typing import ClassVar, List, Optional, Union
+from typing import ClassVar, List, Optional, Sequence, Union
 
 from dolphin.workflows.config import (
     CorrectionOptions,
@@ -17,7 +19,7 @@ from dolphin.workflows.config import (
     WorkerSettings,
 )
 from dolphin.workflows.config._yaml_model import YamlModel
-from opera_utils import OPERA_DATASET_NAME, get_frame_bbox
+from opera_utils import OPERA_DATASET_NAME, get_dates, get_frame_bbox
 from pydantic import ConfigDict, Field
 
 from .enums import ProcessingMode
@@ -250,6 +252,59 @@ class RunConfig(YamlModel):
         bounds_epsg, bounds = get_frame_bbox(
             frame_id=frame_id, json_file=frame_to_burst_file
         )
+
+        # Get the current set of expected reference dates
+        reference_date_json = (
+            self.static_ancillary_file_group.reference_date_database_json
+        )
+        reference_dates: list[datetime.datetime] = []
+        if reference_date_json is not None:
+            with open(reference_date_json) as f:
+                reference_dates = json.load(f)[str(frame_id)]
+        else:
+            reference_dates = []
+        # Get any reference date which is in the middle
+        # Get the one that lines up with any ccslc....
+        # there should be at most 2. otherwise FAIL
+        # Mark any files beginning with "compressed" as compressed
+        is_compressed = [
+            "compressed" in str(Path(f).stem).lower() for f in cslc_file_list
+        ]
+        compressed_slcs = [
+            f for f, is_comp in zip(cslc_file_list, is_compressed) if is_comp
+        ]
+        non_compressed_slcs = [
+            f for f, is_comp in zip(cslc_file_list, is_compressed) if not is_comp
+        ]
+
+        non_compressed_input_dates = [
+            get_dates(f)[:1]
+            for f, is_comp in zip(cslc_file_list, is_compressed)
+            if not is_comp
+        ]
+        compressed_input_dates = [
+            get_dates(f)[:3]
+            for f, is_comp in zip(cslc_file_list, is_compressed)
+            if is_comp
+        ]
+        output_reference_idx: int
+        # Find the max index within the compressed SLCs which overlaps with `reference_dates`
+        # If we dont have `reference_dates`, choose index 0
+        ...
+        output_reference_idx = 0
+
+        extra_reference_date: datetime.datetime | None = None
+        # Check if there's a `reference_date` contained in the *non*-compressed (new) slcs
+        # If that's the case, we will have the `extra_reference_date` and do the changeover
+        ...
+        extra_reference_date = None
+
+        # Compute the requested output index (within the compressed SLCs being passed)
+        param_dict["phase_linking_options"]["output_reference_idx"] = (
+            output_reference_idx
+        )
+        param_dict["output_options"]["extra_reference_date"] = extra_reference_date
+
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
@@ -337,3 +392,22 @@ class RunConfig(YamlModel):
             worker_settings=workflow.worker_settings,
             log_file=workflow.log_file,
         )
+
+
+def _get_nearest_idx(
+    input_dates: Sequence[datetime.datetime],
+    selected_date: datetime.datetime,
+) -> int:
+    """Find the index nearest to `selected_date` within `input_dates`."""
+    sorted_inputs = sorted(input_dates)
+    if not sorted_inputs[0] <= selected_date <= sorted_inputs[-1]:
+        msg = f"Requested {selected_date} falls outside of input range: "
+        msg += f"{sorted_inputs[0]}, {sorted_inputs[-1]}"
+        raise ValueError(msg)
+
+    nearest_idx = min(
+        range(len(input_dates)),
+        key=lambda i: abs((input_dates[i] - selected_date).total_seconds()),
+    )
+
+    return nearest_idx

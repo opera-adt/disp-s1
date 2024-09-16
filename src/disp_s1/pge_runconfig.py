@@ -377,15 +377,10 @@ def _get_nearest_idx(
 def _parse_reference_dates(
     reference_datetimes, cslc_file_list
 ) -> tuple[int, datetime.datetime | None]:
-    # Get any reference date which is in the middle
-    # Get the one that lines up with any ccslc....
-    # there should be at most 2. otherwise FAIL
     # Mark any files beginning with "compressed" as compressed
     is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cslc_file_list]
     # Get the dates of the base phase (works for either compressed, or regular cslc)
-    input_dates = [
-        get_dates(f)[0].date() for f, is_comp in zip(cslc_file_list, is_compressed)
-    ]
+    input_dates = [get_dates(f)[0].date() for f in cslc_file_list]
 
     output_reference_idx: int = 0
     extra_reference_date: datetime.datetime | None = None
@@ -398,6 +393,7 @@ def _parse_reference_dates(
             # is contained in `reference_dates`
             # This will overwrite with the latest one if multiple exist in the set
             output_reference_idx = idx
+            # TODO: there should be at most 2? otherwise fail?
         else:
             # Check if a `reference_date` is contained in *non*-compressed slcs
             # If so, we have `extra_reference_date`, and do a changeover

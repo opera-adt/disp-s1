@@ -253,64 +253,25 @@ class RunConfig(YamlModel):
             frame_id=frame_id, json_file=frame_to_burst_file
         )
 
-        # Get the current set of expected reference dates
-        reference_date_json = (
-            self.static_ancillary_file_group.reference_date_database_json
-        )
-        reference_dates: list[datetime.datetime] = []
-        if reference_date_json is not None:
-            with open(reference_date_json) as f:
-                reference_dates = json.load(f)[str(frame_id)]
-        else:
-            reference_dates = []
-        # Get any reference date which is in the middle
-        # Get the one that lines up with any ccslc....
-        # there should be at most 2. otherwise FAIL
-        # Mark any files beginning with "compressed" as compressed
-        is_compressed = [
-            "compressed" in str(Path(f).stem).lower() for f in cslc_file_list
-        ]
-        compressed_slcs = [
-            f for f, is_comp in zip(cslc_file_list, is_compressed) if is_comp
-        ]
-        non_compressed_slcs = [
-            f for f, is_comp in zip(cslc_file_list, is_compressed) if not is_comp
-        ]
-
-        non_compressed_input_dates = [
-            get_dates(f)[:1]
-            for f, is_comp in zip(cslc_file_list, is_compressed)
-            if not is_comp
-        ]
-        compressed_input_dates = [
-            get_dates(f)[:3]
-            for f, is_comp in zip(cslc_file_list, is_compressed)
-            if is_comp
-        ]
-        output_reference_idx: int
-        # Find the max index within the compressed SLCs which overlaps with `reference_dates`
-        # If we dont have `reference_dates`, choose index 0
-        ...
-        output_reference_idx = 0
-
-        extra_reference_date: datetime.datetime | None = None
-        # Check if there's a `reference_date` contained in the *non*-compressed (new) slcs
-        # If that's the case, we will have the `extra_reference_date` and do the changeover
-        ...
-        extra_reference_date = None
-
-        # Compute the requested output index (within the compressed SLCs being passed)
-        param_dict["phase_linking_options"]["output_reference_idx"] = (
-            output_reference_idx
-        )
-        param_dict["output_options"]["extra_reference_date"] = extra_reference_date
-
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
         param_dict["output_options"]["add_overviews"] = False
         # Always turn off velocity (not used)
         param_dict["timeseries_options"]["run_velocity"] = False
+
+        # Get the current set of expected reference dates
+        reference_datetimes = _parse_reference_datetimes(
+            self.static_ancillary_file_group.reference_date_database_json, frame_id
+        )
+        # Compute the requested output indexes
+        output_reference_idx, extra_reference_date = _parse_reference_dates(
+            reference_datetimes, cslc_file_list
+        )
+        param_dict["phase_linking_options"]["output_reference_idx"] = (
+            output_reference_idx
+        )
+        param_dict["output_options"]["extra_reference_date"] = extra_reference_date
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
         return DisplacementWorkflow(
@@ -411,3 +372,48 @@ def _get_nearest_idx(
     )
 
     return nearest_idx
+
+
+def _parse_reference_dates(
+    reference_datetimes, cslc_file_list
+) -> tuple[int, datetime.datetime | None]:
+    # Get any reference date which is in the middle
+    # Get the one that lines up with any ccslc....
+    # there should be at most 2. otherwise FAIL
+    # Mark any files beginning with "compressed" as compressed
+    is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cslc_file_list]
+    # Get the dates of the base phase (works for either compressed, or regular cslc)
+    input_dates = [
+        get_dates(f)[0].date() for f, is_comp in zip(cslc_file_list, is_compressed)
+    ]
+
+    output_reference_idx: int = 0
+    extra_reference_date: datetime.datetime | None = None
+    reference_date_set = {d.date() for d in reference_datetimes}
+    for idx, (input_d, is_comp) in enumerate(zip(input_dates, is_compressed)):
+        if input_d not in reference_date_set:
+            continue
+        if is_comp:
+            # Find the max index within compressed SLCs which
+            # is contained in `reference_dates`
+            # This will overwrite with the latest one if multiple exist in the set
+            output_reference_idx = idx
+        else:
+            # Check if a `reference_date` is contained in *non*-compressed slcs
+            # If so, we have `extra_reference_date`, and do a changeover
+            extra_reference_date = input_d
+
+    return output_reference_idx, extra_reference_date
+
+
+def _parse_reference_datetimes(reference_date_json, frame_id: int | str):
+    reference_datetimes: list[datetime.datetime] = []
+    if reference_date_json is not None:
+        with open(reference_date_json) as f:
+            reference_date_strs = json.load(f)[str(frame_id)]
+            reference_datetimes = [
+                datetime.datetime.fromisoformat(s) for s in reference_date_strs
+            ]
+    else:
+        reference_datetimes = []
+    return reference_datetimes

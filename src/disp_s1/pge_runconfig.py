@@ -268,9 +268,7 @@ class RunConfig(YamlModel):
         output_reference_idx, extra_reference_date = _parse_reference_dates(
             reference_datetimes, cslc_file_list
         )
-        param_dict["phase_linking_options"]["output_reference_idx"] = (
-            output_reference_idx
-        )
+        param_dict["phase_linking"]["output_reference_idx"] = output_reference_idx
         param_dict["output_options"]["extra_reference_date"] = extra_reference_date
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow

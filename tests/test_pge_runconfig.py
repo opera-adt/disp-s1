@@ -1,5 +1,7 @@
+import datetime
 import sys
 import warnings
+from pathlib import Path
 
 import opera_utils
 import pytest
@@ -57,8 +59,16 @@ def frame_to_burst_json_file():
 
 
 @pytest.fixture
-def static_ancillary_file_group(frame_to_burst_json_file):
-    return StaticAncillaryFileGroup(frame_to_burst_json=frame_to_burst_json_file)
+def reference_date_json_file():
+    return Path(__file__).parent / "data/reference-dates.json"
+
+
+@pytest.fixture
+def static_ancillary_file_group(frame_to_burst_json_file, reference_date_json_file):
+    return StaticAncillaryFileGroup(
+        frame_to_burst_json=frame_to_burst_json_file,
+        reference_date_database_json=reference_date_json_file,
+    )
 
 
 @pytest.fixture
@@ -116,3 +126,57 @@ def test_runconfig_yaml_roundtrip(tmp_path, runconfig_minimum):
     runconfig_minimum.to_yaml(f)
     c = RunConfig.from_yaml(f)
     assert c == runconfig_minimum
+
+
+@pytest.fixture
+def hawaii_slc_list():
+    # "23210": {
+    # "reference_dates": [
+    #   "2016-07-08T16:15:44",
+    #   "2017-07-09T16:15:07",
+    #   "2018-07-16T16:15:14",
+    #   "2019-07-11T16:15:20",
+    #   "2020-07-17T16:15:27",
+    #   "2021-07-12T16:15:32",
+    #   "2022-07-13T16:16:21",
+    #   "2023-07-08T16:16:25",
+    #   "2024-07-14T16:16:24"
+    # ],
+    return [
+        "COMPRESSED_OPERA_L2_CSLC-S1_T087-185680-IW1_20170610T000000Z_20170610T000000Z_20171001T000000Z_20240429T000000Z_S1B_VV_v1.1.h5",
+        "COMPRESSED_OPERA_L2_CSLC-S1_T087-185680-IW1_20170709T000000Z_20170709T000000Z_20171201T000000Z_20240429T000000Z_S1B_VV_v1.1.h5",
+        # This is the most recent "base phase" date within compressed slcs
+        # So we expected output index of 2
+        "COMPRESSED_OPERA_L2_CSLC-S1_T087-185680-IW1_20170709T000000Z_20171210T000000Z_20180604T000000Z_20240429T000000Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180610T161531Z_20240429T233903Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180622T161532Z_20240430T025857Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180628T161614Z_20240430T043443Z_S1A_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180710T161615Z_20240428T043529Z_S1A_VV_v1.1.h5",
+        # This one should become the "extra reference":
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180716T161534Z_20240428T062045Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180722T161616Z_20240428T075037Z_S1A_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180728T161534Z_20240428T093746Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180803T161616Z_20240428T110636Z_S1A_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180809T161535Z_20240428T125546Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180815T161617Z_20240428T143339Z_S1A_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180827T161618Z_20240428T175537Z_S1A_VV_v1.1.h5",
+    ]
+
+
+def test_reference_changeover(
+    dynamic_ancillary_file_group,
+    static_ancillary_file_group,
+    product_path_group,
+    hawaii_slc_list,
+):
+    input_file_group = InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210)
+    rc = RunConfig(
+        input_file_group=input_file_group,
+        primary_executable=PrimaryExecutable(),
+        dynamic_ancillary_file_group=dynamic_ancillary_file_group,
+        static_ancillary_file_group=static_ancillary_file_group,
+        product_path_group=product_path_group,
+    )
+    cfg = rc.to_workflow()
+    assert cfg.output_options.extra_reference_date == datetime.datetime(2018, 7, 16)
+    assert cfg.phase_linking.output_reference_idx == 2

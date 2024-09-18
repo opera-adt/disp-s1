@@ -18,9 +18,10 @@ from dolphin.workflows.config import (
     UnwrapOptions,
     WorkerSettings,
 )
+from dolphin.workflows.config._common import _read_file_list_or_glob
 from dolphin.workflows.config._yaml_model import YamlModel
 from opera_utils import OPERA_DATASET_NAME, get_dates, get_frame_bbox
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
 from .enums import ProcessingMode
 
@@ -39,6 +40,10 @@ class InputFileGroup(YamlModel):
     )
     model_config = ConfigDict(
         extra="forbid", json_schema_extra={"required": ["cslc_file_list", "frame_id"]}
+    )
+
+    _check_cslc_file_glob = field_validator("cslc_file_list", mode="before")(
+        _read_file_list_or_glob
     )
 
 

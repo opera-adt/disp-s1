@@ -1,0 +1,25 @@
+name: Docker
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - release/*
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    name: Build & smoke test Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: docker build --network=host --tag=disp-s1 --file=docker/Dockerfile .
+      - run: docker run --rm disp-s1

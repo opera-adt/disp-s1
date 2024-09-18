@@ -245,10 +245,10 @@ def create_output_product(
         ]
 
         for info, filename in zip(product_infos[2:], data_files):
-            if filename is None:
-                data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
-            else:
+            if filename is not None and Path(filename).exists():
                 data = io.load_gdal(filename)
+            else:
+                data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
 
             if info.keep_bits is not None:
                 round_mantissa(data, keep_bits=info.keep_bits)
@@ -343,15 +343,6 @@ def _create_corrections_group(
             name="solid_earth_tide",
             data=solid_earth,
             description="Solid Earth tide used to correct the unwrapped phase",
-            fillvalue=np.nan,
-            attrs={"units": "meters"},
-        )
-        plate_motion = corrections.get("plate_motion", empty_arr)
-        _create_geo_dataset(
-            group=corrections_group,
-            name="plate_motion",
-            data=plate_motion,
-            description="Phase ramp caused by tectonic plate motion",
             fillvalue=np.nan,
             attrs={"units": "meters"},
         )

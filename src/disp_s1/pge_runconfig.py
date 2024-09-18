@@ -266,11 +266,11 @@ class RunConfig(YamlModel):
         param_dict["timeseries_options"]["run_velocity"] = False
 
         # Get the current set of expected reference dates
-        reference_datetimes = _parse_reference_datetimes(
+        reference_datetimes = _parse_reference_date_json(
             self.static_ancillary_file_group.reference_date_database_json, frame_id
         )
         # Compute the requested output indexes
-        output_reference_idx, extra_reference_date = _parse_reference_dates(
+        output_reference_idx, extra_reference_date = _compute_reference_dates(
             reference_datetimes, cslc_file_list
         )
         param_dict["phase_linking"]["output_reference_idx"] = output_reference_idx
@@ -358,26 +358,19 @@ class RunConfig(YamlModel):
         )
 
 
-def _get_nearest_idx(
+def _get_first_after_selected(
     input_dates: Sequence[datetime.datetime],
     selected_date: datetime.datetime,
 ) -> int:
-    """Find the index nearest to `selected_date` within `input_dates`."""
-    sorted_inputs = sorted(input_dates)
-    if not sorted_inputs[0] <= selected_date <= sorted_inputs[-1]:
-        msg = f"Requested {selected_date} falls outside of input range: "
-        msg += f"{sorted_inputs[0]}, {sorted_inputs[-1]}"
-        raise ValueError(msg)
-
-    nearest_idx = min(
-        range(len(input_dates)),
-        key=lambda i: abs((input_dates[i] - selected_date).total_seconds()),
-    )
-
-    return nearest_idx
+    """Find the first index of `input_dates` which falls after `selected_date`."""
+    for idx, d in enumerate(input_dates):
+        if d >= selected_date:
+            return idx
+    else:
+        return -1
 
 
-def _parse_reference_dates(
+def _compute_reference_dates(
     reference_datetimes, cslc_file_list
 ) -> tuple[int, datetime.datetime | None]:
     # Mark any files beginning with "compressed" as compressed
@@ -387,25 +380,28 @@ def _parse_reference_dates(
 
     output_reference_idx: int = 0
     extra_reference_date: datetime.datetime | None = None
-    reference_date_set = {d.date() for d in reference_datetimes}
-    for idx, (input_d, is_comp) in enumerate(zip(input_dates, is_compressed)):
-        if input_d not in reference_date_set:
+    reference_dates = sorted([d.date() for d in reference_datetimes])
+    for ref_date in reference_dates:
+        # Find the nearest index that is greater than or equal to the reference date
+        candidate_dates = [d for d in input_dates if d >= ref_date]
+        if not candidate_dates:
             continue
-        if is_comp:
-            # Find the max index within compressed SLCs which
-            # is contained in `reference_dates`
-            # This will overwrite with the latest one if multiple exist in the set
-            output_reference_idx = idx
-            # TODO: there should be at most 2? otherwise fail?
+        nearest_idx = _get_first_after_selected(input_dates, ref_date)
+
+        if is_compressed[nearest_idx]:
+            # Update the output_reference_idx for compressed SLCs
+            output_reference_idx = nearest_idx
         else:
-            # Check if a `reference_date` is contained in *non*-compressed slcs
-            # If so, we have `extra_reference_date`, and do a changeover
-            extra_reference_date = input_d
+            # Set extra_reference_date for non-compressed SLCs
+            inp_date = input_dates[nearest_idx]
+            # Don't use if it it's before the requested changeover; only after
+            if inp_date >= ref_date:
+                extra_reference_date = inp_date
 
     return output_reference_idx, extra_reference_date
 
 
-def _parse_reference_datetimes(reference_date_json, frame_id: int | str):
+def _parse_reference_date_json(reference_date_json, frame_id: int | str):
     reference_datetimes: list[datetime.datetime] = []
     if reference_date_json is not None:
         with open(reference_date_json) as f:

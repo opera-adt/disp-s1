@@ -36,7 +36,7 @@ def test_run_config_schema():
 @pytest.fixture
 def input_file_group(slc_file_list_nc_with_sds):
     file_list, subdataset = slc_file_list_nc_with_sds
-    return InputFileGroup(cslc_file_list=file_list, frame_id=10)
+    return InputFileGroup(cslc_file_list=file_list, frame_id=11114)
 
 
 @pytest.fixture
@@ -144,9 +144,9 @@ def hawaii_slc_list():
     # ],
     return [
         "COMPRESSED_OPERA_L2_CSLC-S1_T087-185680-IW1_20170610T000000Z_20170610T000000Z_20171001T000000Z_20240429T000000Z_S1B_VV_v1.1.h5",
+        # This is the compressed SLC where the "base phase" date within a later
+        # reference date. So we expected output index of 1:
         "COMPRESSED_OPERA_L2_CSLC-S1_T087-185680-IW1_20170709T000000Z_20170709T000000Z_20171201T000000Z_20240429T000000Z_S1B_VV_v1.1.h5",
-        # This is the most recent "base phase" date within compressed slcs
-        # So we expected output index of 2
         "COMPRESSED_OPERA_L2_CSLC-S1_T087-185680-IW1_20170709T000000Z_20171210T000000Z_20180604T000000Z_20240429T000000Z_S1B_VV_v1.1.h5",
         "OPERA_L2_CSLC-S1_T087-185680-IW1_20180610T161531Z_20240429T233903Z_S1B_VV_v1.1.h5",
         "OPERA_L2_CSLC-S1_T087-185680-IW1_20180622T161532Z_20240430T025857Z_S1B_VV_v1.1.h5",
@@ -169,9 +169,8 @@ def test_reference_changeover(
     product_path_group,
     hawaii_slc_list,
 ):
-    input_file_group = InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210)
     rc = RunConfig(
-        input_file_group=input_file_group,
+        input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
         primary_executable=PrimaryExecutable(),
         dynamic_ancillary_file_group=dynamic_ancillary_file_group,
         static_ancillary_file_group=static_ancillary_file_group,
@@ -179,4 +178,33 @@ def test_reference_changeover(
     )
     cfg = rc.to_workflow()
     assert cfg.output_options.extra_reference_date == datetime.datetime(2018, 7, 16)
-    assert cfg.phase_linking.output_reference_idx == 2
+    assert cfg.phase_linking.output_reference_idx == 1
+
+    # Check a that non-exact match to the reference still works,
+    # AFTER the reference request
+    hawaii_slc_list[7] = (
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180717T161534Z_20240428T062045Z_S1B_VV_v1.1.h5"
+    )
+    rc = RunConfig(
+        input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
+        primary_executable=PrimaryExecutable(),
+        dynamic_ancillary_file_group=dynamic_ancillary_file_group,
+        static_ancillary_file_group=static_ancillary_file_group,
+        product_path_group=product_path_group,
+    )
+    cfg = rc.to_workflow()
+    assert cfg.output_options.extra_reference_date == datetime.datetime(2018, 7, 17)
+
+    # ...but not BEFORE the reference request
+    hawaii_slc_list[7] = (
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180715T161534Z_20240428T062045Z_S1B_VV_v1.1.h5"
+    )
+    rc = RunConfig(
+        input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
+        primary_executable=PrimaryExecutable(),
+        dynamic_ancillary_file_group=dynamic_ancillary_file_group,
+        static_ancillary_file_group=static_ancillary_file_group,
+        product_path_group=product_path_group,
+    )
+    cfg = rc.to_workflow()
+    assert cfg.output_options.extra_reference_date is None

@@ -18,23 +18,20 @@ def load_raster_bounds_and_transform(
     filename: Filename,
 ) -> Tuple[BoundingBox, rasterio.crs.CRS, rasterio.Affine, Tuple[int, int]]:
     """Load bounds, transform, CRS, and shape from a raster file."""
-    try:
-        with rasterio.open(filename) as src:
-            bounds = src.bounds
-            crs = src.crs
-            affine_transform = src.transform
-            height, width = src.shape
-        return bounds, crs, affine_transform, (height, width)
-    except Exception as e:
-        raise RuntimeError(f"Error loading raster file {filename}: {e}") from e
+    with rasterio.open(filename) as src:
+        bounds = src.bounds
+        crs = src.crs
+        affine_transform = src.transform
+        height, width = src.shape
+    return bounds, crs, affine_transform, (height, width)
 
 
 def transform_bounds_to_epsg4326(
-    bounds: BoundingBox, crs: rasterio.crs.CRS
+    bounds: BoundingBox, source_crs: rasterio.crs.CRS
 ) -> BoundingBox:
     """Transform bounds to EPSG:4326 if CRS is not geographic."""
-    if not crs.is_geographic:
-        transformed_bounds = transform_bounds(crs, "EPSG:4326", *bounds)
+    if not source_crs.is_geographic:
+        transformed_bounds = transform_bounds(source_crs, "EPSG:4326", *bounds)
         return BoundingBox(*transformed_bounds)
     return bounds
 
@@ -98,21 +95,21 @@ def calculate_time_ranges(
     reference_stop_time: pd.Timestamp,
     secondary_start_time: pd.Timestamp,
     secondary_stop_time: pd.Timestamp,
-    atr: dict,
+    shape: tuple[int, int],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Generate time ranges for reference and secondary files."""
     ref_time_range = pd.to_datetime(
         np.linspace(
-            reference_start_time.value, reference_stop_time.value, atr["LENGTH"]
+            reference_start_time.value, reference_stop_time.value, shape[0]
         )
     )
     sec_time_range = pd.to_datetime(
         np.linspace(
-            secondary_start_time.value, secondary_stop_time.value, atr["LENGTH"]
+            secondary_start_time.value, secondary_stop_time.value, shape[0]
         )
     )
-    ref_time_tile = np.tile(ref_time_range, (atr["WIDTH"], 1)).T
-    sec_time_tile = np.tile(sec_time_range, (atr["WIDTH"], 1)).T
+    ref_time_tile = np.tile(ref_time_range, (shape[1], 1)).T
+    sec_time_tile = np.tile(sec_time_range, (shape[1], 1)).T
     return ref_time_tile, sec_time_tile
 
 
@@ -165,7 +162,7 @@ def calculate_solid_earth_tides_correction(
         reference_stop_time,
         secondary_start_time,
         secondary_stop_time,
-        atr,
+        shape=(atr["LENGTH"], atr["WIDTH"]),
     )
 
     # Prepare resolution arrays

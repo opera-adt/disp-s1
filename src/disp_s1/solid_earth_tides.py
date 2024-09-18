@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,7 @@ from scipy.ndimage import zoom
 from disp_s1._reference import ReferencePoint
 
 
-def resample_to_target(array: np.ndarray, target_shape: Tuple[int, int]) -> np.ndarray:
+def resample_to_target(array: np.ndarray, target_shape: tuple[int, int]) -> np.ndarray:
     """Resample a 2D array to a target shape using zoom."""
     if array.shape == target_shape:
         return array
@@ -25,7 +25,7 @@ def resample_to_target(array: np.ndarray, target_shape: Tuple[int, int]) -> np.n
 
 def load_raster_bounds_and_transform(
     filename: Filename,
-) -> Tuple[BoundingBox, CRS, rasterio.Affine, Tuple[int, int]]:
+) -> tuple[BoundingBox, CRS, rasterio.Affine, tuple[int, int]]:
     """Load bounds, transform, CRS, and shape from a raster file."""
     with rasterio.open(filename) as src:
         bounds = src.bounds
@@ -68,7 +68,7 @@ def interpolate_set_components(
     set_east: np.ndarray,
     set_north: np.ndarray,
     set_up: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Interpolate SET components to the unwrapped interferogram grid."""
     points = np.stack((n, e), axis=-1)
     interpolator_east = RegularGridInterpolator(
@@ -112,8 +112,8 @@ def calculate_time_ranges(
     reference_stop_time: pd.Timestamp,
     secondary_start_time: pd.Timestamp,
     secondary_stop_time: pd.Timestamp,
-    shape: Tuple[int, int],
-) -> Tuple[np.ndarray, np.ndarray]:
+    shape: tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray]:
     """Generate time ranges for reference and secondary files."""
     ref_time_range = pd.date_range(
         start=reference_start_time.value,
@@ -133,7 +133,7 @@ def calculate_time_ranges(
 
 
 def calculate_solid_earth_tides_correction(
-    ifgram_filename: Filename,
+    like_filename: Filename,
     reference_start_time: pd.Timestamp,
     reference_stop_time: pd.Timestamp,
     secondary_start_time: pd.Timestamp,
@@ -145,7 +145,7 @@ def calculate_solid_earth_tides_correction(
     """Calculate the relative displacement correction for solid earth tides."""
     # Load bounds, transform, CRS, and shape from the unwrapped interferogram
     bounds, crs, affine_transform, (height, width) = load_raster_bounds_and_transform(
-        ifgram_filename
+        like_filename
     )
     bounds_geo = transform_bounds_to_epsg4326(bounds, crs)
     atr = generate_atr(bounds_geo, height, width)

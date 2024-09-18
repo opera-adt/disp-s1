@@ -99,14 +99,10 @@ def calculate_time_ranges(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Generate time ranges for reference and secondary files."""
     ref_time_range = pd.to_datetime(
-        np.linspace(
-            reference_start_time.value, reference_stop_time.value, shape[0]
-        )
+        np.linspace(reference_start_time.value, reference_stop_time.value, shape[0])
     )
     sec_time_range = pd.to_datetime(
-        np.linspace(
-            secondary_start_time.value, secondary_stop_time.value, shape[0]
-        )
+        np.linspace(secondary_start_time.value, secondary_stop_time.value, shape[0])
     )
     ref_time_tile = np.tile(ref_time_range, (shape[1], 1)).T
     sec_time_tile = np.tile(sec_time_range, (shape[1], 1)).T

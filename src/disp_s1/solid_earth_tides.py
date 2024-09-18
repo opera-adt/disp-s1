@@ -5,18 +5,27 @@ import numpy as np
 import pandas as pd
 import rasterio
 from dolphin import Filename, io
-from opera_utils import get_zero_doppler_time
 from pysolid.solid import solid_grid
 from rasterio.coords import BoundingBox
+from rasterio.crs import CRS
 from rasterio.warp import transform_bounds
 from scipy.interpolate import RegularGridInterpolator
+from scipy.ndimage import zoom
 
 from disp_s1._reference import ReferencePoint
 
 
+def resample_to_target(array: np.ndarray, target_shape: Tuple[int, int]) -> np.ndarray:
+    """Resample a 2D array to a target shape using zoom."""
+    if array.shape == target_shape:
+        return array
+    zoom_factors = (target_shape[0] / array.shape[0], target_shape[1] / array.shape[1])
+    return zoom(array, zoom_factors, order=1)  # Linear interpolation
+
+
 def load_raster_bounds_and_transform(
     filename: Filename,
-) -> Tuple[BoundingBox, rasterio.crs.CRS, rasterio.Affine, Tuple[int, int]]:
+) -> Tuple[BoundingBox, CRS, rasterio.Affine, Tuple[int, int]]:
     """Load bounds, transform, CRS, and shape from a raster file."""
     with rasterio.open(filename) as src:
         bounds = src.bounds
@@ -26,9 +35,7 @@ def load_raster_bounds_and_transform(
     return bounds, crs, affine_transform, (height, width)
 
 
-def transform_bounds_to_epsg4326(
-    bounds: BoundingBox, source_crs: rasterio.crs.CRS
-) -> BoundingBox:
+def transform_bounds_to_epsg4326(bounds: BoundingBox, source_crs: CRS) -> BoundingBox:
     """Transform bounds to EPSG:4326 if CRS is not geographic."""
     if not source_crs.is_geographic:
         transformed_bounds = transform_bounds(source_crs, "EPSG:4326", *bounds)
@@ -64,10 +71,20 @@ def interpolate_set_components(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Interpolate SET components to the unwrapped interferogram grid."""
     points = np.stack((n, e), axis=-1)
+    interpolator_east = RegularGridInterpolator(
+        (y_arr, x_arr), set_east, bounds_error=False, fill_value=None
+    )
+    interpolator_north = RegularGridInterpolator(
+        (y_arr, x_arr), set_north, bounds_error=False, fill_value=None
+    )
+    interpolator_up = RegularGridInterpolator(
+        (y_arr, x_arr), set_up, bounds_error=False, fill_value=None
+    )
+
     return (
-        RegularGridInterpolator((y_arr, x_arr), set_east)(points),
-        RegularGridInterpolator((y_arr, x_arr), set_north)(points),
-        RegularGridInterpolator((y_arr, x_arr), set_up)(points),
+        interpolator_east(points),
+        interpolator_north(points),
+        interpolator_up(points),
     )
 
 
@@ -95,28 +112,32 @@ def calculate_time_ranges(
     reference_stop_time: pd.Timestamp,
     secondary_start_time: pd.Timestamp,
     secondary_stop_time: pd.Timestamp,
-    shape: tuple[int, int],
+    shape: Tuple[int, int],
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Generate time ranges for reference and secondary files."""
-    ref_time_range = pd.to_datetime(
-        np.linspace(
-            reference_start_time.value, reference_stop_time.value, shape[0]
-        )
+    ref_time_range = pd.date_range(
+        start=reference_start_time.value,
+        end=reference_stop_time.value,
+        periods=shape[0],
     )
-    sec_time_range = pd.to_datetime(
-        np.linspace(
-            secondary_start_time.value, secondary_stop_time.value, shape[0]
-        )
+
+    sec_time_range = pd.date_range(
+        start=secondary_start_time.value,
+        end=secondary_stop_time.value,
+        periods=shape[0],
     )
-    ref_time_tile = np.tile(ref_time_range, (shape[1], 1)).T
-    sec_time_tile = np.tile(sec_time_range, (shape[1], 1)).T
+
+    ref_time_tile = np.tile(ref_time_range.values, (shape[1], 1)).T
+    sec_time_tile = np.tile(sec_time_range.values, (shape[1], 1)).T
     return ref_time_tile, sec_time_tile
 
 
 def calculate_solid_earth_tides_correction(
     ifgram_filename: Filename,
-    reference_cslc_file: Filename,
-    secondary_cslc_file: Filename,
+    reference_start_time: pd.Timestamp,
+    reference_stop_time: pd.Timestamp,
+    secondary_start_time: pd.Timestamp,
+    secondary_stop_time: pd.Timestamp,
     los_east_file: Filename,
     los_north_file: Filename,
     reference_point: Optional[ReferencePoint] = None,
@@ -128,20 +149,6 @@ def calculate_solid_earth_tides_correction(
     )
     bounds_geo = transform_bounds_to_epsg4326(bounds, crs)
     atr = generate_atr(bounds_geo, height, width)
-
-    # Extract timing information from the CSLC files
-    reference_start_time = pd.to_datetime(
-        get_zero_doppler_time(reference_cslc_file, type_="start")
-    )
-    reference_stop_time = pd.to_datetime(
-        get_zero_doppler_time(reference_cslc_file, type_="end")
-    )
-    secondary_start_time = pd.to_datetime(
-        get_zero_doppler_time(secondary_cslc_file, type_="start")
-    )
-    secondary_stop_time = pd.to_datetime(
-        get_zero_doppler_time(secondary_cslc_file, type_="end")
-    )
 
     # Generate the lat/lon arrays for the SET geogrid
     lat_geo_array = np.linspace(
@@ -227,6 +234,12 @@ def calculate_solid_earth_tides_correction(
     # Load LOS components
     los_east = io.load_gdal(los_east_file, masked=True)
     los_north = io.load_gdal(los_north_file, masked=True)
+
+    # Check for dimension consistency and resample if they are not
+    if not los_east.shape == (height, width):
+        los_east = resample_to_target(los_east, (height, width))
+        los_north = resample_to_target(los_north, (height, width))
+
     los_up = np.sqrt(1 - los_east**2 - los_north**2)
 
     # Solid earth tides datacube along the LOS in meters
@@ -236,9 +249,11 @@ def calculate_solid_earth_tides_correction(
         + set_up_interp * los_up
     )
 
+    mask = los_east != 0
+
     if reference_point is None:
-        return set_los
+        return set_los * mask
 
     # Subtract the reference point
     ref_row, ref_col = reference_point.row, reference_point.col
-    return set_los - set_los[ref_row, ref_col]
+    return (set_los - set_los[ref_row, ref_col]) * mask

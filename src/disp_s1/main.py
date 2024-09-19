@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
-from dolphin.utils import DummyProcessPoolExecutor, get_max_memory_usage
+from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_usage
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
@@ -199,7 +199,8 @@ def process_product(
             files.unwrapped,
         )
 
-    output_name = out_dir / files.unwrapped.with_suffix(".nc").name
+    output_name = files.unwrapped.name.replace(full_suffix(files.unwrapped), ".nc")
+    output_path = out_dir / output_name
     ref_date, secondary_date = get_dates(output_name)[:2]
     # The reference one could be compressed, or real
     # Also possible to have multiple compressed files with same reference date
@@ -209,7 +210,7 @@ def process_product(
     logger.info(f"Found {len(secondary_slc_files)} for secondary date {secondary_date}")
 
     product.create_output_product(
-        output_name=output_name,
+        output_name=output_path,
         unw_filename=files.unwrapped,
         conncomp_filename=files.conncomp,
         temp_coh_filename=files.temp_coh,
@@ -224,7 +225,7 @@ def process_product(
         reference_point=reference_point,
     )
 
-    return output_name
+    return output_path
 
 
 def create_displacement_products(

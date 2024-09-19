@@ -815,6 +815,8 @@ def copy_opera_cslc_metadata(
         "/identification/bounding_polygon",
         "/identification/look_direction",
         "/identification/mission_id",
+        "/identification/track_number",
+        "/identification/orbit_direction",
     ]
 
     with h5py.File(comp_slc_file, "r") as src, h5py.File(output_hdf5_file, "a") as dst:

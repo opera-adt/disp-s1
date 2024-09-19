@@ -133,8 +133,7 @@ def test_runconfig_yaml_roundtrip(tmp_path, runconfig_minimum):
 
 @pytest.fixture
 def hawaii_slc_list():
-    # "23210": {
-    # "reference_dates": [
+    # "23210": [
     #   "2016-07-08T16:15:44",
     #   "2017-07-09T16:15:07",
     #   "2018-07-16T16:15:14",

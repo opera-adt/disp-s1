@@ -273,6 +273,9 @@ def create_output_product(
         reference_point=reference_point,
     )
 
+    # Get summary statistics on the layers for CMR filtering/searching purposes
+    average_temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
+
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
@@ -281,6 +284,7 @@ def create_output_product(
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
+        average_temporal_coherence=average_temporal_coherence,
     )
 
     _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
@@ -400,6 +404,7 @@ def _create_identification_group(
     secondary_start_time: datetime.datetime,
     secondary_end_time: datetime.datetime,
     footprint_wkt: str,
+    average_temporal_coherence: float,
 ) -> None:
     """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
@@ -485,6 +490,15 @@ def _create_identification_group(
                 "UTC datetime of the acquisition sensing start of current acquisition"
                 " used to create the unwrapped phase."
             ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="average_temporal_coherence",
+            dimensions=(),
+            data=average_temporal_coherence,
+            fillvalue=None,
+            description="Mean value of valid pixels within temporal_coherence layer.",
+            attrs={"units": "unitless"},
         )
 
 
@@ -794,11 +808,15 @@ def copy_opera_cslc_metadata(
 
     """
     dsets_to_copy = [
+        "/metadata/orbit",  #          Group
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
-        "/metadata/orbit",  #          Group
+        "/identification/look_direction",
+        "/identification/mission_id",
+        "/identification/track_number",
+        "/identification/orbit_direction",
     ]
 
     with h5py.File(comp_slc_file, "r") as src, h5py.File(output_hdf5_file, "a") as dst:

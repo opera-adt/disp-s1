@@ -67,8 +67,7 @@ def run(
 
     # Read the reference point
     assert out_paths.timeseries_paths is not None
-    timeseries_dir = out_paths.timeseries_paths[0].parent
-    ref_point = read_reference_point(timeseries_dir)
+    ref_point = read_reference_point(out_paths.timeseries_paths[0].parent)
 
     # Finalize the output as an HDF5 product
     # Group all the CSLCs by date to pick out ref/secondaries
@@ -80,7 +79,11 @@ def run(
 
     # group dataset based on date to find corresponding files and set None
     # for the layers that do not exist: correction layers specifically
-    grouped_unwrapped_paths = group_by_date(out_paths.timeseries_paths)
+    # grouped_unwrapped_paths = group_by_date(out_paths.timeseries_paths)
+    # TODO: what goes wrong if we pick unw, not timeseries?
+    # TODO: how can we get conncomps when we do nearest 3, and invert?
+    # TODO: the iono paths will have come from `timeseries`, and will be wrong
+    grouped_unwrapped_paths = group_by_date(out_paths.unwrapped_paths)
     unw_date_keys = list(grouped_unwrapped_paths.keys())
     _assert_dates_match(unw_date_keys, out_paths.conncomp_paths, "connected components")
     _assert_dates_match(unw_date_keys, out_paths.stitched_cor_paths, "correlation")
@@ -283,7 +286,8 @@ def create_displacement_products(
             unwrapper_mask=mask_f,
         )
         for unw, cc, cor, tropo, iono, mask_f in zip(
-            out_paths.timeseries_paths,
+            # out_paths.timeseries_paths,
+            out_paths.unwrapped_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
             tropo_files,

@@ -103,7 +103,9 @@ def test_runconfig_to_workflow(runconfig_minimum):
     print(runconfig_minimum.to_workflow())
 
 
-def test_runconfig_from_workflow(tmp_path, frame_to_burst_json_file, runconfig_minimum):
+def test_runconfig_from_workflow(
+    tmp_path, frame_to_burst_json_file, reference_date_json_file, runconfig_minimum
+):
     w = runconfig_minimum.to_workflow()
     frame_id = runconfig_minimum.input_file_group.frame_id
     algo_file = tmp_path / "algo_params.yaml"
@@ -112,6 +114,7 @@ def test_runconfig_from_workflow(tmp_path, frame_to_burst_json_file, runconfig_m
         w,
         frame_id=frame_id,
         frame_to_burst_json=frame_to_burst_json_file,
+        reference_date_json=reference_date_json_file,
         processing_mode=proc_mode,
         algorithm_parameters_file=algo_file,
     ).to_workflow()
@@ -207,4 +210,4 @@ def test_reference_changeover(
         product_path_group=product_path_group,
     )
     cfg = rc.to_workflow()
-    assert cfg.output_options.extra_reference_date is None
+    assert cfg.output_options.extra_reference_date == datetime.datetime(2018, 7, 22)

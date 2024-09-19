@@ -303,6 +303,7 @@ class RunConfig(YamlModel):
         processing_mode: ProcessingMode,
         algorithm_parameters_file: Path,
         frame_to_burst_json: Optional[Path] = None,
+        reference_date_json: Optional[Path] = None,
         save_compressed_slc: bool = False,
         output_directory: Optional[Path] = None,
     ):
@@ -343,6 +344,7 @@ class RunConfig(YamlModel):
             ),
             static_ancillary_file_group=StaticAncillaryFileGroup(
                 frame_to_burst_json=frame_to_burst_json,
+                reference_date_database_json=reference_date_json,
             ),
             primary_executable=PrimaryExecutable(
                 product_type=f"DISP_S1_{processing_mode.upper()}",
@@ -401,7 +403,9 @@ def _compute_reference_dates(
     return output_reference_idx, extra_reference_date
 
 
-def _parse_reference_date_json(reference_date_json, frame_id: int | str):
+def _parse_reference_date_json(
+    reference_date_json: Path | str | None, frame_id: int | str
+):
     reference_datetimes: list[datetime.datetime] = []
     if reference_date_json is not None:
         with open(reference_date_json) as f:

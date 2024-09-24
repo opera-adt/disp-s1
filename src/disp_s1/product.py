@@ -135,12 +135,19 @@ def create_output_product(
     cols, rows = io.get_raster_xysize(unw_filename)
     shape = (rows, cols)
 
-    reference_start, *_, reference_end = sorted(reference_cslc_files)
+    # Sorting the reference files by name means the earlier Burst IDs come first.
+    # Since the Burst Ids are numbered in increasing order of acquisition time,
+    # This is also valid to get the start/end bursts within the frame.
+    reference_start, *_, reference_end = sorted(
+        reference_cslc_files, key=lambda f: Path(f).name
+    )
     reference_start_time = get_zero_doppler_time(reference_start, type_="start")
     reference_end_time = get_zero_doppler_time(reference_end, type_="end")
     logger.debug(f"Start, end reference files: {reference_start}, {reference_end}")
 
-    secondary_start, *_, secondary_end = sorted(secondary_cslc_files)
+    secondary_start, *_, secondary_end = sorted(
+        secondary_cslc_files, key=lambda f: Path(f).name
+    )
     logger.debug(f"Start, end secondary files: {secondary_start}, {secondary_end}")
     secondary_start_time = get_zero_doppler_time(secondary_start, type_="start")
     secondary_end_time = get_zero_doppler_time(secondary_end, type_="end")

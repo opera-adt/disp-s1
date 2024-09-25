@@ -102,7 +102,7 @@ def make_product(param_dict: dict) -> None:
         unwrapper_mask_filename=param_dict["unwrapper_mask_filename"],
         pge_runconfig=param_dict["pge_runconfig"],
         # cslc_files=param_dict["cslc_files"],
-        reference_cslc_file=param_dict["reference_cslc_file"],
-        secondary_cslc_file=param_dict["secondary_cslc_file"],
+        reference_cslc_files=param_dict["reference_cslc_file"],
+        secondary_cslc_files=param_dict["secondary_cslc_file"],
     )
     logger.info("DISP-S1 product created: %s", param_dict["output_name"])

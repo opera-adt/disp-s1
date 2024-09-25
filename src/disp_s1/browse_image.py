@@ -116,7 +116,7 @@ def make_browse_image_from_arr(
         Image gets rescaled with same aspect ratio.
 
     """
-    # nomalize non-nan pixels to 0-1
+    # normalize non-nan pixels to 0-1
     arr = _normalize_apply_gamma(arr)
 
     # compute browse shape and resize full size array to it

@@ -83,8 +83,8 @@ def create_output_product(
     ps_mask_filename: Filename,
     unwrapper_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
-    reference_cslc_file: Filename,
-    secondary_cslc_file: Filename,
+    reference_cslc_files: list[Filename],
+    secondary_cslc_files: list[Filename],
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
     wavelength_cutoff: float = 50_000.0,
@@ -110,11 +110,11 @@ def create_output_product(
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
-    reference_cslc_file : Filename
-        An input CSLC product corresponding to the reference date.
+    reference_cslc_files : list[Filename]
+        Input CSLC products corresponding to the reference date.
         Used for metadata generation.
-    secondary_cslc_file : Filename
-        An input CSLC product corresponding to the secondary date.
+    secondary_cslc_files : list[Filename]
+        Input CSLC products corresponding to the secondary date.
         Used for metadata generation.
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
@@ -135,11 +135,24 @@ def create_output_product(
     cols, rows = io.get_raster_xysize(unw_filename)
     shape = (rows, cols)
 
-    reference_start_time = get_zero_doppler_time(reference_cslc_file, type_="start")
-    secondary_start_time = get_zero_doppler_time(secondary_cslc_file, type_="start")
-    secondary_end_time = get_zero_doppler_time(secondary_cslc_file, type_="end")
+    # Sorting the reference files by name means the earlier Burst IDs come first.
+    # Since the Burst Ids are numbered in increasing order of acquisition time,
+    # This is also valid to get the start/end bursts within the frame.
+    reference_start, *_, reference_end = sorted(
+        reference_cslc_files, key=lambda f: Path(f).name
+    )
+    reference_start_time = get_zero_doppler_time(reference_start, type_="start")
+    reference_end_time = get_zero_doppler_time(reference_end, type_="end")
+    logger.debug(f"Start, end reference files: {reference_start}, {reference_end}")
 
-    radar_wavelength = get_radar_wavelength(reference_cslc_file)
+    secondary_start, *_, secondary_end = sorted(
+        secondary_cslc_files, key=lambda f: Path(f).name
+    )
+    logger.debug(f"Start, end secondary files: {secondary_start}, {secondary_end}")
+    secondary_start_time = get_zero_doppler_time(secondary_start, type_="start")
+    secondary_end_time = get_zero_doppler_time(secondary_end, type_="end")
+
+    radar_wavelength = get_radar_wavelength(reference_cslc_files[0])
     phase2disp = -1 * float(radar_wavelength) / (4.0 * np.pi)
 
     y, x = _create_yx_arrays(gt=gt, shape=shape)
@@ -149,8 +162,8 @@ def create_output_product(
     try:
         logger.info("Calculating perpendicular baselines subsampled by %s", subsample)
         baseline_arr = compute_baselines(
-            reference_cslc_file,
-            secondary_cslc_file,
+            reference_start,
+            secondary_start,
             x=x,
             y=y,
             epsg=crs.to_epsg(),
@@ -158,8 +171,7 @@ def create_output_product(
         )
     except Exception:
         logger.error(
-            f"Failed to compute baselines for {reference_cslc_file},"
-            f" {secondary_cslc_file}",
+            f"Failed to compute baselines for {reference_start}, {secondary_start}",
             exc_info=True,
         )
         baseline_arr = np.zeros((100, 100))
@@ -281,6 +293,7 @@ def create_output_product(
         pge_runconfig=pge_runconfig,
         radar_wavelength=radar_wavelength,
         reference_start_time=reference_start_time,
+        reference_end_time=reference_end_time,
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
@@ -401,6 +414,7 @@ def _create_identification_group(
     pge_runconfig: RunConfig,
     radar_wavelength: float,
     reference_start_time: datetime.datetime,
+    reference_end_time: datetime.datetime,
     secondary_start_time: datetime.datetime,
     secondary_end_time: datetime.datetime,
     footprint_wkt: str,
@@ -428,7 +442,29 @@ def _create_identification_group(
 
         _create_dataset(
             group=identification_group,
-            name="zero_doppler_start_time",
+            name="reference_zero_doppler_start_time",
+            dimensions=(),
+            data=reference_start_time.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "Zero doppler start time of the first burst contained in the frame for"
+                " the reference acquisition."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="reference_zero_doppler_end_time",
+            dimensions=(),
+            data=reference_end_time.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "Zero doppler start time of the last burst contained in the frame for"
+                " the reference acquisition."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="secondary_zero_doppler_start_time",
             dimensions=(),
             data=secondary_start_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
@@ -439,7 +475,7 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
-            name="zero_doppler_end_time",
+            name="secondary_zero_doppler_end_time",
             dimensions=(),
             data=secondary_end_time.strftime(DATETIME_FORMAT),
             fillvalue=None,

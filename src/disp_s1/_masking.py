@@ -1,6 +1,7 @@
 import numpy as np
 from dolphin._types import PathOrStr
 from dolphin.io import load_gdal, write_arr
+from scipy import ndimage
 
 
 def create_mask_from_distance(
@@ -103,4 +104,7 @@ def convert_distance_to_binary(
         water_distance_data > ocean_buffer
     )
     binary_mask[ocean_water_mask] = False
-    return binary_mask
+    # Erode away small single-pixels
+    return ndimage.binary_closing(
+        binary_mask, structure=np.ones((3, 3)), border_value=1
+    )

@@ -95,14 +95,12 @@ def convert_distance_to_binary(
         np.ones_like(water_distance_data, dtype=bool), mask=water_distance_data.mask
     )
 
-    # Mask inland water pixels (considering land buffer)
-    inland_water_mask = (water_distance_data >= 100) & (water_distance_data <= 200)
-    # "very watery" pixels (larger distance to shore than `land_buffer`) stay water
-    binary_mask[inland_water_mask & (water_distance_data - 100 >= land_buffer)] = False
-
-    # Mask ocean pixels (considering ocean buffer)
-    ocean_mask = (water_distance_data >= 1) & (water_distance_data <= 99)
-    # "very ocean" pixels (larger distance to shore than `ocean_buffer`) stay water
-    binary_mask[ocean_mask & (water_distance_data >= ocean_buffer)] = False
-
+    # Mask inland water pixels (considering land buffer): anything 101 or higher is land
+    inland_water_mask = water_distance_data > land_buffer + 100
+    binary_mask[inland_water_mask] = False
+    # For ocean, only look at values 1-100, then consider buffer
+    ocean_water_mask = (water_distance_data <= 100) & (
+        water_distance_data > ocean_buffer
+    )
+    binary_mask[ocean_water_mask] = False
     return binary_mask

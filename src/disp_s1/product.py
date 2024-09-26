@@ -222,7 +222,7 @@ def create_output_product(
         bad_pixel_mask=bad_corr | bad_conncomp,
         wavelength_cutoff=wavelength_cutoff,
         pixel_spacing=pixel_spacing,
-    )
+    ).astype(np.float32)
     DISPLACEMENT_PRODUCTS.short_wavelength_displacement.attrs |= {
         "wavelength_cutoff": str(wavelength_cutoff)
     }

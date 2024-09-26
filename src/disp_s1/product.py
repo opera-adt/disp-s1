@@ -222,7 +222,7 @@ def create_output_product(
         bad_pixel_mask=bad_corr | bad_conncomp,
         wavelength_cutoff=wavelength_cutoff,
         pixel_spacing=pixel_spacing,
-    )
+    ).astype(np.float32)
     DISPLACEMENT_PRODUCTS.short_wavelength_displacement.attrs |= {
         "wavelength_cutoff": str(wavelength_cutoff)
     }
@@ -296,6 +296,7 @@ def create_output_product(
             secondary_stop_time=secondary_end_time,
             los_east_file=los_east_file,
             los_north_file=los_north_file,
+            reference_point=reference_point,
         )
         corrections["solid_earth"] = solid_earth_los
 

@@ -52,7 +52,7 @@ def create_mask_from_distance(
     )
 
     write_arr(
-        arr=binary_mask.astype(np.uint8).filled(0),
+        arr=binary_mask.astype(np.uint8),
         output_name=output_file,
         like_filename=water_distance_file,
         dtype="uint8",
@@ -62,7 +62,7 @@ def create_mask_from_distance(
 
 def convert_distance_to_binary(
     water_distance_data: np.ma.MaskedArray, land_buffer: int = 0, ocean_buffer: int = 0
-) -> np.ma.MaskedArray:
+) -> np.ndarray:
     """Convert water distance data to a binary mask considering buffer zones.
 
     Parameters
@@ -78,7 +78,7 @@ def convert_distance_to_binary(
 
     Returns
     -------
-    np.ma.MaskedArray
+    np.ndarray
         Binary mask where True represents land pixels and False represents water pixels.
 
     Notes
@@ -105,6 +105,7 @@ def convert_distance_to_binary(
     )
     binary_mask[ocean_water_mask] = False
     # Erode away small single-pixels
-    return ndimage.binary_closing(
-        binary_mask, structure=np.ones((3, 3)), border_value=1
+    closed_mask = ndimage.binary_closing(
+        binary_mask.filled(0), structure=np.ones((3, 3)), border_value=1
     )
+    return closed_mask

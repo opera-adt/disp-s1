@@ -20,6 +20,7 @@ from dolphin import filtering, io
 from dolphin._types import Filename
 from dolphin.io import round_mantissa
 from dolphin.utils import DummyProcessPoolExecutor, format_dates
+from dolphin.workflows import DisplacementWorkflow, YamlModel
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import (
     OPERA_DATASET_NAME,
@@ -83,6 +84,7 @@ def create_output_product(
     ps_mask_filename: Filename,
     unwrapper_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
     reference_cslc_files: list[Filename],
     secondary_cslc_files: list[Filename],
     reference_point: ReferencePoint | None = None,
@@ -110,6 +112,8 @@ def create_output_product(
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
+    dolphin_config : dolphin.workflows.DisplacementWorkflow
+        Configuration object run by `dolphin`.
     reference_cslc_files : list[Filename]
         Input CSLC products corresponding to the reference date.
         Used for metadata generation.
@@ -300,7 +304,11 @@ def create_output_product(
         average_temporal_coherence=average_temporal_coherence,
     )
 
-    _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
+    _create_metadata_group(
+        output_name=output_name,
+        pge_runconfig=pge_runconfig,
+        dolphin_config=dolphin_config,
+    )
 
 
 def _create_corrections_group(
@@ -538,7 +546,11 @@ def _create_identification_group(
         )
 
 
-def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> None:
+def _create_metadata_group(
+    output_name: Filename,
+    pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
+) -> None:
     """Create the metadata group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
         metadata_group = f.create_group(METADATA_GROUP_NAME)
@@ -559,18 +571,29 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             description="Version of the dolphin software used to generate the product.",
         )
 
-        # TODO: prob should just make a _to_string method?
-        ss = StringIO()
-        pge_runconfig.to_yaml(ss)
-        runconfig_str = ss.getvalue()
+        def _to_string(model: YamlModel):
+            ss = StringIO()
+            model.to_yaml(ss)
+            return ss.getvalue()
+
         _create_dataset(
             group=metadata_group,
             name="pge_runconfig",
             dimensions=(),
-            data=runconfig_str,
+            data=_to_string(pge_runconfig),
             fillvalue=None,
             description=(
                 "The full PGE runconfig YAML file used to generate the product."
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="dolphin_workflow_config",
+            dimensions=(),
+            data=_to_string(dolphin_config),
+            fillvalue=None,
+            description=(
+                "The configuration parameters used by `dolphin` during the processing."
             ),
         )
 

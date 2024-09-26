@@ -104,6 +104,7 @@ def run(
         out_dir=out_dir,
         date_to_cslc_files=date_to_cslc_files,
         pge_runconfig=pge_runconfig,
+        dolphin_config=cfg,
         wavelength_cutoff=wavelength_cutoff,
         reference_point=ref_point,
     )
@@ -154,6 +155,7 @@ def process_product(
     out_dir: Path,
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
     wavelength_cutoff: float,
     reference_point: ReferencePoint | None = None,
 ) -> Path:
@@ -169,6 +171,8 @@ def process_product(
         Dictionary mapping dates to real/compressed SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
+    dolphin_config : dolphin.workflows.DisplacementWorkflow
+        Configuration object run by `dolphin`.
     wavelength_cutoff : float
         Wavelength cutoff for filtering long wavelengths.
     reference_point : ReferencePoint, optional
@@ -218,6 +222,7 @@ def process_product(
         ps_mask_filename=files.ps_mask,
         unwrapper_mask_filename=files.unwrapper_mask,
         pge_runconfig=pge_runconfig,
+        dolphin_config=dolphin_config,
         reference_cslc_files=ref_slc_files,
         secondary_cslc_files=secondary_slc_files,
         corrections=corrections,
@@ -233,6 +238,7 @@ def create_displacement_products(
     out_dir: Path,
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
     wavelength_cutoff: float = 50_000.0,
     reference_point: ReferencePoint | None = None,
     max_workers: int = 2,
@@ -249,6 +255,8 @@ def create_displacement_products(
         Dictionary mapping dates to real/compressed SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
+    dolphin_config : dolphin.workflows.DisplacementWorkflow
+        Configuration object run by `dolphin`.
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
         If None, will record empty in the dataset's attributes
@@ -309,6 +317,7 @@ def create_displacement_products(
                 repeat(out_dir),
                 repeat(date_to_cslc_files),
                 repeat(pge_runconfig),
+                repeat(dolphin_config),
                 repeat(wavelength_cutoff),
                 repeat(reference_point),
             )

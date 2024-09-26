@@ -38,6 +38,7 @@ from ._reference import ReferencePoint
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
 from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
+from .solid_earth_tides import calculate_solid_earth_tides_correction
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,8 @@ def create_output_product(
     dolphin_config: DisplacementWorkflow,
     reference_cslc_files: list[Filename],
     secondary_cslc_files: list[Filename],
+    los_east_file: Filename | None = None,
+    los_north_file: Filename | None = None,
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
     wavelength_cutoff: float = 50_000.0,
@@ -120,6 +123,10 @@ def create_output_product(
     secondary_cslc_files : list[Filename]
         Input CSLC products corresponding to the secondary date.
         Used for metadata generation.
+    los_east_file : Path, optional
+        Path to the east component of line of sight unit vector
+    los_north_file : Path, optional
+        Path to the north component of line of sight unit vector
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
         If None, will record empty in the dataset's attributes
@@ -278,6 +285,19 @@ def create_output_product(
                 attrs=info.attrs,
             )
             del data  # Free up memory
+
+    if los_east_file is not None and los_north_file is not None:
+        logger.info("Calculating solid earth tide")
+        solid_earth_los = calculate_solid_earth_tides_correction(
+            like_filename=unw_filename,
+            reference_start_time=reference_start_time,
+            reference_stop_time=reference_end_time,
+            secondary_start_time=secondary_start_time,
+            secondary_stop_time=secondary_end_time,
+            los_east_file=los_east_file,
+            los_north_file=los_north_file,
+        )
+        corrections["solid_earth"] = solid_earth_los
 
     _create_corrections_group(
         output_name=output_name,

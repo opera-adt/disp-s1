@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
+from datetime import date, datetime
+from typing import Optional, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,9 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import zoom
 
 from disp_s1._reference import ReferencePoint
+
+# https://github.com/pandas-dev/pandas-stubs/blob/1bc27e67098106089ce1e61b60c42aa81ec286af/pandas-stubs/_typing.pyi#L65-L66
+DateTimeLike: TypeAlias = date | datetime | pd.Timestamp
 
 
 def resample_to_target(array: np.ndarray, target_shape: tuple[int, int]) -> np.ndarray:
@@ -108,22 +112,22 @@ def run_solid_grid(az_time, lat, lon, res_lat, res_lon):
 
 
 def calculate_time_ranges(
-    reference_start_time: pd.Timestamp,
-    reference_stop_time: pd.Timestamp,
-    secondary_start_time: pd.Timestamp,
-    secondary_stop_time: pd.Timestamp,
+    reference_start_time: DateTimeLike,
+    reference_stop_time: DateTimeLike,
+    secondary_start_time: DateTimeLike,
+    secondary_stop_time: DateTimeLike,
     shape: tuple[int, int],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Generate time ranges for reference and secondary files."""
     ref_time_range = pd.date_range(
-        start=reference_start_time.value,
-        end=reference_stop_time.value,
+        start=reference_start_time,
+        end=reference_stop_time,
         periods=shape[0],
     )
 
     sec_time_range = pd.date_range(
-        start=secondary_start_time.value,
-        end=secondary_stop_time.value,
+        start=secondary_start_time,
+        end=secondary_stop_time,
         periods=shape[0],
     )
 
@@ -134,10 +138,10 @@ def calculate_time_ranges(
 
 def calculate_solid_earth_tides_correction(
     like_filename: Filename,
-    reference_start_time: pd.Timestamp,
-    reference_stop_time: pd.Timestamp,
-    secondary_start_time: pd.Timestamp,
-    secondary_stop_time: pd.Timestamp,
+    reference_start_time: DateTimeLike,
+    reference_stop_time: DateTimeLike,
+    secondary_start_time: DateTimeLike,
+    secondary_stop_time: DateTimeLike,
     los_east_file: Filename,
     los_north_file: Filename,
     reference_point: Optional[ReferencePoint] = None,

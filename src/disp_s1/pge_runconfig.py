@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import datetime
+import json
 from pathlib import Path
-from typing import ClassVar, List, Optional, Union
+from typing import ClassVar, List, Optional, Sequence, Union
 
 from dolphin.workflows.config import (
     CorrectionOptions,
@@ -16,9 +18,10 @@ from dolphin.workflows.config import (
     UnwrapOptions,
     WorkerSettings,
 )
+from dolphin.workflows.config._common import _read_file_list_or_glob
 from dolphin.workflows.config._yaml_model import YamlModel
-from opera_utils import OPERA_DATASET_NAME, get_frame_bbox
-from pydantic import ConfigDict, Field
+from opera_utils import OPERA_DATASET_NAME, get_dates, get_frame_bbox
+from pydantic import ConfigDict, Field, field_validator
 
 from .enums import ProcessingMode
 
@@ -37,6 +40,10 @@ class InputFileGroup(YamlModel):
     )
     model_config = ConfigDict(
         extra="forbid", json_schema_extra={"required": ["cslc_file_list", "frame_id"]}
+    )
+
+    _check_cslc_file_glob = field_validator("cslc_file_list", mode="before")(
+        _read_file_list_or_glob
     )
 
 
@@ -250,12 +257,24 @@ class RunConfig(YamlModel):
         bounds_epsg, bounds = get_frame_bbox(
             frame_id=frame_id, json_file=frame_to_burst_file
         )
+
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
         param_dict["output_options"]["add_overviews"] = False
         # Always turn off velocity (not used)
         param_dict["timeseries_options"]["run_velocity"] = False
+
+        # Get the current set of expected reference dates
+        reference_datetimes = _parse_reference_date_json(
+            self.static_ancillary_file_group.reference_date_database_json, frame_id
+        )
+        # Compute the requested output indexes
+        output_reference_idx, extra_reference_date = _compute_reference_dates(
+            reference_datetimes, cslc_file_list
+        )
+        param_dict["phase_linking"]["output_reference_idx"] = output_reference_idx
+        param_dict["output_options"]["extra_reference_date"] = extra_reference_date
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
         return DisplacementWorkflow(
@@ -284,6 +303,7 @@ class RunConfig(YamlModel):
         processing_mode: ProcessingMode,
         algorithm_parameters_file: Path,
         frame_to_burst_json: Optional[Path] = None,
+        reference_date_json: Optional[Path] = None,
         save_compressed_slc: bool = False,
         output_directory: Optional[Path] = None,
     ):
@@ -324,6 +344,7 @@ class RunConfig(YamlModel):
             ),
             static_ancillary_file_group=StaticAncillaryFileGroup(
                 frame_to_burst_json=frame_to_burst_json,
+                reference_date_database_json=reference_date_json,
             ),
             primary_executable=PrimaryExecutable(
                 product_type=f"DISP_S1_{processing_mode.upper()}",
@@ -337,3 +358,61 @@ class RunConfig(YamlModel):
             worker_settings=workflow.worker_settings,
             log_file=workflow.log_file,
         )
+
+
+def _get_first_after_selected(
+    input_dates: Sequence[datetime.datetime],
+    selected_date: datetime.datetime,
+) -> int:
+    """Find the first index of `input_dates` which falls after `selected_date`."""
+    for idx, d in enumerate(input_dates):
+        if d >= selected_date:
+            return idx
+    else:
+        return -1
+
+
+def _compute_reference_dates(
+    reference_datetimes, cslc_file_list
+) -> tuple[int, datetime.datetime | None]:
+    # Mark any files beginning with "compressed" as compressed
+    is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cslc_file_list]
+    # Get the dates of the base phase (works for either compressed, or regular cslc)
+    input_dates = [get_dates(f)[0].date() for f in cslc_file_list]
+
+    output_reference_idx: int = 0
+    extra_reference_date: datetime.datetime | None = None
+    reference_dates = sorted([d.date() for d in reference_datetimes])
+    for ref_date in reference_dates:
+        # Find the nearest index that is greater than or equal to the reference date
+        candidate_dates = [d for d in input_dates if d >= ref_date]
+        if not candidate_dates:
+            continue
+        nearest_idx = _get_first_after_selected(input_dates, ref_date)
+
+        if is_compressed[nearest_idx]:
+            # Update the output_reference_idx for compressed SLCs
+            output_reference_idx = nearest_idx
+        else:
+            # Set extra_reference_date for non-compressed SLCs
+            inp_date = input_dates[nearest_idx]
+            # Don't use if it it's before the requested changeover; only after
+            if inp_date >= ref_date:
+                extra_reference_date = inp_date
+
+    return output_reference_idx, extra_reference_date
+
+
+def _parse_reference_date_json(
+    reference_date_json: Path | str | None, frame_id: int | str
+):
+    reference_datetimes: list[datetime.datetime] = []
+    if reference_date_json is not None:
+        with open(reference_date_json) as f:
+            reference_date_strs = json.load(f)[str(frame_id)]
+            reference_datetimes = [
+                datetime.datetime.fromisoformat(s) for s in reference_date_strs
+            ]
+    else:
+        reference_datetimes = []
+    return reference_datetimes

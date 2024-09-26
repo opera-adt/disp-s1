@@ -20,6 +20,7 @@ from dolphin import filtering, io
 from dolphin._types import Filename
 from dolphin.io import round_mantissa
 from dolphin.utils import DummyProcessPoolExecutor, format_dates
+from dolphin.workflows import DisplacementWorkflow, YamlModel
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import (
     OPERA_DATASET_NAME,
@@ -83,8 +84,9 @@ def create_output_product(
     ps_mask_filename: Filename,
     unwrapper_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
-    reference_cslc_file: Filename,
-    secondary_cslc_file: Filename,
+    dolphin_config: DisplacementWorkflow,
+    reference_cslc_files: list[Filename],
+    secondary_cslc_files: list[Filename],
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
     wavelength_cutoff: float = 50_000.0,
@@ -110,11 +112,13 @@ def create_output_product(
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
-    reference_cslc_file : Filename
-        An input CSLC product corresponding to the reference date.
+    dolphin_config : dolphin.workflows.DisplacementWorkflow
+        Configuration object run by `dolphin`.
+    reference_cslc_files : list[Filename]
+        Input CSLC products corresponding to the reference date.
         Used for metadata generation.
-    secondary_cslc_file : Filename
-        An input CSLC product corresponding to the secondary date.
+    secondary_cslc_files : list[Filename]
+        Input CSLC products corresponding to the secondary date.
         Used for metadata generation.
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
@@ -135,11 +139,24 @@ def create_output_product(
     cols, rows = io.get_raster_xysize(unw_filename)
     shape = (rows, cols)
 
-    reference_start_time = get_zero_doppler_time(reference_cslc_file, type_="start")
-    secondary_start_time = get_zero_doppler_time(secondary_cslc_file, type_="start")
-    secondary_end_time = get_zero_doppler_time(secondary_cslc_file, type_="end")
+    # Sorting the reference files by name means the earlier Burst IDs come first.
+    # Since the Burst Ids are numbered in increasing order of acquisition time,
+    # This is also valid to get the start/end bursts within the frame.
+    reference_start, *_, reference_end = sorted(
+        reference_cslc_files, key=lambda f: Path(f).name
+    )
+    reference_start_time = get_zero_doppler_time(reference_start, type_="start")
+    reference_end_time = get_zero_doppler_time(reference_end, type_="end")
+    logger.debug(f"Start, end reference files: {reference_start}, {reference_end}")
 
-    radar_wavelength = get_radar_wavelength(reference_cslc_file)
+    secondary_start, *_, secondary_end = sorted(
+        secondary_cslc_files, key=lambda f: Path(f).name
+    )
+    logger.debug(f"Start, end secondary files: {secondary_start}, {secondary_end}")
+    secondary_start_time = get_zero_doppler_time(secondary_start, type_="start")
+    secondary_end_time = get_zero_doppler_time(secondary_end, type_="end")
+
+    radar_wavelength = get_radar_wavelength(reference_cslc_files[0])
     phase2disp = -1 * float(radar_wavelength) / (4.0 * np.pi)
 
     y, x = _create_yx_arrays(gt=gt, shape=shape)
@@ -149,8 +166,8 @@ def create_output_product(
     try:
         logger.info("Calculating perpendicular baselines subsampled by %s", subsample)
         baseline_arr = compute_baselines(
-            reference_cslc_file,
-            secondary_cslc_file,
+            reference_start,
+            secondary_start,
             x=x,
             y=y,
             epsg=crs.to_epsg(),
@@ -158,8 +175,7 @@ def create_output_product(
         )
     except Exception:
         logger.error(
-            f"Failed to compute baselines for {reference_cslc_file},"
-            f" {secondary_cslc_file}",
+            f"Failed to compute baselines for {reference_start}, {secondary_start}",
             exc_info=True,
         )
         baseline_arr = np.zeros((100, 100))
@@ -245,10 +261,10 @@ def create_output_product(
         ]
 
         for info, filename in zip(product_infos[2:], data_files):
-            if filename is None:
-                data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
-            else:
+            if filename is not None and Path(filename).exists():
                 data = io.load_gdal(filename)
+            else:
+                data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
 
             if info.keep_bits is not None:
                 round_mantissa(data, keep_bits=info.keep_bits)
@@ -273,17 +289,26 @@ def create_output_product(
         reference_point=reference_point,
     )
 
+    # Get summary statistics on the layers for CMR filtering/searching purposes
+    average_temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
+
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
         radar_wavelength=radar_wavelength,
         reference_start_time=reference_start_time,
+        reference_end_time=reference_end_time,
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
+        average_temporal_coherence=average_temporal_coherence,
     )
 
-    _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
+    _create_metadata_group(
+        output_name=output_name,
+        pge_runconfig=pge_runconfig,
+        dolphin_config=dolphin_config,
+    )
 
 
 def _create_corrections_group(
@@ -397,9 +422,11 @@ def _create_identification_group(
     pge_runconfig: RunConfig,
     radar_wavelength: float,
     reference_start_time: datetime.datetime,
+    reference_end_time: datetime.datetime,
     secondary_start_time: datetime.datetime,
     secondary_end_time: datetime.datetime,
     footprint_wkt: str,
+    average_temporal_coherence: float,
 ) -> None:
     """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
@@ -423,7 +450,29 @@ def _create_identification_group(
 
         _create_dataset(
             group=identification_group,
-            name="zero_doppler_start_time",
+            name="reference_zero_doppler_start_time",
+            dimensions=(),
+            data=reference_start_time.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "Zero doppler start time of the first burst contained in the frame for"
+                " the reference acquisition."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="reference_zero_doppler_end_time",
+            dimensions=(),
+            data=reference_end_time.strftime(DATETIME_FORMAT),
+            fillvalue=None,
+            description=(
+                "Zero doppler start time of the last burst contained in the frame for"
+                " the reference acquisition."
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="secondary_zero_doppler_start_time",
             dimensions=(),
             data=secondary_start_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
@@ -434,7 +483,7 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
-            name="zero_doppler_end_time",
+            name="secondary_zero_doppler_end_time",
             dimensions=(),
             data=secondary_end_time.strftime(DATETIME_FORMAT),
             fillvalue=None,
@@ -486,9 +535,22 @@ def _create_identification_group(
                 " used to create the unwrapped phase."
             ),
         )
+        _create_dataset(
+            group=identification_group,
+            name="average_temporal_coherence",
+            dimensions=(),
+            data=average_temporal_coherence,
+            fillvalue=None,
+            description="Mean value of valid pixels within temporal_coherence layer.",
+            attrs={"units": "unitless"},
+        )
 
 
-def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> None:
+def _create_metadata_group(
+    output_name: Filename,
+    pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
+) -> None:
     """Create the metadata group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
         metadata_group = f.create_group(METADATA_GROUP_NAME)
@@ -509,18 +571,29 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             description="Version of the dolphin software used to generate the product.",
         )
 
-        # TODO: prob should just make a _to_string method?
-        ss = StringIO()
-        pge_runconfig.to_yaml(ss)
-        runconfig_str = ss.getvalue()
+        def _to_string(model: YamlModel):
+            ss = StringIO()
+            model.to_yaml(ss)
+            return ss.getvalue()
+
         _create_dataset(
             group=metadata_group,
             name="pge_runconfig",
             dimensions=(),
-            data=runconfig_str,
+            data=_to_string(pge_runconfig),
             fillvalue=None,
             description=(
                 "The full PGE runconfig YAML file used to generate the product."
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="dolphin_workflow_config",
+            dimensions=(),
+            data=_to_string(dolphin_config),
+            fillvalue=None,
+            description=(
+                "The configuration parameters used by `dolphin` during the processing."
             ),
         )
 
@@ -794,11 +867,15 @@ def copy_opera_cslc_metadata(
 
     """
     dsets_to_copy = [
+        "/metadata/orbit",  #          Group
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
-        "/metadata/orbit",  #          Group
+        "/identification/look_direction",
+        "/identification/mission_id",
+        "/identification/track_number",
+        "/identification/orbit_direction",
     ]
 
     with h5py.File(comp_slc_file, "r") as src, h5py.File(output_hdf5_file, "a") as dst:

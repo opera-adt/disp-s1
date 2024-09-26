@@ -69,6 +69,13 @@ def run(
     assert out_paths.timeseries_paths is not None
     ref_point = read_reference_point(out_paths.timeseries_paths[0].parent)
 
+    # Find the geometry files, if created
+    try:
+        los_east_file = next(cfg.work_directory.rglob("los_east.tif"))
+        los_north_file = los_east_file.parent / "los_north.tif"
+    except StopIteration:
+        los_east_file = los_north_file = None
+
     # Finalize the output as an HDF5 product
     # Group all the CSLCs by date to pick out ref/secondaries
     date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
@@ -104,8 +111,11 @@ def run(
         out_dir=out_dir,
         date_to_cslc_files=date_to_cslc_files,
         pge_runconfig=pge_runconfig,
+        dolphin_config=cfg,
         wavelength_cutoff=wavelength_cutoff,
         reference_point=ref_point,
+        los_east_file=los_east_file,
+        los_north_file=los_north_file,
     )
     logger.info("Finished creating output products.")
 
@@ -154,8 +164,11 @@ def process_product(
     out_dir: Path,
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
     wavelength_cutoff: float,
     reference_point: ReferencePoint | None = None,
+    los_east_file: Path | None = None,
+    los_north_file: Path | None = None,
 ) -> Path:
     """Create a single displacement product.
 
@@ -169,11 +182,17 @@ def process_product(
         Dictionary mapping dates to real/compressed SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
+    dolphin_config : dolphin.workflows.DisplacementWorkflow
+        Configuration object run by `dolphin`.
     wavelength_cutoff : float
         Wavelength cutoff for filtering long wavelengths.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
+    los_east_file : Path, optional
+        Path to the east component of line of sight unit vector
+    los_north_file : Path, optional
+        Path to the north component of line of sight unit vector
 
     Returns
     -------
@@ -217,7 +236,10 @@ def process_product(
         ifg_corr_filename=files.correlation,
         ps_mask_filename=files.ps_mask,
         unwrapper_mask_filename=files.unwrapper_mask,
+        los_east_file=los_east_file,
+        los_north_file=los_north_file,
         pge_runconfig=pge_runconfig,
+        dolphin_config=dolphin_config,
         reference_cslc_files=ref_slc_files,
         secondary_cslc_files=secondary_slc_files,
         corrections=corrections,
@@ -233,8 +255,11 @@ def create_displacement_products(
     out_dir: Path,
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
     wavelength_cutoff: float = 50_000.0,
     reference_point: ReferencePoint | None = None,
+    los_east_file: Path | None = None,
+    los_north_file: Path | None = None,
     max_workers: int = 2,
 ) -> None:
     """Run parallel processing for all interferograms.
@@ -249,6 +274,8 @@ def create_displacement_products(
         Dictionary mapping dates to real/compressed SLC files.
     pge_runconfig : RunConfig
         Configuration object for the PGE run.
+    dolphin_config : dolphin.workflows.DisplacementWorkflow
+        Configuration object run by `dolphin`.
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
         If None, will record empty in the dataset's attributes
@@ -258,6 +285,10 @@ def create_displacement_products(
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
+    los_east_file : Path, optional
+        Path to the east component of line of sight unit vector
+    los_north_file : Path, optional
+        Path to the north component of line of sight unit vector
     max_workers : int
         Number of parallel products to process.
         Default is 2.
@@ -309,7 +340,10 @@ def create_displacement_products(
                 repeat(out_dir),
                 repeat(date_to_cslc_files),
                 repeat(pge_runconfig),
+                repeat(dolphin_config),
                 repeat(wavelength_cutoff),
                 repeat(reference_point),
+                repeat(los_east_file),
+                repeat(los_north_file),
             )
         )

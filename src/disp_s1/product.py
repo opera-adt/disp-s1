@@ -20,6 +20,7 @@ from dolphin import filtering, io
 from dolphin._types import Filename
 from dolphin.io import round_mantissa
 from dolphin.utils import DummyProcessPoolExecutor, format_dates
+from dolphin.workflows import DisplacementWorkflow, YamlModel
 from numpy.typing import ArrayLike, DTypeLike
 from opera_utils import (
     OPERA_DATASET_NAME,
@@ -37,6 +38,7 @@ from ._reference import ReferencePoint
 from .browse_image import make_browse_image_from_arr
 from .pge_runconfig import RunConfig
 from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
+from .solid_earth_tides import calculate_solid_earth_tides_correction
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +85,11 @@ def create_output_product(
     ps_mask_filename: Filename,
     unwrapper_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
     reference_cslc_files: list[Filename],
     secondary_cslc_files: list[Filename],
+    los_east_file: Filename | None = None,
+    los_north_file: Filename | None = None,
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
     wavelength_cutoff: float = 50_000.0,
@@ -110,12 +115,18 @@ def create_output_product(
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
+    dolphin_config : dolphin.workflows.DisplacementWorkflow
+        Configuration object run by `dolphin`.
     reference_cslc_files : list[Filename]
         Input CSLC products corresponding to the reference date.
         Used for metadata generation.
     secondary_cslc_files : list[Filename]
         Input CSLC products corresponding to the secondary date.
         Used for metadata generation.
+    los_east_file : Path, optional
+        Path to the east component of line of sight unit vector
+    los_north_file : Path, optional
+        Path to the north component of line of sight unit vector
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
         If None, will record empty in the dataset's attributes
@@ -211,7 +222,7 @@ def create_output_product(
         bad_pixel_mask=bad_corr | bad_conncomp,
         wavelength_cutoff=wavelength_cutoff,
         pixel_spacing=pixel_spacing,
-    )
+    ).astype(np.float32)
     DISPLACEMENT_PRODUCTS.short_wavelength_displacement.attrs |= {
         "wavelength_cutoff": str(wavelength_cutoff)
     }
@@ -275,6 +286,20 @@ def create_output_product(
             )
             del data  # Free up memory
 
+    if los_east_file is not None and los_north_file is not None:
+        logger.info("Calculating solid earth tide")
+        solid_earth_los = calculate_solid_earth_tides_correction(
+            like_filename=unw_filename,
+            reference_start_time=reference_start_time,
+            reference_stop_time=reference_end_time,
+            secondary_start_time=secondary_start_time,
+            secondary_stop_time=secondary_end_time,
+            los_east_file=los_east_file,
+            los_north_file=los_north_file,
+            reference_point=reference_point,
+        )
+        corrections["solid_earth"] = solid_earth_los
+
     _create_corrections_group(
         output_name=output_name,
         corrections=corrections,
@@ -300,7 +325,11 @@ def create_output_product(
         average_temporal_coherence=average_temporal_coherence,
     )
 
-    _create_metadata_group(output_name=output_name, pge_runconfig=pge_runconfig)
+    _create_metadata_group(
+        output_name=output_name,
+        pge_runconfig=pge_runconfig,
+        dolphin_config=dolphin_config,
+    )
 
 
 def _create_corrections_group(
@@ -538,7 +567,11 @@ def _create_identification_group(
         )
 
 
-def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> None:
+def _create_metadata_group(
+    output_name: Filename,
+    pge_runconfig: RunConfig,
+    dolphin_config: DisplacementWorkflow,
+) -> None:
     """Create the metadata group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
         metadata_group = f.create_group(METADATA_GROUP_NAME)
@@ -559,18 +592,29 @@ def _create_metadata_group(output_name: Filename, pge_runconfig: RunConfig) -> N
             description="Version of the dolphin software used to generate the product.",
         )
 
-        # TODO: prob should just make a _to_string method?
-        ss = StringIO()
-        pge_runconfig.to_yaml(ss)
-        runconfig_str = ss.getvalue()
+        def _to_string(model: YamlModel):
+            ss = StringIO()
+            model.to_yaml(ss)
+            return ss.getvalue()
+
         _create_dataset(
             group=metadata_group,
             name="pge_runconfig",
             dimensions=(),
-            data=runconfig_str,
+            data=_to_string(pge_runconfig),
             fillvalue=None,
             description=(
                 "The full PGE runconfig YAML file used to generate the product."
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="dolphin_workflow_config",
+            dimensions=(),
+            data=_to_string(dolphin_config),
+            fillvalue=None,
+            description=(
+                "The configuration parameters used by `dolphin` during the processing."
             ),
         )
 

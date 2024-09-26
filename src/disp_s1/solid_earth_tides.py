@@ -220,9 +220,13 @@ def calculate_solid_earth_tides_correction(
     id_y, id_x = np.mgrid[0:height, 0:width]
 
     # Convert grid indices (x, y) to UTM
-    x, y = rasterio.transform.xy(affine_transform, id_y, id_x)
-    e_arr = np.clip(np.array(x), x_coord_array.min(), x_coord_array.max())
-    n_arr = np.clip(np.array(y), y_coord_array.min(), y_coord_array.max())
+    x, y = rasterio.transform.xy(affine_transform, id_y.ravel(), id_x.ravel())
+    e_arr = np.clip(
+        np.array(x).reshape(id_x.shape), x_coord_array.min(), x_coord_array.max()
+    )
+    n_arr = np.clip(
+        np.array(y).reshape(id_x.shape), y_coord_array.min(), y_coord_array.max()
+    )
 
     # Interpolate SET components
     set_east_interp, set_north_interp, set_up_interp = interpolate_set_components(

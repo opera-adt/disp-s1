@@ -954,7 +954,7 @@ def copy_cslc_metadata_to_displacement(
         "/metadata/orbit",  #          Group
     ]
     for cslc_file, prepend_str in zip(
-        [reference_cslc_file, secondary_cslc_file], ["reference", "secondary"]
+        [reference_cslc_file, secondary_cslc_file], ["reference_", "secondary_"]
     ):
         _copy_hdf5_dsets(
             source_file=cslc_file,

@@ -34,7 +34,7 @@ def calculate_solid_earth_tides_correction(
     secondary_stop_time: DateTimeLike,
     los_east_file: Filename,
     los_north_file: Filename,
-    orbit_direction: Literal["ascending", "descending"] = "ascending",
+    orbit_direction: Literal["ascending", "descending"],
     reference_point: tuple[int, int] | None = None,
 ) -> np.ndarray:
     """Calculate the relative displacement correction for solid earth tides.

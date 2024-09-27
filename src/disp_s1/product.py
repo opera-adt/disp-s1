@@ -600,7 +600,7 @@ def _create_metadata_group(
         def _to_string(model: YamlModel):
             ss = StringIO()
             model.to_yaml(ss)
-            return ss.getvalue()
+            return "".join(c for c in ss.getvalue() if ord(c) < 128)
 
         _create_dataset(
             group=metadata_group,

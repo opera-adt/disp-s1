@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from typing import Optional, TypeAlias
@@ -17,6 +18,8 @@ from disp_s1._reference import ReferencePoint
 
 # https://github.com/pandas-dev/pandas-stubs/blob/1bc27e67098106089ce1e61b60c42aa81ec286af/pandas-stubs/_typing.pyi#L65-L66
 DateTimeLike: TypeAlias = date | datetime | pd.Timestamp
+
+logger = logging.getLogger(__name__)
 
 
 def resample_to_target(array: np.ndarray, target_shape: tuple[int, int]) -> np.ndarray:
@@ -180,8 +183,9 @@ def calculate_solid_earth_tides_correction(
     res_lat_arr = np.ones(ref_time_tile.shape) * atr["Y_STEP"]
     res_lon_arr = np.ones(ref_time_tile.shape) * atr["X_STEP"]
 
+    logger.info("Running `run_solid_grid` in parallel")
     # Parallelize grid calculation using ThreadPoolExecutor
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         ref_input_data = zip(
             ref_time_tile.ravel(),
             lat_geo_mesh.ravel(),
@@ -200,6 +204,7 @@ def calculate_solid_earth_tides_correction(
         ref_results = list(executor.map(lambda x: run_solid_grid(*x), ref_input_data))
         sec_results = list(executor.map(lambda x: run_solid_grid(*x), sec_input_data))
 
+    logger.info("Reshaping results")
     ref_e_flat, ref_n_flat, ref_u_flat = zip(*ref_results)
     set_east_ref, set_north_ref, set_up_ref = (
         np.array(ref_e_flat).reshape(atr["LENGTH"], atr["WIDTH"]),
@@ -219,6 +224,7 @@ def calculate_solid_earth_tides_correction(
     x_coord_array = np.linspace(bounds.left, bounds.right, num=atr["WIDTH"])
     id_y, id_x = np.mgrid[0:height, 0:width]
 
+    logger.info(f"Transforming coordinates with {affine_transform}")
     # Convert grid indices (x, y) to UTM
     x, y = rasterio.transform.xy(affine_transform, id_y.ravel(), id_x.ravel())
     e_arr = np.clip(
@@ -229,6 +235,7 @@ def calculate_solid_earth_tides_correction(
     )
 
     # Interpolate SET components
+    logger.info("Interpolating components")
     set_east_interp, set_north_interp, set_up_interp = interpolate_set_components(
         n_arr,
         e_arr,

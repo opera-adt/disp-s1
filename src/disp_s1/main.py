@@ -294,6 +294,8 @@ def create_displacement_products(
         Default is 2.
 
     """
+    # Extra logging for product creation
+    setup_logging(logger_name="disp_s1", debug=True)
     tropo_files = out_paths.tropospheric_corrections or [None] * len(
         out_paths.timeseries_paths
     )

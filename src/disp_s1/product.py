@@ -931,7 +931,7 @@ def copy_cslc_metadata_to_compressed(
         "/identification/look_direction",
         "/identification/mission_id",
         "/identification/track_number",
-        "/identification/orbit_direction",
+        "/identification/orbit_pass_direction",
     ]
     _copy_hdf5_dsets(
         source_file=opera_cslc_file,
@@ -965,7 +965,7 @@ def copy_cslc_metadata_to_displacement(
         "/identification/mission_id",
         "/identification/look_direction",
         "/identification/track_number",
-        "/identification/orbit_direction",
+        "/identification/orbit_pass_direction",
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

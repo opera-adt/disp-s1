@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from concurrent.futures import ProcessPoolExecutor
 from io import StringIO
 from multiprocessing import get_context
@@ -329,6 +329,11 @@ def create_output_product(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
         dolphin_config=dolphin_config,
+    )
+    copy_cslc_metadata_to_displacement(
+        reference_cslc_file=reference_start,
+        secondary_cslc_file=secondary_start,
+        output_disp_file=output_name,
     )
 
 
@@ -869,19 +874,49 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             grid_mapping_dset_name=grid_mapping_dset_name,
         )
 
-    copy_opera_cslc_metadata(opera_cslc_file, outname)
+    copy_cslc_metadata_to_compressed(opera_cslc_file, outname)
 
     return outname
 
 
-def copy_opera_cslc_metadata(
-    comp_slc_file: Filename, output_hdf5_file: Filename
+def _copy_hdf5_dsets(
+    source_file: Filename,
+    dest_file: Filename,
+    dsets_to_copy: Iterable[str],
+    prepend_str: str = "",
+    error_on_missing: bool = False,
 ) -> None:
-    """Copy orbit and metadata datasets from the input CSLC file the compressed SLC.
+    with h5py.File(source_file, "r") as src, h5py.File(dest_file, "a") as dst:
+        for dset_path in dsets_to_copy:
+            if dset_path not in src:
+                msg = f"Dataset or group {dset_path} not found in {source_file}"
+                if error_on_missing:
+                    raise ValueError(msg)
+                else:
+                    logger.warning(msg)
+                    continue
+
+            # Create parent group if it doesn't exist
+            out_group = str(Path(dset_path).parent)
+            dst.require_group(out_group)
+
+            # Remove existing dataset/group if it exists
+            if dset_path in dst:
+                del dst[dset_path]
+
+            # Copy the dataset or group
+            new_name = f"{prepend_str}{Path(dset_path).name}"
+            src.copy(src[dset_path], dst[str(Path(dset_path).parent)], name=new_name)
+
+
+def copy_cslc_metadata_to_compressed(
+    opera_cslc_file: Filename, output_hdf5_file: Filename
+) -> None:
+    """Copy orbit and metadata datasets from the input CSLC file to the compressed SLC.
 
     Parameters
     ----------
-    comp_slc_file : Filename
+    opera_cslc_file : Filename
         Path to the input CSLC file.
     output_hdf5_file : Filename
         Path to the output compressed SLC file.
@@ -898,29 +933,45 @@ def copy_opera_cslc_metadata(
         "/identification/track_number",
         "/identification/orbit_direction",
     ]
+    _copy_hdf5_dsets(
+        source_file=opera_cslc_file,
+        dest_file=output_hdf5_file,
+        dsets_to_copy=dsets_to_copy,
+    )
+    logger.debug(f"Copied metadata from {opera_cslc_file} to {output_hdf5_file}")
 
-    with h5py.File(comp_slc_file, "r") as src, h5py.File(output_hdf5_file, "a") as dst:
-        for dset_path in dsets_to_copy:
-            if dset_path in src:
-                # Create parent group if it doesn't exist
-                dst.require_group(str(Path(dset_path).parent))
 
-                # Remove existing dataset/group if it exists
-                if dset_path in dst:
-                    del dst[dset_path]
+def copy_cslc_metadata_to_displacement(
+    reference_cslc_file: Filename,
+    secondary_cslc_file: Filename,
+    output_disp_file: Filename,
+) -> None:
+    """Copy metadata from input reference/secondary CSLC files to DISP output."""
+    dsets_to_copy = [
+        "/metadata/orbit",  #          Group
+    ]
+    for cslc_file, prepend_str in zip(
+        [reference_cslc_file, secondary_cslc_file], ["reference", "secondary"]
+    ):
+        _copy_hdf5_dsets(
+            source_file=cslc_file,
+            dest_file=output_disp_file,
+            dsets_to_copy=dsets_to_copy,
+            prepend_str=prepend_str,
+        )
 
-                # Copy the dataset or group
-                src.copy(
-                    src[dset_path],
-                    dst[str(Path(dset_path).parent)],
-                    name=Path(dset_path).name,
-                )
-            else:
-                logger.warning(
-                    f"Dataset or group {dset_path} not found in {comp_slc_file}"
-                )
-
-    logger.info(f"Copied metadata from {comp_slc_file} to {output_hdf5_file}")
+    # Add ones which should be same for both ref/sec
+    common_dsets = [
+        "/identification/mission_id",
+        "/identification/look_direction",
+        "/identification/track_number",
+        "/identification/orbit_direction",
+    ]
+    _copy_hdf5_dsets(
+        source_file=reference_cslc_file,
+        dest_file=output_disp_file,
+        dsets_to_copy=common_dsets,
+    )
 
 
 def create_compressed_products(

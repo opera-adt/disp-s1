@@ -20,8 +20,6 @@ def test_calculate_solid_earth_tides_correction(orbit_direction):
     secondary_start_time = datetime(2016, 8, 9, 10, 45, 20, 562106)
     secondary_stop_time = datetime(2016, 8, 9, 10, 45, 23, 9255)
 
-    arr0 = io.load_gdal(ifgram_filename)
-
     solid_earth_t = calculate_solid_earth_tides_correction(
         ifgram_filename,
         reference_start_time,
@@ -33,5 +31,5 @@ def test_calculate_solid_earth_tides_correction(orbit_direction):
         orbit_direction=orbit_direction,
     )
 
-    assert solid_earth_t.shape == arr0.shape
+    assert solid_earth_t.shape == io.get_raster_xysize(ifgram_filename)[::-1]
     assert np.nanmax(solid_earth_t) < 0.1

@@ -288,6 +288,9 @@ def create_output_product(
 
     if los_east_file is not None and los_north_file is not None:
         logger.info("Calculating solid earth tide")
+        ref_tuple = (
+            (reference_point.row, reference_point.col) if reference_point else None
+        )
         solid_earth_los = calculate_solid_earth_tides_correction(
             like_filename=unw_filename,
             reference_start_time=reference_start_time,
@@ -296,7 +299,7 @@ def create_output_product(
             secondary_stop_time=secondary_end_time,
             los_east_file=los_east_file,
             los_north_file=los_north_file,
-            reference_point=reference_point,
+            reference_point=ref_tuple,
         )
         corrections["solid_earth"] = solid_earth_los
 

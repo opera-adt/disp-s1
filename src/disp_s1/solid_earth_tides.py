@@ -36,7 +36,7 @@ def calculate_solid_earth_tides_correction(
     los_north_file: Filename,
     orbit_direction: Literal["ascending", "descending"] = "ascending",
     reference_point: tuple[int, int] | None = None,
-) -> np.MaskedArray:
+) -> np.ndarray:
     """Calculate the relative displacement correction for solid earth tides.
 
     This function computes the solid earth tides correction for InSAR data
@@ -119,10 +119,10 @@ def calculate_solid_earth_tides_correction(
     # Compute SET corrections at start and end times for reference
     logger.info("Computing SET corrections for reference image")
     tide_e_start_ref, tide_n_start_ref, tide_u_start_ref = calc_solid_earth_tides_grid(
-        reference_start_time, meta
+        reference_start_time, meta, verbose=False
     )
     tide_e_end_ref, tide_n_end_ref, tide_u_end_ref = calc_solid_earth_tides_grid(
-        reference_stop_time, meta
+        reference_stop_time, meta, verbose=False
     )
 
     # Compute blending weights
@@ -145,10 +145,10 @@ def calculate_solid_earth_tides_correction(
     # Compute SET corrections at start and end times for secondary
     logger.info("Computing SET corrections for secondary image")
     tide_e_start_sec, tide_n_start_sec, tide_u_start_sec = calc_solid_earth_tides_grid(
-        secondary_start_time, meta
+        secondary_start_time, meta, verbose=False
     )
     tide_e_end_sec, tide_n_end_sec, tide_u_end_sec = calc_solid_earth_tides_grid(
-        secondary_stop_time, meta
+        secondary_stop_time, meta, verbose=False
     )
 
     # Blend corrections for secondary

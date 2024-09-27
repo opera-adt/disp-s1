@@ -1,6 +1,6 @@
 import logging
 from datetime import date, datetime
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -14,16 +14,23 @@ from scipy.ndimage import zoom
 
 # https://github.com/pandas-dev/pandas-stubs/blob/1bc27e67098106089ce1e61b60c42aa81ec286af/pandas-stubs/_typing.pyi#L65-L66
 DateTimeLike: TypeAlias = date | datetime | pd.Timestamp
+MaybeMaskedArray = TypeVar("MaybeMaskedArray", np.ndarray, np.ma.MaskedArray)
 
 logger = logging.getLogger(__name__)
 
 
-def resample_to_target(array: np.ndarray, target_shape: tuple[int, int]) -> np.ndarray:
+def resample_to_target(
+    array: MaybeMaskedArray, target_shape: tuple[int, int]
+) -> MaybeMaskedArray:
     """Resample a 2D array to a target shape using zoom."""
     if array.shape == target_shape:
         return array
     zoom_factors = (target_shape[0] / array.shape[0], target_shape[1] / array.shape[1])
-    return zoom(array, zoom_factors, order=1)  # Linear interpolation
+    out = zoom(array, zoom_factors, order=1)  # Linear interpolation
+    if isinstance(array, np.ma.MaskedArray):
+        mask_out = zoom(array.mask, zoom_factors, order=1).astype(bool)
+        out = np.ma.MaskedArray(data=out, mask=mask_out)
+    return out
 
 
 def calculate_solid_earth_tides_correction(

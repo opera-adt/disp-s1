@@ -34,4 +34,4 @@ def test_calculate_solid_earth_tides_correction(orbit_direction):
     )
 
     assert solid_earth_t.shape == arr0.shape
-    assert np.max(solid_earth_t) < 0.1
+    assert np.nanmax(solid_earth_t) < 0.1

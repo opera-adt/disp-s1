@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor
 from io import StringIO
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, Sequence, Union
+from typing import Any, Literal, NamedTuple, Optional, Sequence, Union
 
 import h5netcdf
 import h5py
@@ -288,6 +288,10 @@ def create_output_product(
 
     if los_east_file is not None and los_north_file is not None:
         logger.info("Calculating solid earth tide")
+        ref_tuple = (
+            (reference_point.row, reference_point.col) if reference_point else None
+        )
+        orbit_direction = _get_orbit_direction(reference_cslc_files[0])
         solid_earth_los = calculate_solid_earth_tides_correction(
             like_filename=unw_filename,
             reference_start_time=reference_start_time,
@@ -296,7 +300,8 @@ def create_output_product(
             secondary_stop_time=secondary_end_time,
             los_east_file=los_east_file,
             los_north_file=los_north_file,
-            reference_point=reference_point,
+            orbit_direction=orbit_direction,
+            reference_point=ref_tuple,
         )
         corrections["solid_earth"] = solid_earth_los
 
@@ -622,6 +627,14 @@ def _create_metadata_group(
                 "The configuration parameters used by `dolphin` during the processing."
             ),
         )
+
+
+def _get_orbit_direction(cslc_filename: Filename) -> Literal["ascending", "descending"]:
+    with h5py.File(cslc_filename) as hf:
+        out = hf["/identification/orbit_pass_direction"][()]
+        if isinstance(out, bytes):
+            out = out.decode("utf-8")
+    return out
 
 
 def _create_dataset(
@@ -951,7 +964,7 @@ def copy_cslc_metadata_to_displacement(
         "/metadata/orbit",  #          Group
     ]
     for cslc_file, prepend_str in zip(
-        [reference_cslc_file, secondary_cslc_file], ["reference", "secondary"]
+        [reference_cslc_file, secondary_cslc_file], ["reference_", "secondary_"]
     ):
         _copy_hdf5_dsets(
             source_file=cslc_file,

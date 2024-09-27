@@ -102,7 +102,7 @@ def calculate_solid_earth_tides_correction(
 
     min_lon, min_lat, max_lon, max_lat = bounds_geo
 
-    # Define coarse grid size (adjust as needed)
+    # Define coarse grid size
     grid_rows = 500
     grid_cols = 500
 
@@ -175,33 +175,19 @@ def calculate_solid_earth_tides_correction(
 
     # Reproject corrections to UTM
     logger.info("Reprojecting corrections to UTM")
-    reproject(
-        source=delta_tide_e,
-        destination=dest_delta_tide_e,
-        src_transform=src_transform,
-        src_crs=src_crs,
-        dst_transform=affine_transform,
-        dst_crs=crs,
-        resampling=Resampling.bilinear,
-    )
-    reproject(
-        source=delta_tide_n,
-        destination=dest_delta_tide_n,
-        src_transform=src_transform,
-        src_crs=src_crs,
-        dst_transform=affine_transform,
-        dst_crs=crs,
-        resampling=Resampling.bilinear,
-    )
-    reproject(
-        source=delta_tide_u,
-        destination=dest_delta_tide_u,
-        src_transform=src_transform,
-        src_crs=src_crs,
-        dst_transform=affine_transform,
-        dst_crs=crs,
-        resampling=Resampling.bilinear,
-    )
+    for source, destination in zip(
+        [delta_tide_e, delta_tide_n, delta_tide_u],
+        [dest_delta_tide_e, dest_delta_tide_n, dest_delta_tide_u],
+    ):
+        reproject(
+            source=source,
+            destination=destination,
+            src_transform=src_transform,
+            src_crs=src_crs,
+            dst_transform=affine_transform,
+            dst_crs=crs,
+            resampling=Resampling.bilinear,
+        )
 
     # Load LOS vectors
     logger.info("Loading LOS vectors")

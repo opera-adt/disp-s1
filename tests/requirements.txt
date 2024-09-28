@@ -4,7 +4,7 @@ pooch
 pre-commit
 pytest
 pytest-cov
-pytest-randomly # control random seed
+pytest-randomly
 pytest-recording
-pytest-xdist # parallel tests: https://pytest-xdist.readthedocs.io/en/latest/
+pytest-xdist
 ruff

@@ -10,7 +10,7 @@ dependencies:
   - gdal>=3.8  # For Footprint
   - dolphin>=0.24.0
   - h5netcdf>=1.0
-  - pillow>=7.0
+  - matplotlib-base
   - pydantic>=2.1
   - ruamel.yaml>=0.15
   - yamale

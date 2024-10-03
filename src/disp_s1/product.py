@@ -216,7 +216,8 @@ def create_output_product(
         wavelength_cutoff,
     )
     bad_corr = io.load_gdal(ifg_corr_filename) < 0.5
-    bad_conncomp = io.load_gdal(conncomp_filename, masked=True).filled(0) == 0
+    conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
+    bad_conncomp = conncomps == 0
     filtered_disp_arr = filtering.filter_long_wavelength(
         unwrapped_phase=disp_arr,
         bad_pixel_mask=bad_corr | bad_conncomp,
@@ -229,6 +230,9 @@ def create_output_product(
 
     disp_arr[mask] = np.nan
     filtered_disp_arr[mask] = np.nan
+
+    # TODO: Make the "recommended mask" here
+    recommended_mask = ~bad_conncomp
 
     product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
 
@@ -254,7 +258,10 @@ def create_output_product(
             )
 
             make_browse_image_from_arr(
-                Path(output_name).with_suffix(f".{info.name}.png"), data
+                output_filename=Path(output_name).with_suffix(f".{info.name}.png"),
+                arr=data,
+                mask=recommended_mask,
+                # TODO: do we need any "browse image configs" in the runconfig?
             )
             del data  # Free up memory
 

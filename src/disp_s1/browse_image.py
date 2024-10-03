@@ -38,8 +38,8 @@ def make_browse_image_from_arr(
     mask: ArrayLike,
     max_dim_allowed: int = 2048,
     cmap: str = "RdBu_r",
-    vmin: float = -0.15,
-    vmax: float = 0.15,
+    vmin: float = -0.10,
+    vmax: float = 0.10,
 ) -> None:
     """Create a PNG browse image for the output product from given array."""
     # Apply mask
@@ -58,8 +58,8 @@ def make_browse_image_from_nc(
     dataset_name: str,
     max_dim_allowed: int = 2048,
     cmap: str = "RdBu_r",
-    vmin: float = -0.15,
-    vmax: float = 0.15,
+    vmin: float = -0.10,
+    vmax: float = 0.10,
 ) -> None:
     """Create a PNG browse image for the output product from product in NetCDF file."""
     if dataset_name not in DISPLACEMENT_PRODUCTS.names:

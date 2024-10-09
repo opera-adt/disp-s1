@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import cmap
 import h5netcdf
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +11,8 @@ from numpy.typing import ArrayLike
 from scipy import ndimage
 
 from .product_info import DISPLACEMENT_PRODUCTS
+
+DEFAULT_CMAP = cmap.Colormap("vik")
 
 
 def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray:
@@ -37,7 +40,7 @@ def make_browse_image_from_arr(
     arr: ArrayLike,
     mask: ArrayLike,
     max_dim_allowed: int = 2048,
-    cmap: str = "RdBu_r",
+    cmap: str = DEFAULT_CMAP,
     vmin: float = -0.10,
     vmax: float = 0.10,
 ) -> None:
@@ -57,7 +60,7 @@ def make_browse_image_from_nc(
     input_filename: Filename,
     dataset_name: str,
     max_dim_allowed: int = 2048,
-    cmap: str = "RdBu_r",
+    cmap: str = DEFAULT_CMAP,
     vmin: float = -0.10,
     vmax: float = 0.10,
 ) -> None:

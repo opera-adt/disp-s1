@@ -4,6 +4,7 @@ import functools
 
 import click
 
+from disp_s1.browse_image import DEFAULT_CMAP
 from disp_s1.product_info import DISPLACEMENT_PRODUCTS
 
 # Always show defaults
@@ -26,7 +27,7 @@ click.option = functools.partial(click.option, show_default=True)
     default=2048,
     help="Maximum dimension allowed for either length or width of browse image",
 )
-@click.option("--cmap", default="RdBu_r", help="Colormap to use for the image")
+@click.option("--cmap", default=DEFAULT_CMAP, help="Colormap to use for the image")
 @click.option(
     "--vmin", default=-0.15, type=float, help="Minimum value for color scaling"
 )

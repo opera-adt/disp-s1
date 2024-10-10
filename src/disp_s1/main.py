@@ -144,6 +144,7 @@ class ProductFiles(NamedTuple):
     conncomp: Path
     temp_coh: Path
     correlation: Path
+    shp_counts: Path
     ps_mask: Path
     troposphere: Path | None
     ionosphere: Path | None
@@ -220,6 +221,7 @@ def process_product(
         temp_coh_filename=files.temp_coh,
         ifg_corr_filename=files.correlation,
         ps_mask_filename=files.ps_mask,
+        shp_count_filename=files.shp_counts,
         unwrapper_mask_filename=files.unwrapper_mask,
         pge_runconfig=pge_runconfig,
         dolphin_config=dolphin_config,
@@ -290,15 +292,17 @@ def create_displacement_products(
             temp_coh=out_paths.stitched_temp_coh_file,
             correlation=cor,
             ps_mask=out_paths.stitched_ps_file,
+            shp_counts=shp,
             troposphere=tropo,
             ionosphere=iono,
             unwrapper_mask=mask_f,
         )
-        for unw, cc, cor, tropo, iono, mask_f in zip(
+        for unw, cc, cor, shp, tropo, iono, mask_f in zip(
             # out_paths.timeseries_paths,
             out_paths.unwrapped_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
+            out_paths.stitched_shp_count_file,
             tropo_files,
             iono_files,
             unwrapper_mask_files,

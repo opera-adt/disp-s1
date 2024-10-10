@@ -108,7 +108,7 @@ class DisplacementProducts:
             ),
             fillvalue=0,
             attrs={"units": "unitless"},
-            dtype=np.int32,
+            dtype=np.int16,
         )
     )
     unwrapper_mask: ProductInfo = field(

@@ -273,7 +273,7 @@ def create_output_product(
 
         for info, filename in zip(product_infos[2:], data_files):
             if filename is not None and Path(filename).exists():
-                data = io.load_gdal(filename)
+                data = io.load_gdal(filename).astype(info.dtype)
             else:
                 data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
 

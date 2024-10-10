@@ -1,5 +1,6 @@
 import click
 
+from .make_browse import make_browse
 from .run import run
 from .validate import validate
 
@@ -17,6 +18,7 @@ def cli_app(ctx: click.Context, debug: bool) -> None:
 
 cli_app.add_command(run)
 cli_app.add_command(validate)
+cli_app.add_command(make_browse)
 
 if __name__ == "__main__":
     cli_app()

@@ -8,14 +8,17 @@ import numpy as np
 import rioxarray
 from dolphin._types import Filename
 
+from disp_s1.browse_image import DEFAULT_CMAP
+
 
 def plot_product(
     filename: Filename,
     downsample=3,
     mask_on_conncomp: bool = True,
     figsize: tuple[float, float] = (9, 6),
-    unwrapped_phase_cmap: str = "RdBu",
-    unwrapped_phase_limits: tuple[float, float] = (-20, 20),
+    disp_cmap: str = DEFAULT_CMAP,
+    disp_limits: tuple[float, float] = (-0.20, 0.20),
+    filtered_disp_limits: tuple[float, float] = (-0.05, 0.05),
 ):
     """Plot the raster layers from one DISP product.
 
@@ -30,10 +33,15 @@ def plot_product(
         Otherwise, Mask the data where the data value = 0/nan.
     figsize : tuple[float, float], optional
         Figure size, by default (9, 6).
-    unwrapped_phase_cmap : str, optional
-        Colormap for the unwrapped phase, by default "RdBu".
-    unwrapped_phase_limits : tuple[float, float], optional
-        Limits for the unwrapped phase colormap, by default (-20, 20).
+    disp_cmap : str, optional
+        Colormap for the unwrapped phase, by default Vik
+        https://cmap-docs.readthedocs.io/en/latest/catalog/diverging/crameri:vik/
+    disp_limits : tuple[float, float], optional
+        Limits (in meters) for the displacement phase colormap.
+        Default is (-0.2, 0.2)
+    filtered_disp_limits : tuple[float, float], optional
+        Limits (in meters) for the short_wavelength_displacement phase colormap.
+        Default is (-0.05, 0.05)
 
     Returns
     -------
@@ -44,18 +52,29 @@ def plot_product(
     ds = rioxarray.open_rasterio(filename, masked=True).sel(band=1)
 
     dsets = [
-        "unwrapped_phase",
+        "displacement",
+        "short_wavelength_displacement",
         "connected_component_labels",
         "temporal_coherence",
         "interferometric_correlation",
         "persistent_scatterer_mask",
     ]
-    cmaps = [unwrapped_phase_cmap, "tab10", "viridis", "plasma", "plasma_r"]
+    cmaps = [
+        disp_cmap,
+        disp_cmap,
+        "tab10",
+        "viridis",
+        "plasma",
+        "plasma_r",
+    ]
 
-    vms = [unwrapped_phase_limits, (0, None), (0, 1), (0, 1), (0, 1)]
+    vms = [disp_limits, filtered_disp_limits, (0, None), (0, 1), (0, 1), (0, 1)]
 
     if mask_on_conncomp:
         bad_mask = ds["connected_component_labels"][::downsample, ::downsample] == 0
+        bad_mask = bad_mask & (
+            ds["temporal_coherence"][::downsample, ::downsample] < 0.5
+        )
 
     fig, axes = plt.subplots(
         ncols=2, nrows=3, sharex=True, sharey=True, figsize=figsize
@@ -73,7 +92,7 @@ def plot_product(
             vmax=vm[1],
             cbar_kwargs={"label": dset.attrs["units"]},
         )
-        ax.set_title(dset.attrs["long_name"])
+        # ax.set_title(dset.attrs["long_name"])
         ax.set_aspect("equal")
 
     fig.tight_layout()

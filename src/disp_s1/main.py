@@ -317,17 +317,16 @@ def create_displacement_products(
             temp_coh=out_paths.stitched_temp_coh_file,
             correlation=cor,
             ps_mask=out_paths.stitched_ps_file,
-            shp_counts=shp,
+            shp_counts=out_paths.stitched_shp_count_file,
             troposphere=tropo,
             ionosphere=iono,
             unwrapper_mask=mask_f,
         )
-        for unw, cc, cor, shp, tropo, iono, mask_f in zip(
+        for unw, cc, cor, tropo, iono, mask_f in zip(
             # out_paths.timeseries_paths,
             out_paths.unwrapped_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
-            out_paths.stitched_shp_count_file,
             tropo_files,
             iono_files,
             unwrapper_mask_files,

@@ -83,6 +83,7 @@ def create_output_product(
     temp_coh_filename: Filename,
     ifg_corr_filename: Filename,
     ps_mask_filename: Filename,
+    shp_count_filename: Filename,
     unwrapper_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
@@ -110,6 +111,8 @@ def create_output_product(
         The path to the input interferometric correlation image.
     ps_mask_filename : Filename
         The path to the input persistent scatterer mask image.
+    shp_count_filename : Filename
+        The path to statistically homogeneous pixels (SHP) counts.
     unwrapper_mask_filename : Filename, optional
         The path to the boolean mask used during unwrapping to ignore pixels.
     pge_runconfig : Optional[RunConfig], optional
@@ -264,12 +267,13 @@ def create_output_product(
             temp_coh_filename,
             ifg_corr_filename,
             ps_mask_filename,
+            shp_count_filename,
             unwrapper_mask_filename,
         ]
 
         for info, filename in zip(product_infos[2:], data_files):
             if filename is not None and Path(filename).exists():
-                data = io.load_gdal(filename)
+                data = io.load_gdal(filename).astype(info.dtype)
             else:
                 data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
 

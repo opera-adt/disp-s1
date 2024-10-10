@@ -53,7 +53,6 @@ class DisplacementProducts:
             dtype=np.float32,
         )
     )
-
     connected_component_labels: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="connected_component_labels",
@@ -63,7 +62,6 @@ class DisplacementProducts:
             dtype=np.uint16,
         )
     )
-
     temporal_coherence: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="temporal_coherence",
@@ -75,7 +73,6 @@ class DisplacementProducts:
             dtype=np.float32,
         )
     )
-
     interferometric_correlation: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="interferometric_correlation",
@@ -90,7 +87,6 @@ class DisplacementProducts:
             dtype=np.float32,
         )
     )
-
     persistent_scatterer_mask: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="persistent_scatterer_mask",
@@ -103,7 +99,18 @@ class DisplacementProducts:
             dtype=np.uint8,
         )
     )
-
+    shp_counts: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
+            name="shp_counts",
+            description=(
+                "Number of statistically homogeneous pixels (SHPs) used during"
+                " multilooking."
+            ),
+            fillvalue=0,
+            attrs={"units": "unitless"},
+            dtype=np.int16,
+        )
+    )
     unwrapper_mask: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="unwrapper_mask",

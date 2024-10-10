@@ -12,7 +12,7 @@ from scipy import ndimage
 
 from .product_info import DISPLACEMENT_PRODUCTS
 
-DEFAULT_CMAP = cmap.Colormap("vik")
+DEFAULT_CMAP = cmap.Colormap("vik").to_mpl()
 
 
 def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray:

@@ -1,6 +1,7 @@
 import numpy as np
 from dolphin._types import PathOrStr
 from dolphin.io import load_gdal, write_arr
+from scipy import ndimage
 
 
 def create_mask_from_distance(
@@ -51,7 +52,7 @@ def create_mask_from_distance(
     )
 
     write_arr(
-        arr=binary_mask.astype(np.uint8).filled(0),
+        arr=binary_mask.astype(np.uint8),
         output_name=output_file,
         like_filename=water_distance_file,
         dtype="uint8",
@@ -61,7 +62,7 @@ def create_mask_from_distance(
 
 def convert_distance_to_binary(
     water_distance_data: np.ma.MaskedArray, land_buffer: int = 0, ocean_buffer: int = 0
-) -> np.ma.MaskedArray:
+) -> np.ndarray:
     """Convert water distance data to a binary mask considering buffer zones.
 
     Parameters
@@ -77,7 +78,7 @@ def convert_distance_to_binary(
 
     Returns
     -------
-    np.ma.MaskedArray
+    np.ndarray
         Binary mask where True represents land pixels and False represents water pixels.
 
     Notes
@@ -95,14 +96,16 @@ def convert_distance_to_binary(
         np.ones_like(water_distance_data, dtype=bool), mask=water_distance_data.mask
     )
 
-    # Mask inland water pixels (considering land buffer)
-    inland_water_mask = (water_distance_data >= 100) & (water_distance_data <= 200)
-    # "very watery" pixels (larger distance to shore than `land_buffer`) stay water
-    binary_mask[inland_water_mask & (water_distance_data - 100 >= land_buffer)] = False
-
-    # Mask ocean pixels (considering ocean buffer)
-    ocean_mask = (water_distance_data >= 1) & (water_distance_data <= 99)
-    # "very ocean" pixels (larger distance to shore than `ocean_buffer`) stay water
-    binary_mask[ocean_mask & (water_distance_data >= ocean_buffer)] = False
-
-    return binary_mask
+    # Mask inland water pixels (considering land buffer): anything 101 or higher is land
+    inland_water_mask = water_distance_data > land_buffer + 100
+    binary_mask[inland_water_mask] = False
+    # For ocean, only look at values 1-100, then consider buffer
+    ocean_water_mask = (water_distance_data <= 100) & (
+        water_distance_data > ocean_buffer
+    )
+    binary_mask[ocean_water_mask] = False
+    # Erode away small single-pixels
+    closed_mask = ndimage.binary_closing(
+        binary_mask.filled(0), structure=np.ones((3, 3)), border_value=1
+    )
+    return closed_mask

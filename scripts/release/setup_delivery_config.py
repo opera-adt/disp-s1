@@ -38,7 +38,7 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         " --mask-file ./dynamic_ancillary_files/water_mask.tif"
         #
         # Unwrapping stuff
-        " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5"
+        " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5 --run-interpolation"
         # Worker stuff
         " --threads-per-worker 16 --n-parallel-bursts 4 --n-parallel-unwrap 4 "
         f" --log-file scratch/{mode.value}/log_sas.log"
@@ -51,8 +51,10 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
 
 if __name__ == "__main__":
     cfg_dir = Path("config_files")
+    static_ancillary_dir = Path("static_ancillary_files")
     # California, track 42, bay area:
-    frame_id = 7091
+    frame_id = 11114
+    reference_json = "opera-disp-s1-reference-dates-minimal-2024-09-19.json"
     # Creates one file for the forward mode and one for the historical mode.
     for mode in ProcessingMode:
         output_directory = Path(f"output/{mode.value}")
@@ -66,6 +68,7 @@ if __name__ == "__main__":
         convert_config = this_dir / "convert_config.py"
         arg_string = (
             f" --frame-id {frame_id} "
+            f" --reference_date_database_json {static_ancillary_dir}/{reference_json}"
             f" --output-directory {output_directory}"
             f" --processing-mode {mode.value} --save-compressed-slc -o"
             f" {cfg_dir}/runconfig_{mode.value}.yaml  -a"

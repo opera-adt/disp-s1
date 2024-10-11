@@ -269,7 +269,7 @@ class RunConfig(YamlModel):
         data_burst_ids = set(group_by_burst(cslc_file_list).keys())
         mismatched_bursts = data_burst_ids - frame_burst_ids
         if mismatched_bursts:
-            raise Exception("The CSLC data and frame id do not match")
+            raise ValueError("The CSLC data and frame id do not match")
 
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg

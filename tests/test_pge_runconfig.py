@@ -210,3 +210,42 @@ def test_reference_changeover(
     )
     cfg = rc.to_workflow()
     assert cfg.output_options.extra_reference_date == datetime.datetime(2018, 7, 22)
+
+
+def test_reference_date_computation():
+    from disp_s1 import pge_runconfig
+
+    # Test from a sample alaska frame after dropping winter
+    # it spans multiple years
+    sensing_time_list = [
+        datetime.datetime(2018, 8, 8, 16, 12, 51),
+        datetime.datetime(2018, 8, 20, 16, 12, 51),
+        datetime.datetime(2018, 9, 1, 16, 12, 52),
+        datetime.datetime(2018, 9, 25, 16, 12, 53),
+        datetime.datetime(2019, 8, 15, 16, 12, 57),
+        datetime.datetime(2019, 8, 27, 16, 12, 58),
+        datetime.datetime(2019, 9, 8, 16, 12, 58),
+        datetime.datetime(2019, 9, 20, 16, 12, 59),
+        datetime.datetime(2020, 6, 10, 16, 13),
+        datetime.datetime(2020, 6, 22, 16, 13, 1),
+        datetime.datetime(2020, 7, 4, 16, 13, 1),
+        datetime.datetime(2020, 7, 16, 16, 13, 2),
+        datetime.datetime(2020, 8, 9, 16, 13, 3),
+        datetime.datetime(2020, 8, 21, 16, 13, 4),
+        datetime.datetime(2020, 9, 2, 16, 13, 5),
+    ]
+    # burst id/real name doesn't matter, just date and "compressed" or not
+    cslc_file_list = [f"{d.strftime('%Y%m%d.tif')}" for d in sensing_time_list]
+
+    # Assume we nominally will reset the reference each august
+    reference_datetimes = [datetime(y, 8, 1) for y in range(2018, 2025)]
+
+    # We expect that
+    # - The "output index" should be 0, since there's no compressed SLCs
+    # - the "extra reference date" will be the *latest* one from the reference list
+    # this is be 2020-08-09
+    output_reference_idx, extra_reference_date = pge_runconfig._compute_reference_dates(
+        reference_datetimes, cslc_file_list
+    )
+    assert output_reference_idx == 0
+    assert extra_reference_date == datetime.date(2020, 8, 9)

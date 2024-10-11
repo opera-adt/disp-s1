@@ -238,7 +238,7 @@ def test_reference_date_computation():
     cslc_file_list = [f"{d.strftime('%Y%m%d.tif')}" for d in sensing_time_list]
 
     # Assume we nominally will reset the reference each august
-    reference_datetimes = [datetime(y, 8, 1) for y in range(2018, 2025)]
+    reference_datetimes = [datetime.datetime(y, 8, 1) for y in range(2018, 2025)]
 
     # We expect that
     # - The "output index" should be 0, since there's no compressed SLCs

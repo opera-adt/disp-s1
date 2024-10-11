@@ -15,6 +15,7 @@ def convert_to_runconfig(
     frame_id: int,
     processing_mode: ProcessingMode,
     frame_to_burst_json: Path | None = None,
+    reference_date_database_json: Path | None = None,
     algorithm_parameters_file: Path = Path("algorithm_parameters.yaml"),
     output_directory: Path | None = None,
     save_compressed_slc: bool = True,
@@ -26,6 +27,7 @@ def convert_to_runconfig(
         workflow,
         frame_id=frame_id,
         frame_to_burst_json=frame_to_burst_json,
+        reference_date_json=reference_date_database_json,
         algorithm_parameters_file=algorithm_parameters_file,
         processing_mode=processing_mode,
         save_compressed_slc=save_compressed_slc,
@@ -71,6 +73,11 @@ def main():
         ),
     )
     parser.add_argument(
+        "--reference_date_database_json",
+        type=Path,
+        help=("JSON file containing list of reference date changes for each frame."),
+    )
+    parser.add_argument(
         "-a",
         "--algorithm-parameters-file",
         type=Path,
@@ -93,6 +100,7 @@ def main():
         frame_id=args.frame_id,
         processing_mode=args.processing_mode,
         frame_to_burst_json=args.frame_to_burst_json,
+        reference_date_database_json=args.reference_date_database_json,
         algorithm_parameters_file=args.algorithm_parameters_file,
         save_compressed_slc=args.save_compressed_slc,
         output_directory=args.output_directory,

@@ -20,7 +20,13 @@ from dolphin.workflows.config import (
 )
 from dolphin.workflows.config._common import _read_file_list_or_glob
 from dolphin.workflows.config._yaml_model import YamlModel
-from opera_utils import OPERA_DATASET_NAME, get_dates, get_frame_bbox
+from opera_utils import (
+    OPERA_DATASET_NAME,
+    get_burst_ids_for_frame,
+    get_dates,
+    get_frame_bbox,
+    group_by_burst,
+)
 from pydantic import ConfigDict, Field, field_validator
 
 from .enums import ProcessingMode
@@ -257,6 +263,13 @@ class RunConfig(YamlModel):
         bounds_epsg, bounds = get_frame_bbox(
             frame_id=frame_id, json_file=frame_to_burst_file
         )
+
+        # Check for consistency of frame and burst ids
+        frame_burst_ids = set(get_burst_ids_for_frame(frame_id=frame_id))
+        data_burst_ids = set(group_by_burst(cslc_file_list).keys())
+        mismatched_bursts = data_burst_ids - frame_burst_ids
+        if mismatched_bursts:
+            raise Exception("The CSLC data and frame id do not match")
 
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg

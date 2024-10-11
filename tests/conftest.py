@@ -38,7 +38,7 @@ def slc_file_list_nc_with_sds(tmp_path, slc_stack):
     """Save NetCDF files with multiple valid datsets."""
     start_date = 20220101
     d = tmp_path / "nc_with_sds"
-    name_template = d / "{date}.nc"
+    name_template = d / "T042-088905-IW1_{date}_20240624.nc"
     d.mkdir()
     file_list = []
     subdirs = ["/data", "/data2"]

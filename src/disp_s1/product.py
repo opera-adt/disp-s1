@@ -149,20 +149,27 @@ def create_output_product(
     cols, rows = io.get_raster_xysize(unw_filename)
     shape = (rows, cols)
 
-    # Sorting the reference files by name means the earlier Burst IDs come first.
-    # Since the Burst Ids are numbered in increasing order of acquisition time,
-    # This is also valid to get the start/end bursts within the frame.
-    reference_start, *_, reference_end = sorted(
-        reference_cslc_files, key=lambda f: Path(f).name
-    )
+    if len(reference_cslc_files) == 0:
+        raise ValueError("Missing input reference cslc files")
+    if len(secondary_cslc_files) == 0:
+        raise ValueError("Missing input secondary cslc files")
+
+    def _get_start_end_cslcs(files):
+        if len(files) == 1:
+            start = end = files[0]
+        else:
+            # Sorting by name means the earlier Burst IDs come first.
+            # Since the Burst Ids are numbered in increasing order of acquisition time,
+            # This is also valid to get the start/end bursts within the frame.
+            start, *_, end = sorted(files, key=lambda f: Path(f).name)
+        logger.debug(f"Start, end files: {start}, {end}")
+        return start, end
+
+    reference_start, reference_end = _get_start_end_cslcs(reference_cslc_files)
     reference_start_time = get_zero_doppler_time(reference_start, type_="start")
     reference_end_time = get_zero_doppler_time(reference_end, type_="end")
-    logger.debug(f"Start, end reference files: {reference_start}, {reference_end}")
 
-    secondary_start, *_, secondary_end = sorted(
-        secondary_cslc_files, key=lambda f: Path(f).name
-    )
-    logger.debug(f"Start, end secondary files: {secondary_start}, {secondary_end}")
+    secondary_start, secondary_end = _get_start_end_cslcs(secondary_cslc_files)
     secondary_start_time = get_zero_doppler_time(secondary_start, type_="start")
     secondary_end_time = get_zero_doppler_time(secondary_end, type_="end")
 
@@ -219,7 +226,8 @@ def create_output_product(
         wavelength_cutoff,
     )
     bad_corr = io.load_gdal(ifg_corr_filename) < 0.5
-    bad_conncomp = io.load_gdal(conncomp_filename, masked=True).filled(0) == 0
+    conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
+    bad_conncomp = conncomps == 0
     filtered_disp_arr = filtering.filter_long_wavelength(
         unwrapped_phase=disp_arr,
         bad_pixel_mask=bad_corr | bad_conncomp,
@@ -232,6 +240,9 @@ def create_output_product(
 
     disp_arr[mask] = np.nan
     filtered_disp_arr[mask] = np.nan
+
+    # TODO: Make the "recommended mask" here
+    recommended_mask = ~bad_conncomp
 
     product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
 
@@ -257,7 +268,10 @@ def create_output_product(
             )
 
             make_browse_image_from_arr(
-                Path(output_name).with_suffix(f".{info.name}.png"), data
+                output_filename=Path(output_name).with_suffix(f".{info.name}.png"),
+                arr=data,
+                mask=recommended_mask,
+                # TODO: do we need any "browse image configs" in the runconfig?
             )
             del data  # Free up memory
 

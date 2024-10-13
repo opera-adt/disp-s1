@@ -119,6 +119,13 @@ class StaticAncillaryFileGroup(YamlModel):
             "JSON file containing list of reference date changes for each frame"
         ),
     )
+    algorithm_parameters_overrides_json: Union[Path, None] = Field(
+        None,
+        description=(
+            "JSON file containing frame-specific algorithm parameters to override the"
+            " defaults passed in the `algorithm_parameters.yaml`."
+        ),
+    )
 
 
 class PrimaryExecutable(YamlModel):

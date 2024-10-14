@@ -426,13 +426,18 @@ def _compute_reference_dates(
             continue
         nearest_idx = _get_first_after_selected(input_dates, ref_date)
 
-        if is_compressed[nearest_idx]:
+        if nearest_idx == 0:
+            # We're only making a change if it's after the first date
+            # (we're looking for mid-stack changes)
+            continue
+        elif is_compressed[nearest_idx]:
             # Update the output_reference_idx for compressed SLCs
             output_reference_idx = nearest_idx
+            # But if it's a compressed SLC, it's not an "extra" reference date
         else:
             # Set extra_reference_date for non-compressed SLCs
             inp_date = input_dates[nearest_idx]
-            # Don't use if it it's before the requested changeover; only after
+            # Don't use this SLC if it's before the requested changeover; only after
             if inp_date >= ref_date:
                 extra_reference_date = inp_date
 

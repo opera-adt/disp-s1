@@ -10,6 +10,7 @@ class ProductInfo:
     """Information about a displacement product dataset."""
 
     name: str
+    long_name: str
     description: str
     fillvalue: DTypeLike
     dtype: DTypeLike
@@ -24,8 +25,9 @@ class DisplacementProducts:
     displacement: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="displacement",
+            long_name="Line-of-sight displacement",
             description=(
-                "Displacement with noise in Line-of-Sight (LOS)."
+                "Displacement along the radar Line-of-Sight (LOS) direction."
                 " Positive values indicate apparent motion towards the platform."
             ),
             fillvalue=np.nan,
@@ -40,6 +42,7 @@ class DisplacementProducts:
     short_wavelength_displacement: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="short_wavelength_displacement",
+            long_name="Short wavelength displacement",
             description=(
                 "Displacement in Line-of-Sight (LOS) with long-wavelength signals"
                 " removed. Positive values indicate apparent motion towards the"
@@ -53,9 +56,23 @@ class DisplacementProducts:
             dtype=np.float32,
         )
     )
+    recommended_mask: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
+            name="recommended_mask",
+            long_name="Recommended Mask",
+            description=(
+                "Suggested mask to remove low quality pixels, where 0 indicates a bad"
+                " pixel, 1 is a good pixel"
+            ),
+            fillvalue=255,
+            attrs={"units": "unitless"},
+            dtype=np.uint8,
+        )
+    )
     connected_component_labels: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="connected_component_labels",
+            long_name="Connected Component Labels",
             description="Connected component labels of the unwrapped phase",
             fillvalue=DEFAULT_CCL_NODATA,
             attrs={"units": "unitless"},
@@ -65,6 +82,7 @@ class DisplacementProducts:
     temporal_coherence: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="temporal_coherence",
+            long_name="Temporal Coherence",
             description="Temporal coherence of phase inversion",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
@@ -75,11 +93,9 @@ class DisplacementProducts:
     )
     interferometric_correlation: ProductInfo = field(
         default_factory=lambda: ProductInfo(
-            name="interferometric_correlation",
-            description=(
-                "Estimate of interferometric correlation derived from multilooked"
-                " interferogram."
-            ),
+            name="estimated_spatial_coherence",
+            long_name="Estimated spatial coherence",
+            description="Sliding window estimator of multi-looked phase noise",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
             # 8 bits (between 0 and 1) is around .001 precision
@@ -90,9 +106,10 @@ class DisplacementProducts:
     persistent_scatterer_mask: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="persistent_scatterer_mask",
+            long_name="Persistent Scatterer Mask",
             description=(
                 "Mask of persistent scatterers downsampled to the multilooked output"
-                " grid."
+                " grid"
             ),
             fillvalue=255,
             attrs={"units": "unitless"},
@@ -102,9 +119,10 @@ class DisplacementProducts:
     shp_counts: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="shp_counts",
+            long_name="Statistically Homogeneous Pixels Counts",
             description=(
-                "Number of statistically homogeneous pixels (SHPs) used during"
-                " multilooking."
+                "Number of statistically homogeneous pixels (SHPs) used at each output"
+                " pixel during multilooking"
             ),
             fillvalue=0,
             attrs={"units": "unitless"},
@@ -114,7 +132,8 @@ class DisplacementProducts:
     unwrapper_mask: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="unwrapper_mask",
-            description="Mask used during phase unwrapping to ignore input pixels.",
+            long_name="Unwrapper Mask",
+            description="Mask used during phase unwrapping to ignore input pixels",
             fillvalue=255,
             attrs={"units": "unitless"},
             dtype=np.uint8,

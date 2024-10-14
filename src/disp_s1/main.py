@@ -301,7 +301,7 @@ def create_displacement_products(
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
-    max_workers: int = 1,
+    max_workers: int = 3,
 ) -> None:
     """Run parallel processing for all interferograms.
 

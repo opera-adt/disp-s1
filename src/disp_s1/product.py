@@ -1040,7 +1040,7 @@ def create_compressed_products(
     comp_slc_dict: Mapping[str, Sequence[Path]],
     output_dir: Filename,
     cslc_file_list: Sequence[Path],
-    max_workers: int = 2,
+    max_workers: int = 3,
 ) -> list[Path]:
     """Create all compressed SLC output products.
 

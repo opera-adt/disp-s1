@@ -139,10 +139,10 @@ class DisplacementProducts:
             dtype=np.uint8,
         )
     )
-    phase_cosine_similarity: ProductInfo = field(
+    phase_similarity: ProductInfo = field(
         default_factory=lambda: ProductInfo(
-            name="phase_cosine_similarity",
-            long_name="Phase Cosine Similarity",
+            name="phase_similarity",
+            long_name="Phase Similarity",
             description=(
                 "Median cosine similarity of wrapped phase in each pixel's"
                 " neighborhood."

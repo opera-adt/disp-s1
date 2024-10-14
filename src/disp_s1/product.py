@@ -95,7 +95,7 @@ def create_output_product(
     los_north_file: Filename | None = None,
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
-    wavelength_cutoff: float = 50_000.0,
+    wavelength_cutoff: float = 25_000.0,
 ):
     """Create the OPERA output product in NetCDF format.
 
@@ -143,7 +143,7 @@ def create_output_product(
         A dictionary of corrections to write to the output file, by default None
     wavelength_cutoff : float, optional
         The wavelength cutoff for filtering long wavelengths.
-        Default is 50_000.0
+        Default is 25_000.0
 
 
     """

@@ -191,7 +191,7 @@ class AlgorithmParameters(YamlModel):
         description="Name of the subdataset to use in the input NetCDF files.",
     )
     spatial_wavelength_cutoff: float = Field(
-        50_000,
+        25_000,
         description=(
             "Spatial wavelength cutoff (in meters) for the spatial filter. Used to"
             " create the short wavelength displacement layer"

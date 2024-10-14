@@ -47,22 +47,25 @@ def run(
 
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
+    cfg.work_directory.mkdir(exist_ok=True, parents=True)
     # Setup the binary mask as dolphin expects
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
         water_binary_mask = cfg.work_directory / "water_binary_mask.tif"
         create_mask_from_distance(
             water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
             output_file=water_binary_mask,
+            # Set a little conservative for the general processing
             land_buffer=2,
             ocean_buffer=2,
         )
         cfg.mask_file = water_binary_mask
+
         aggressive_water_binary_mask = (
             cfg.work_directory / "water_binary_mask_nobuffer.tif"
         )
         create_mask_from_distance(
             water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
-            output_file=water_binary_mask,
+            output_file=aggressive_water_binary_mask,
             # Still don't trust the land water 100%
             land_buffer=1,
             # Trust the ocean buffer

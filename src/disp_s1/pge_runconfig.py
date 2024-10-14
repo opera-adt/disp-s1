@@ -295,8 +295,10 @@ class RunConfig(YamlModel):
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
         param_dict["output_options"]["add_overviews"] = False
-        # Always turn off velocity (not used)
+        # Always turn off velocity (not used) in output product
         param_dict["timeseries_options"]["run_velocity"] = False
+        # Always use L1 minimization for inverting unwrapped networks
+        param_dict["timeseries_options"]["method"] = "L1"
 
         # Get the current set of expected reference dates
         reference_datetimes = _parse_reference_date_json(

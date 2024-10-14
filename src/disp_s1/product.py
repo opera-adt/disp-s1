@@ -693,7 +693,9 @@ def _create_dataset(
 ) -> h5netcdf.Variable:
     if attrs is None:
         attrs = {}
-    attrs.update(description=description, long_name=long_name)
+    attrs.update(description=description)
+    if long_name:
+        attrs["long_name"] = long_name
 
     options = HDF5_OPTS
     if isinstance(data, str):

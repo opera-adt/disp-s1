@@ -267,13 +267,16 @@ def create_output_product(
                 attrs=info.attrs,
             )
 
-            make_browse_image_from_arr(
-                output_filename=Path(output_name).with_suffix(f".{info.name}.png"),
-                arr=data,
-                mask=recommended_mask,
-                # TODO: do we need any "browse image configs" in the runconfig?
-            )
-            del data  # Free up memory
+        # TODO: how to add "browse image configs" in the algo parameters config?
+        make_browse_image_from_arr(
+            output_filename=Path(output_name).with_suffix(
+                f".{product_infos[1].name}.png"
+            ),
+            arr=filtered_disp_arr,
+            mask=recommended_mask,
+        )
+        del disp_arr
+        del filtered_disp_arr
 
         # For the others, load and save each individually
         data_files = [
@@ -674,7 +677,7 @@ def _create_dataset(
     if isinstance(data, str):
         options = {}
         # This is a string, so we need to convert it to bytes or it will fail
-        data = np.string_(data)
+        data = np.bytes_(data)
     elif np.array(data).size <= 1:
         # Scalars don't need chunks/compression
         options = {}
@@ -856,7 +859,7 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
     with h5py.File(outname, "w") as hf:
         # add type to root for GDAL recognition of complex datasets in NetCDF
         ctype = h5py.h5t.py_create(np.complex64)
-        ctype.commit(hf["/"].id, np.string_("complex64"))
+        ctype.commit(hf["/"].id, np.bytes_("complex64"))
 
     # COMPASS used "_coordinates" instead of "x"/"y"
     x_name, y_name = "x_coordinates", "y_coordinates"

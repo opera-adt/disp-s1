@@ -281,11 +281,13 @@ def create_output_product(
         )
         del disp_arr
         del filtered_disp_arr
+
+        # Add the recommended mask, which is already loaded
         info = product_infos[2]
         _create_geo_dataset(
             group=f,
             name=info.name,
-            data=recommended_mask,
+            data=recommended_mask.astype("uint8"),
             description=info.description,
             long_name=info.long_name,
             fillvalue=info.fillvalue,

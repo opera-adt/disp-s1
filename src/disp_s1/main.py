@@ -197,6 +197,7 @@ class ProductFiles(NamedTuple):
     troposphere: Path | None
     ionosphere: Path | None
     unwrapper_mask: Path | None
+    similarity: Path
 
 
 def process_product(
@@ -277,6 +278,7 @@ def process_product(
         ps_mask_filename=files.ps_mask,
         shp_count_filename=files.shp_counts,
         unwrapper_mask_filename=files.unwrapper_mask,
+        similarity_filename=files.similarity,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
         pge_runconfig=pge_runconfig,
@@ -297,7 +299,7 @@ def create_displacement_products(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
-    wavelength_cutoff: float = 50_000.0,
+    wavelength_cutoff: float = 25_000.0,
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
@@ -322,7 +324,7 @@ def create_displacement_products(
         If None, will record empty in the dataset's attributes
     wavelength_cutoff : float
         Wavelength cutoff (in meters) for filtering long wavelengths.
-        Default is 50_000.
+        Default is 25_000.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
@@ -360,6 +362,7 @@ def create_displacement_products(
             troposphere=tropo,
             ionosphere=iono,
             unwrapper_mask=mask_f,
+            similarity=out_paths.stitched_similarity_file,
         )
         for unw, cc, cor, tropo, iono, mask_f in zip(
             out_paths.timeseries_paths,
@@ -371,6 +374,7 @@ def create_displacement_products(
         )
     ]
 
+    max_workers = 1
     executor_class = (
         ProcessPoolExecutor if max_workers > 1 else DummyProcessPoolExecutor
     )

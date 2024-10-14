@@ -139,6 +139,21 @@ class DisplacementProducts:
             dtype=np.uint8,
         )
     )
+    phase_cosine_similarity: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
+            name="phase_cosine_similarity",
+            long_name="Phase Cosine Similarity",
+            description=(
+                "Median cosine similarity of wrapped phase in each pixel's"
+                " neighborhood."
+            ),
+            fillvalue=np.nan,
+            attrs={"units": "unitless"},
+            # 8 bits (between 0 and 1) is around .001 precision
+            keep_bits=8,
+            dtype=np.float32,
+        )
+    )
 
     def __iter__(self):
         """Return all displacement dataset info as an iterable."""

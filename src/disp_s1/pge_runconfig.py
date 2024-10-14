@@ -284,7 +284,9 @@ class RunConfig(YamlModel):
         )
 
         # Check for consistency of frame and burst ids
-        frame_burst_ids = set(get_burst_ids_for_frame(frame_id=frame_id))
+        frame_burst_ids = set(
+            get_burst_ids_for_frame(frame_id=frame_id, json_file=frame_to_burst_file)
+        )
         data_burst_ids = set(group_by_burst(cslc_file_list).keys())
         mismatched_bursts = data_burst_ids - frame_burst_ids
         if mismatched_bursts:

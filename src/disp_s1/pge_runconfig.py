@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import datetime
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, List, Optional, Sequence, Union
+from typing import Any, ClassVar, List, Optional, Union
 
 from dolphin.workflows.config import (
     CorrectionOptions,
@@ -262,11 +263,20 @@ class RunConfig(YamlModel):
             self.dynamic_ancillary_file_group.algorithm_parameters_file
         )
         param_dict = algorithm_parameters.model_dump()
+
+        frame_id = self.input_file_group.frame_id
+        # Load any overrides for this frame
+        override_params = _parse_algorithm_overrides(
+            self.static_ancillary_file_group.algorithm_parameters_overrides_json,
+            frame_id,
+        )
+        # Override the dict, but then convert back to get all the defaults in again
+        param_dict = AlgorithmParameters(**(param_dict | override_params)).model_dump()
+
         input_options = {"subdataset": param_dict.pop("subdataset")}
 
         # Convert the frame_id into an output bounding box
         frame_to_burst_file = self.static_ancillary_file_group.frame_to_burst_json
-        frame_id = self.input_file_group.frame_id
         bounds_epsg, bounds = get_frame_bbox(
             frame_id=frame_id, json_file=frame_to_burst_file
         )
@@ -436,3 +446,17 @@ def _parse_reference_date_json(
     else:
         reference_datetimes = []
     return reference_datetimes
+
+
+def _parse_algorithm_overrides(
+    override_file: Path | str | None, frame_id: int | str
+) -> dict[str, Any]:
+    """Find the frame-specific parameters to override for algorithm_parameters."""
+    if override_file is not None:
+        with open(override_file) as f:
+            overrides = json.load(f)
+            if "data" in overrides:
+                return overrides["data"].get(str(frame_id), {})
+            else:
+                return overrides.get(str(frame_id), {})
+    return {}

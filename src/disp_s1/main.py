@@ -9,7 +9,7 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
-from dolphin import interferogram
+from dolphin import interferogram, stitching
 from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
 from dolphin.unwrap import grow_conncomp_snaphu
@@ -59,18 +59,6 @@ def run(
             ocean_buffer=2,
         )
         cfg.mask_file = water_binary_mask
-
-        aggressive_water_binary_mask = (
-            cfg.work_directory / "water_binary_mask_nobuffer.tif"
-        )
-        create_mask_from_distance(
-            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
-            output_file=aggressive_water_binary_mask,
-            # Still don't trust the land water 100%
-            land_buffer=1,
-            # Trust the ocean buffer
-            ocean_buffer=0,
-        )
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
@@ -140,6 +128,29 @@ def run(
         _assert_dates_match(
             disp_date_keys, out_paths.ionospheric_corrections, "ionosphere"
         )
+
+    if pge_runconfig.dynamic_ancillary_file_group.mask_file:
+        aggressive_water_binary_mask = (
+            cfg.work_directory / "water_binary_mask_nobuffer.tif"
+        )
+        tmp_outfile = aggressive_water_binary_mask.with_suffix(".temp.tif")
+        create_mask_from_distance(
+            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
+            # Make the file in lat/lon
+            output_file=tmp_outfile,
+            # Still don't trust the land water 100%
+            land_buffer=1,
+            # Trust the ocean buffer
+            ocean_buffer=0,
+        )
+        # Then need to warp to match the output UTM files
+        stitching.warp_to_match(
+            input_file=tmp_outfile,
+            match_file=out_paths.timeseries_paths[0],
+            output_file=aggressive_water_binary_mask,
+        )
+    else:
+        aggressive_water_binary_mask = None
 
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
     create_displacement_products(

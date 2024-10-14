@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from itertools import repeat
@@ -9,10 +9,12 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
+from dolphin import interferogram, stitching
 from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
+from dolphin.unwrap import grow_conncomp_snaphu
 from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_usage
-from dolphin.workflows.config import DisplacementWorkflow
+from dolphin.workflows.config import DisplacementWorkflow, UnwrapOptions
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
@@ -45,12 +47,14 @@ def run(
 
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
+    cfg.work_directory.mkdir(exist_ok=True, parents=True)
     # Setup the binary mask as dolphin expects
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
         water_binary_mask = cfg.work_directory / "water_binary_mask.tif"
         create_mask_from_distance(
             water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
             output_file=water_binary_mask,
+            # Set a little conservative for the general processing
             land_buffer=2,
             ocean_buffer=2,
         )
@@ -59,11 +63,11 @@ def run(
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
 
-    # Create the short wavelength layer for the product
+    # Ensure the wavelength is set for the short wavelength layer
     if hasattr(cfg, "spatial_wavelength_cutoff"):
         wavelength_cutoff = cfg.spatial_wavelength_cutoff
     else:
-        wavelength_cutoff = 50_000
+        wavelength_cutoff = 25_000
 
     # Read the reference point
     assert out_paths.timeseries_paths is not None
@@ -84,26 +88,69 @@ def run(
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
 
-    # group dataset based on date to find corresponding files and set None
-    # for the layers that do not exist: correction layers specifically
-    # grouped_unwrapped_paths = group_by_date(out_paths.timeseries_paths)
-    # TODO: what goes wrong if we pick unw, not timeseries?
-    # TODO: how can we get conncomps when we do nearest 3, and invert?
-    # TODO: the iono paths will have come from `timeseries`, and will be wrong
-    grouped_unwrapped_paths = group_by_date(out_paths.unwrapped_paths)
-    unw_date_keys = list(grouped_unwrapped_paths.keys())
-    _assert_dates_match(unw_date_keys, out_paths.conncomp_paths, "connected components")
-    _assert_dates_match(unw_date_keys, out_paths.stitched_cor_paths, "correlation")
+    # Check for a network unwrapping approach:
+    grouped_timeseries_paths = group_by_date(out_paths.timeseries_paths)
+    disp_date_keys = set(grouped_timeseries_paths.keys())
 
+    # Check and update correlation paths
+    if set(group_by_date(out_paths.stitched_cor_paths).keys()) != disp_date_keys:
+        out_paths.stitched_cor_paths = (
+            interferogram.estimate_interferometric_correlations(
+                ifg_filenames=out_paths.timeseries_paths,
+                window_size=(11, 11),
+            )
+        )
+
+    # Check and update connected components paths
+    if set(group_by_date(out_paths.conncomp_paths).keys()) != disp_date_keys:
+        method = cfg.unwrap_options.unwrap_method
+        if method == "snaphu":
+            out_paths.conncomp_paths = _update_snaphu_conncomps(
+                out_paths.timeseries_paths, out_paths, cfg
+            )
+        elif method == "spurt":
+            out_paths.conncomp_paths = _update_spurt_conncomps(
+                out_paths.conncomp_paths, out_paths.timeseries_paths
+            )
+        else:
+            raise NotImplementedError(
+                f"Regrowing connected components not implemented for {method}"
+            )
+
+    # Check tropospheric corrections
     if out_paths.tropospheric_corrections is not None:
         _assert_dates_match(
-            unw_date_keys, out_paths.tropospheric_corrections, "troposphere"
+            disp_date_keys, out_paths.tropospheric_corrections, "troposphere"
         )
 
+    # Check ionospheric corrections
     if out_paths.ionospheric_corrections is not None:
         _assert_dates_match(
-            unw_date_keys, out_paths.ionospheric_corrections, "ionosphere"
+            disp_date_keys, out_paths.ionospheric_corrections, "ionosphere"
         )
+
+    if pge_runconfig.dynamic_ancillary_file_group.mask_file:
+        aggressive_water_binary_mask = (
+            cfg.work_directory / "water_binary_mask_nobuffer.tif"
+        )
+        tmp_outfile = aggressive_water_binary_mask.with_suffix(".temp.tif")
+        create_mask_from_distance(
+            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
+            # Make the file in lat/lon
+            output_file=tmp_outfile,
+            # Still don't trust the land water 100%
+            land_buffer=1,
+            # Trust the ocean buffer
+            ocean_buffer=0,
+        )
+        # Then need to warp to match the output UTM files
+        stitching.warp_to_match(
+            input_file=tmp_outfile,
+            match_file=out_paths.timeseries_paths[0],
+            output_file=aggressive_water_binary_mask,
+        )
+    else:
+        aggressive_water_binary_mask = None
 
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
     create_displacement_products(
@@ -116,6 +163,7 @@ def run(
         reference_point=ref_point,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
+        water_mask=aggressive_water_binary_mask,
     )
     logger.info("Finished creating output products.")
 
@@ -138,11 +186,28 @@ def run(
 
 
 def _assert_dates_match(
-    unw_date_keys: list[datetime], test_paths: list[Path], name: str
-):
-    if list(group_by_date(test_paths).keys()) != unw_date_keys:
+    disp_date_keys: set[datetime], test_paths: Iterable[Path], name: str
+) -> None:
+    """Assert that the dates in `paths_to_check` match the reference dates.
+
+    Parameters
+    ----------
+    disp_date_keys : list[str]
+        list of reference dates to compare against.
+    test_paths : list[Path]
+        list of paths to check for date consistency.
+    name : str
+        Description of the paths being checked (for error message).
+
+    Raises
+    ------
+    AssertionError
+        If the dates in the paths to check do not match the reference dates.
+
+    """
+    if set(group_by_date(test_paths).keys()) != disp_date_keys:
         msg = f"Mismatch of dates found for {name}:"
-        msg += f"{unw_date_keys = }, but {name} has {test_paths}"
+        msg += f"{disp_date_keys = }, but {name} has {test_paths}"
         raise ValueError(msg)
 
 
@@ -153,10 +218,13 @@ class ProductFiles(NamedTuple):
     conncomp: Path
     temp_coh: Path
     correlation: Path
+    shp_counts: Path
     ps_mask: Path
     troposphere: Path | None
     ionosphere: Path | None
     unwrapper_mask: Path | None
+    similarity: Path
+    water_mask: Path | None
 
 
 def process_product(
@@ -235,7 +303,10 @@ def process_product(
         temp_coh_filename=files.temp_coh,
         ifg_corr_filename=files.correlation,
         ps_mask_filename=files.ps_mask,
+        shp_count_filename=files.shp_counts,
         unwrapper_mask_filename=files.unwrapper_mask,
+        similarity_filename=files.similarity,
+        water_mask_filename=files.water_mask,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
         pge_runconfig=pge_runconfig,
@@ -256,11 +327,12 @@ def create_displacement_products(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
-    wavelength_cutoff: float = 50_000.0,
+    wavelength_cutoff: float = 25_000.0,
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
-    max_workers: int = 2,
+    water_mask: Path | None = None,
+    max_workers: int = 3,
 ) -> None:
     """Run parallel processing for all interferograms.
 
@@ -281,7 +353,7 @@ def create_displacement_products(
         If None, will record empty in the dataset's attributes
     wavelength_cutoff : float
         Wavelength cutoff (in meters) for filtering long wavelengths.
-        Default is 50_000.
+        Default is 25_000.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
@@ -289,9 +361,12 @@ def create_displacement_products(
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
         Path to the north component of line of sight unit vector
+    water_mask : Path, optional
+        Binary water mask to use for output product.
+        If provided, is used in the `recommended_mask`.
     max_workers : int
         Number of parallel products to process.
-        Default is 2.
+        Default is 3.
 
     """
     # Extra logging for product creation
@@ -315,13 +390,15 @@ def create_displacement_products(
             temp_coh=out_paths.stitched_temp_coh_file,
             correlation=cor,
             ps_mask=out_paths.stitched_ps_file,
+            shp_counts=out_paths.stitched_shp_count_file,
             troposphere=tropo,
             ionosphere=iono,
             unwrapper_mask=mask_f,
+            similarity=out_paths.stitched_similarity_file,
+            water_mask=water_mask,
         )
         for unw, cc, cor, tropo, iono, mask_f in zip(
-            # out_paths.timeseries_paths,
-            out_paths.unwrapped_paths,
+            out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
             tropo_files,
@@ -349,3 +426,67 @@ def create_displacement_products(
                 repeat(los_north_file),
             )
         )
+
+
+def _update_snaphu_conncomps(
+    timeseries_paths: Sequence[Path],
+    out_paths: OutputPaths,
+    unwrap_options: UnwrapOptions,
+) -> list[Path]:
+    """Update connected components using SNAPHU unwrapping method.
+
+    Parameters
+    ----------
+    timeseries_paths : list[Path]
+        list of paths to the timeseries files.
+    out_paths : OutPaths
+        Object containing various output paths.
+    unwrap_options : [dolphin.workflows.config.UnwrapOptions][]
+        Configuration object containing unwrapping options.
+
+    Returns
+    -------
+    list[Path]
+        list of updated connected component paths.
+
+    """
+    new_paths = []
+    for unw_f, cor_f in zip(timeseries_paths, out_paths.stitched_cor_paths):
+        mask_file = Path(str(cor_f).replace(".cor.tif", ".mask.tif"))
+        new_path = grow_conncomp_snaphu(
+            unw_filename=unw_f,
+            corr_filename=cor_f,
+            nlooks=50,
+            mask_filename=mask_file,
+            cost=unwrap_options.snaphu_options.cost,
+            scratchdir=unwrap_options._directory / "scratch2",
+        )
+        new_paths.append(new_path)
+    return new_paths
+
+
+def _update_spurt_conncomps(
+    conncomp_paths: Sequence[Path], timeseries_paths: Sequence[Path]
+) -> list[Path]:
+    """Update connected components using SPURT unwrapping method.
+
+    Parameters
+    ----------
+    conncomp_paths : list[Path]
+        list of original connected component paths.
+    timeseries_paths : list[Path]
+        list of paths to the timeseries files.
+
+    Returns
+    -------
+    list[Path]
+        list of updated connected component paths.
+
+    """
+    new_conncomp_paths: list[Path] = []
+    for cc_p, ts_p in zip(conncomp_paths, timeseries_paths, strict=False):
+        new_name = cc_p.parent / str(ts_p.name).replace(
+            full_suffix(ts_p), full_suffix(cc_p)
+        )
+        new_conncomp_paths.append(cc_p.rename(new_name))
+    return new_conncomp_paths

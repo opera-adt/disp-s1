@@ -57,6 +57,17 @@ def run(
             ocean_buffer=2,
         )
         cfg.mask_file = water_binary_mask
+        aggressive_water_binary_mask = (
+            cfg.work_directory / "water_binary_mask_nobuffer.tif"
+        )
+        create_mask_from_distance(
+            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
+            output_file=water_binary_mask,
+            # Still don't trust the land water 100%
+            land_buffer=1,
+            # Trust the ocean buffer
+            ocean_buffer=0,
+        )
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
@@ -138,6 +149,7 @@ def run(
         reference_point=ref_point,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
+        water_mask=aggressive_water_binary_mask,
     )
     logger.info("Finished creating output products.")
 
@@ -198,6 +210,7 @@ class ProductFiles(NamedTuple):
     ionosphere: Path | None
     unwrapper_mask: Path | None
     similarity: Path
+    water_mask: Path | None
 
 
 def process_product(
@@ -279,6 +292,7 @@ def process_product(
         shp_count_filename=files.shp_counts,
         unwrapper_mask_filename=files.unwrapper_mask,
         similarity_filename=files.similarity,
+        water_mask_filename=files.water_mask,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
         pge_runconfig=pge_runconfig,
@@ -303,6 +317,7 @@ def create_displacement_products(
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
+    water_mask: Path | None = None,
     max_workers: int = 3,
 ) -> None:
     """Run parallel processing for all interferograms.
@@ -332,6 +347,9 @@ def create_displacement_products(
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
         Path to the north component of line of sight unit vector
+    water_mask : Path, optional
+        Binary water mask to use for output product.
+        If provided, is used in the `recommended_mask`.
     max_workers : int
         Number of parallel products to process.
         Default is 3.
@@ -363,6 +381,7 @@ def create_displacement_products(
             ionosphere=iono,
             unwrapper_mask=mask_f,
             similarity=out_paths.stitched_similarity_file,
+            water_mask=water_mask,
         )
         for unw, cc, cor, tropo, iono, mask_f in zip(
             out_paths.timeseries_paths,

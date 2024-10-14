@@ -86,6 +86,7 @@ def create_output_product(
     shp_count_filename: Filename,
     unwrapper_mask_filename: Filename | None,
     similarity_filename: Filename,
+    water_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
     reference_cslc_files: list[Filename],
@@ -118,6 +119,8 @@ def create_output_product(
         The path to the boolean mask used during unwrapping to ignore pixels.
     similarity_filename : Filename
         The path to the cosine similarity image.
+    water_mask_filename : Filename, optional
+        Path to the binary water mask to use in creating a recommended mask.
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
@@ -228,19 +231,28 @@ def create_output_product(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,
     )
+
+    # Create the commended mask:
     temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
     bad_temporal_coherence = temporal_coherence < 0.6
     # Get summary statistics on the layers for CMR filtering/searching purposes
     average_temporal_coherence = temporal_coherence.mean()
+
+    if water_mask_filename:
+        water_mask_data = io.load_gdal(water_mask_filename, masked=True).filled(0)
+        is_water = water_mask_data == 0
+    else:
+        # Not provided: Don't indicate anything is water in this mask.
+        is_water = np.zeros(temporal_coherence.shape, dtype=bool)
 
     conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
     bad_conncomp = conncomps == 0
 
     similarity = io.load_gdal(similarity_filename, masked=True).mean()
     bad_similarity = similarity < 0.5
-    bad_pixel_mask = bad_conncomp | (bad_temporal_coherence & bad_similarity)
+    bad_pixel_mask = is_water | bad_conncomp | (bad_temporal_coherence & bad_similarity)
     # Note: An alternate way to view this:
-    # recommended_mask = good_conncomp & (good_temporal_coherence | good_similarity)
+    # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
     recommended_mask = ~bad_pixel_mask
     del temporal_coherence, conncomps, similarity
 

@@ -225,12 +225,16 @@ def create_output_product(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,
     )
-    bad_corr = io.load_gdal(ifg_corr_filename) < 0.5
     conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
     bad_conncomp = conncomps == 0
+
+    temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
+    bad_temporal_coherence = temporal_coherence < 0.5
+    bad_pixel_mask = bad_temporal_coherence | bad_conncomp
+
     filtered_disp_arr = filtering.filter_long_wavelength(
         unwrapped_phase=disp_arr,
-        bad_pixel_mask=bad_corr | bad_conncomp,
+        bad_pixel_mask=bad_pixel_mask,
         wavelength_cutoff=wavelength_cutoff,
         pixel_spacing=pixel_spacing,
     ).astype(np.float32)
@@ -241,8 +245,7 @@ def create_output_product(
     disp_arr[mask] = np.nan
     filtered_disp_arr[mask] = np.nan
 
-    # TODO: Make the "recommended mask" here
-    recommended_mask = ~bad_conncomp
+    recommended_mask = ~bad_pixel_mask
 
     product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
 
@@ -262,6 +265,7 @@ def create_output_product(
                 group=f,
                 name=info.name,
                 data=data,
+                long_name=info.long_name,
                 description=info.description,
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
@@ -278,8 +282,21 @@ def create_output_product(
         del disp_arr
         del filtered_disp_arr
 
+        # Add the recommended mask, which is already loaded
+        info = product_infos[2]
+        _create_geo_dataset(
+            group=f,
+            name=info.name,
+            data=recommended_mask.astype("uint8"),
+            description=info.description,
+            long_name=info.long_name,
+            fillvalue=info.fillvalue,
+            attrs=info.attrs,
+        )
+
         # For the others, load and save each individually
         data_files = [
+            conncomp_filename,
             conncomp_filename,
             temp_coh_filename,
             ifg_corr_filename,
@@ -288,7 +305,7 @@ def create_output_product(
             unwrapper_mask_filename,
         ]
 
-        for info, filename in zip(product_infos[2:], data_files):
+        for info, filename in zip(product_infos[3:], data_files):
             if filename is not None and Path(filename).exists():
                 data = io.load_gdal(filename).astype(info.dtype)
             else:
@@ -302,6 +319,7 @@ def create_output_product(
                 name=info.name,
                 data=data,
                 description=info.description,
+                long_name=info.long_name,
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
             )
@@ -337,8 +355,7 @@ def create_output_product(
     )
 
     # Get summary statistics on the layers for CMR filtering/searching purposes
-    average_temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
-
+    average_temporal_coherence = temporal_coherence.mean()
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
@@ -400,6 +417,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
+            long_name="Tropospheric Delay",
             data=troposphere,
             description="Tropospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
@@ -409,6 +427,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
+            long_name="Ionospheric Delay",
             data=ionosphere,
             description="Ionospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
@@ -418,6 +437,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
+            long_name="Solid Earth Tide",
             data=solid_earth,
             description="Solid Earth tide used to correct the unwrapped phase",
             fillvalue=np.nan,
@@ -427,6 +447,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="perpendicular_baseline",
+            long_name="Perpendicular Baseline",
             data=baseline,
             description=(
                 "Perpendicular baseline between reference and secondary acquisitions"
@@ -666,12 +687,15 @@ def _create_dataset(
     data: Union[np.ndarray, str],
     description: str,
     fillvalue: Optional[float],
+    long_name: str | None = None,
     attrs: Optional[dict[str, Any]] = None,
     dtype: Optional[DTypeLike] = None,
 ) -> h5netcdf.Variable:
     if attrs is None:
         attrs = {}
-    attrs.update(long_name=description)
+    attrs.update(description=description)
+    if long_name:
+        attrs["long_name"] = long_name
 
     options = HDF5_OPTS
     if isinstance(data, str):
@@ -698,6 +722,7 @@ def _create_geo_dataset(
     group: h5netcdf.Group,
     name: str,
     data: np.ndarray,
+    long_name: str,
     description: str,
     fillvalue: float,
     attrs: Optional[dict[str, Any]],
@@ -717,6 +742,7 @@ def _create_geo_dataset(
         name=name,
         dimensions=dimensions,
         data=data,
+        long_name=long_name,
         description=description,
         fillvalue=fillvalue,
         attrs=attrs,
@@ -884,6 +910,7 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             group=data_group,
             name=dset_name,
             data=data,
+            long_name="Compressed SLC",
             description="Compressed SLC product",
             fillvalue=np.nan + 0j,
             attrs=attrs,
@@ -900,6 +927,7 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             group=data_group,
             name=dispersion_dset_name,
             data=amp_dispersion_data,
+            long_name="Amplitude Dispersion",
             description="Amplitude dispersion for the compressed SLC files.",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
@@ -1012,7 +1040,7 @@ def create_compressed_products(
     comp_slc_dict: Mapping[str, Sequence[Path]],
     output_dir: Filename,
     cslc_file_list: Sequence[Path],
-    max_workers: int = 2,
+    max_workers: int = 3,
 ) -> list[Path]:
     """Create all compressed SLC output products.
 

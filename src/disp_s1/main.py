@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from itertools import repeat
@@ -9,10 +9,12 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
+from dolphin import interferogram
 from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
+from dolphin.unwrap import grow_conncomp_snaphu
 from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_usage
-from dolphin.workflows.config import DisplacementWorkflow
+from dolphin.workflows.config import DisplacementWorkflow, UnwrapOptions
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
@@ -59,11 +61,11 @@ def run(
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
 
-    # Create the short wavelength layer for the product
+    # Ensure the wavelength is set for the short wavelength layer
     if hasattr(cfg, "spatial_wavelength_cutoff"):
         wavelength_cutoff = cfg.spatial_wavelength_cutoff
     else:
-        wavelength_cutoff = 50_000
+        wavelength_cutoff = 25_000
 
     # Read the reference point
     assert out_paths.timeseries_paths is not None
@@ -84,25 +86,45 @@ def run(
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
 
-    # group dataset based on date to find corresponding files and set None
-    # for the layers that do not exist: correction layers specifically
-    # grouped_unwrapped_paths = group_by_date(out_paths.timeseries_paths)
-    # TODO: what goes wrong if we pick unw, not timeseries?
-    # TODO: how can we get conncomps when we do nearest 3, and invert?
-    # TODO: the iono paths will have come from `timeseries`, and will be wrong
-    grouped_unwrapped_paths = group_by_date(out_paths.unwrapped_paths)
-    unw_date_keys = list(grouped_unwrapped_paths.keys())
-    _assert_dates_match(unw_date_keys, out_paths.conncomp_paths, "connected components")
-    _assert_dates_match(unw_date_keys, out_paths.stitched_cor_paths, "correlation")
+    # Check for a network unwrapping approach:
+    grouped_timeseries_paths = group_by_date(out_paths.timeseries_paths)
+    disp_date_keys = set(grouped_timeseries_paths.keys())
 
-    if out_paths.tropospheric_corrections is not None:
-        _assert_dates_match(
-            unw_date_keys, out_paths.tropospheric_corrections, "troposphere"
+    # Check and update correlation paths
+    if set(group_by_date(out_paths.stitched_cor_paths).keys()) != disp_date_keys:
+        out_paths.stitched_cor_paths = (
+            interferogram.estimate_interferometric_correlations(
+                ifg_filenames=out_paths.timeseries_paths,
+                window_size=(11, 11),
+            )
         )
 
+    # Check and update connected components paths
+    if set(group_by_date(out_paths.conncomp_paths).keys()) != disp_date_keys:
+        method = cfg.unwrap_options.unwrap_method
+        if method == "snaphu":
+            out_paths.conncomp_paths = _update_snaphu_conncomps(
+                out_paths.timeseries_paths, out_paths, cfg
+            )
+        elif method == "spurt":
+            out_paths.conncomp_paths = _update_spurt_conncomps(
+                out_paths.conncomp_paths, out_paths.timeseries_paths
+            )
+        else:
+            raise NotImplementedError(
+                f"Regrowing connected components not implemented for {method}"
+            )
+
+    # Check tropospheric corrections
+    if out_paths.tropospheric_corrections is not None:
+        _assert_dates_match(
+            disp_date_keys, out_paths.tropospheric_corrections, "troposphere"
+        )
+
+    # Check ionospheric corrections
     if out_paths.ionospheric_corrections is not None:
         _assert_dates_match(
-            unw_date_keys, out_paths.ionospheric_corrections, "ionosphere"
+            disp_date_keys, out_paths.ionospheric_corrections, "ionosphere"
         )
 
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
@@ -138,11 +160,28 @@ def run(
 
 
 def _assert_dates_match(
-    unw_date_keys: list[datetime], test_paths: list[Path], name: str
-):
-    if list(group_by_date(test_paths).keys()) != unw_date_keys:
+    disp_date_keys: set[datetime], test_paths: Iterable[Path], name: str
+) -> None:
+    """Assert that the dates in `paths_to_check` match the reference dates.
+
+    Parameters
+    ----------
+    disp_date_keys : list[str]
+        list of reference dates to compare against.
+    test_paths : list[Path]
+        list of paths to check for date consistency.
+    name : str
+        Description of the paths being checked (for error message).
+
+    Raises
+    ------
+    AssertionError
+        If the dates in the paths to check do not match the reference dates.
+
+    """
+    if set(group_by_date(test_paths).keys()) != disp_date_keys:
         msg = f"Mismatch of dates found for {name}:"
-        msg += f"{unw_date_keys = }, but {name} has {test_paths}"
+        msg += f"{disp_date_keys = }, but {name} has {test_paths}"
         raise ValueError(msg)
 
 
@@ -323,8 +362,7 @@ def create_displacement_products(
             unwrapper_mask=mask_f,
         )
         for unw, cc, cor, tropo, iono, mask_f in zip(
-            # out_paths.timeseries_paths,
-            out_paths.unwrapped_paths,
+            out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
             tropo_files,
@@ -352,3 +390,67 @@ def create_displacement_products(
                 repeat(los_north_file),
             )
         )
+
+
+def _update_snaphu_conncomps(
+    timeseries_paths: Sequence[Path],
+    out_paths: OutputPaths,
+    unwrap_options: UnwrapOptions,
+) -> list[Path]:
+    """Update connected components using SNAPHU unwrapping method.
+
+    Parameters
+    ----------
+    timeseries_paths : list[Path]
+        list of paths to the timeseries files.
+    out_paths : OutPaths
+        Object containing various output paths.
+    unwrap_options : [dolphin.workflows.config.UnwrapOptions][]
+        Configuration object containing unwrapping options.
+
+    Returns
+    -------
+    list[Path]
+        list of updated connected component paths.
+
+    """
+    new_paths = []
+    for unw_f, cor_f in zip(timeseries_paths, out_paths.stitched_cor_paths):
+        mask_file = Path(str(cor_f).replace(".cor.tif", ".mask.tif"))
+        new_path = grow_conncomp_snaphu(
+            unw_filename=unw_f,
+            corr_filename=cor_f,
+            nlooks=50,
+            mask_filename=mask_file,
+            cost=unwrap_options.snaphu_options.cost,
+            scratchdir=unwrap_options._directory / "scratch2",
+        )
+        new_paths.append(new_path)
+    return new_paths
+
+
+def _update_spurt_conncomps(
+    conncomp_paths: Sequence[Path], timeseries_paths: Sequence[Path]
+) -> list[Path]:
+    """Update connected components using SPURT unwrapping method.
+
+    Parameters
+    ----------
+    conncomp_paths : list[Path]
+        list of original connected component paths.
+    timeseries_paths : list[Path]
+        list of paths to the timeseries files.
+
+    Returns
+    -------
+    list[Path]
+        list of updated connected component paths.
+
+    """
+    new_conncomp_paths: list[Path] = []
+    for cc_p, ts_p in zip(conncomp_paths, timeseries_paths, strict=False):
+        new_name = cc_p.parent / str(ts_p.name).replace(
+            full_suffix(ts_p), full_suffix(cc_p)
+        )
+        new_conncomp_paths.append(cc_p.rename(new_name))
+    return new_conncomp_paths

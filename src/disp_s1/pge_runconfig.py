@@ -272,10 +272,10 @@ class RunConfig(YamlModel):
             self.static_ancillary_file_group.algorithm_parameters_overrides_json,
             frame_id,
         )
-        # Override the dict, but then convert back to get all the defaults in again
-        param_dict = AlgorithmParameters(**(param_dict | override_params)).model_dump()
-
-        input_options = {"subdataset": param_dict.pop("subdataset")}
+        # Override the dict,
+        param_dict = _nested_update(param_dict, override_params)
+        # but then convert back to ensure all defaults remained in `param_dict`
+        param_dict = AlgorithmParameters(**param_dict).model_dump()
 
         # Convert the frame_id into an output bounding box
         frame_to_burst_file = self.static_ancillary_file_group.frame_to_burst_json
@@ -290,12 +290,15 @@ class RunConfig(YamlModel):
         if mismatched_bursts:
             raise ValueError("The CSLC data and frame id do not match")
 
+        input_options = {"subdataset": param_dict.pop("subdataset")}
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
         param_dict["output_options"]["add_overviews"] = False
-        # Always turn off velocity (not used)
+        # Always turn off velocity (not used) in output product
         param_dict["timeseries_options"]["run_velocity"] = False
+        # Always use L1 minimization for inverting unwrapped networks
+        param_dict["timeseries_options"]["method"] = "L1"
 
         # Get the current set of expected reference dates
         reference_datetimes = _parse_reference_date_json(
@@ -463,3 +466,12 @@ def _parse_algorithm_overrides(
             else:
                 return overrides.get(str(frame_id), {})
     return {}
+
+
+def _nested_update(base: dict, updates: dict):
+    for k, v in updates.items():
+        if isinstance(v, dict):
+            base[k] = _nested_update(base.get(k, {}), v)
+        else:
+            base[k] = v
+    return base

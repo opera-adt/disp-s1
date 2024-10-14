@@ -9,7 +9,7 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
-from dolphin import interferogram
+from dolphin import interferogram, stitching
 from dolphin._log import log_runtime, setup_logging
 from dolphin.io import load_gdal
 from dolphin.unwrap import grow_conncomp_snaphu
@@ -47,12 +47,14 @@ def run(
 
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
+    cfg.work_directory.mkdir(exist_ok=True, parents=True)
     # Setup the binary mask as dolphin expects
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
         water_binary_mask = cfg.work_directory / "water_binary_mask.tif"
         create_mask_from_distance(
             water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
             output_file=water_binary_mask,
+            # Set a little conservative for the general processing
             land_buffer=2,
             ocean_buffer=2,
         )
@@ -127,6 +129,29 @@ def run(
             disp_date_keys, out_paths.ionospheric_corrections, "ionosphere"
         )
 
+    if pge_runconfig.dynamic_ancillary_file_group.mask_file:
+        aggressive_water_binary_mask = (
+            cfg.work_directory / "water_binary_mask_nobuffer.tif"
+        )
+        tmp_outfile = aggressive_water_binary_mask.with_suffix(".temp.tif")
+        create_mask_from_distance(
+            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
+            # Make the file in lat/lon
+            output_file=tmp_outfile,
+            # Still don't trust the land water 100%
+            land_buffer=1,
+            # Trust the ocean buffer
+            ocean_buffer=0,
+        )
+        # Then need to warp to match the output UTM files
+        stitching.warp_to_match(
+            input_file=tmp_outfile,
+            match_file=out_paths.timeseries_paths[0],
+            output_file=aggressive_water_binary_mask,
+        )
+    else:
+        aggressive_water_binary_mask = None
+
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
     create_displacement_products(
         out_paths,
@@ -138,6 +163,7 @@ def run(
         reference_point=ref_point,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
+        water_mask=aggressive_water_binary_mask,
     )
     logger.info("Finished creating output products.")
 
@@ -197,6 +223,8 @@ class ProductFiles(NamedTuple):
     troposphere: Path | None
     ionosphere: Path | None
     unwrapper_mask: Path | None
+    similarity: Path
+    water_mask: Path | None
 
 
 def process_product(
@@ -277,6 +305,8 @@ def process_product(
         ps_mask_filename=files.ps_mask,
         shp_count_filename=files.shp_counts,
         unwrapper_mask_filename=files.unwrapper_mask,
+        similarity_filename=files.similarity,
+        water_mask_filename=files.water_mask,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
         pge_runconfig=pge_runconfig,
@@ -297,10 +327,11 @@ def create_displacement_products(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
-    wavelength_cutoff: float = 50_000.0,
+    wavelength_cutoff: float = 25_000.0,
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
+    water_mask: Path | None = None,
     max_workers: int = 3,
 ) -> None:
     """Run parallel processing for all interferograms.
@@ -322,7 +353,7 @@ def create_displacement_products(
         If None, will record empty in the dataset's attributes
     wavelength_cutoff : float
         Wavelength cutoff (in meters) for filtering long wavelengths.
-        Default is 50_000.
+        Default is 25_000.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
@@ -330,6 +361,9 @@ def create_displacement_products(
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
         Path to the north component of line of sight unit vector
+    water_mask : Path, optional
+        Binary water mask to use for output product.
+        If provided, is used in the `recommended_mask`.
     max_workers : int
         Number of parallel products to process.
         Default is 3.
@@ -360,6 +394,8 @@ def create_displacement_products(
             troposphere=tropo,
             ionosphere=iono,
             unwrapper_mask=mask_f,
+            similarity=out_paths.stitched_similarity_file,
+            water_mask=water_mask,
         )
         for unw, cc, cor, tropo, iono, mask_f in zip(
             out_paths.timeseries_paths,

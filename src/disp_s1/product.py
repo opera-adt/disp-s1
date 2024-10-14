@@ -85,6 +85,8 @@ def create_output_product(
     ps_mask_filename: Filename,
     shp_count_filename: Filename,
     unwrapper_mask_filename: Filename | None,
+    similarity_filename: Filename,
+    water_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
     reference_cslc_files: list[Filename],
@@ -93,7 +95,7 @@ def create_output_product(
     los_north_file: Filename | None = None,
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
-    wavelength_cutoff: float = 50_000.0,
+    wavelength_cutoff: float = 25_000.0,
 ):
     """Create the OPERA output product in NetCDF format.
 
@@ -115,6 +117,10 @@ def create_output_product(
         The path to statistically homogeneous pixels (SHP) counts.
     unwrapper_mask_filename : Filename, optional
         The path to the boolean mask used during unwrapping to ignore pixels.
+    similarity_filename : Filename
+        The path to the cosine similarity image.
+    water_mask_filename : Filename, optional
+        Path to the binary water mask to use in creating a recommended mask.
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
@@ -137,7 +143,7 @@ def create_output_product(
         A dictionary of corrections to write to the output file, by default None
     wavelength_cutoff : float, optional
         The wavelength cutoff for filtering long wavelengths.
-        Default is 50_000.0
+        Default is 25_000.0
 
 
     """
@@ -225,12 +231,30 @@ def create_output_product(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,
     )
+
+    # Create the commended mask:
+    temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
+    bad_temporal_coherence = temporal_coherence < 0.6
+    # Get summary statistics on the layers for CMR filtering/searching purposes
+    average_temporal_coherence = temporal_coherence.mean()
+
+    if water_mask_filename:
+        water_mask_data = io.load_gdal(water_mask_filename, masked=True).filled(0)
+        is_water = water_mask_data == 0
+    else:
+        # Not provided: Don't indicate anything is water in this mask.
+        is_water = np.zeros(temporal_coherence.shape, dtype=bool)
+
     conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
     bad_conncomp = conncomps == 0
 
-    temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
-    bad_temporal_coherence = temporal_coherence < 0.5
-    bad_pixel_mask = bad_temporal_coherence | bad_conncomp
+    similarity = io.load_gdal(similarity_filename, masked=True).mean()
+    bad_similarity = similarity < 0.5
+    bad_pixel_mask = is_water | bad_conncomp | (bad_temporal_coherence & bad_similarity)
+    # Note: An alternate way to view this:
+    # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
+    recommended_mask = ~bad_pixel_mask
+    del temporal_coherence, conncomps, similarity
 
     filtered_disp_arr = filtering.filter_long_wavelength(
         unwrapped_phase=disp_arr,
@@ -244,8 +268,6 @@ def create_output_product(
 
     disp_arr[mask] = np.nan
     filtered_disp_arr[mask] = np.nan
-
-    recommended_mask = ~bad_pixel_mask
 
     product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
 
@@ -297,15 +319,15 @@ def create_output_product(
         # For the others, load and save each individually
         data_files = [
             conncomp_filename,
-            conncomp_filename,
             temp_coh_filename,
             ifg_corr_filename,
             ps_mask_filename,
             shp_count_filename,
             unwrapper_mask_filename,
+            similarity_filename,
         ]
 
-        for info, filename in zip(product_infos[3:], data_files):
+        for info, filename in zip(product_infos[3:], data_files, strict=True):
             if filename is not None and Path(filename).exists():
                 data = io.load_gdal(filename).astype(info.dtype)
             else:
@@ -323,7 +345,6 @@ def create_output_product(
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
             )
-            del data  # Free up memory
 
     if los_east_file is not None and los_north_file is not None:
         logger.info("Calculating solid earth tide")
@@ -354,8 +375,6 @@ def create_output_product(
         reference_point=reference_point,
     )
 
-    # Get summary statistics on the layers for CMR filtering/searching purposes
-    average_temporal_coherence = temporal_coherence.mean()
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,

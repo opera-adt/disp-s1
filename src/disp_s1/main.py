@@ -396,7 +396,6 @@ def create_displacement_products(
         )
     ]
 
-    max_workers = 1
     executor_class = (
         ProcessPoolExecutor if max_workers > 1 else DummyProcessPoolExecutor
     )

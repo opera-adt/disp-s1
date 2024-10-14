@@ -262,7 +262,7 @@ def create_displacement_products(
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
-    max_workers: int = 2,
+    max_workers: int = 3,
 ) -> None:
     """Run parallel processing for all interferograms.
 
@@ -293,7 +293,7 @@ def create_displacement_products(
         Path to the north component of line of sight unit vector
     max_workers : int
         Number of parallel products to process.
-        Default is 2.
+        Default is 3.
 
     """
     # Extra logging for product creation

@@ -27,6 +27,7 @@ from opera_utils import (
     get_dates,
     get_frame_bbox,
     group_by_burst,
+    sort_files_by_date,
 )
 from pydantic import ConfigDict, Field, field_validator
 
@@ -250,7 +251,8 @@ class RunConfig(YamlModel):
         # the output directory, and the scratch directory.
         # All the other things come from the AlgorithmParameters.
 
-        cslc_file_list = self.input_file_group.cslc_file_list
+        # PGE doesn't sort the CSLCs in date order (or any order?)
+        cslc_file_list = sort_files_by_date(self.input_file_group.cslc_file_list)[0]
         scratch_directory = self.product_path_group.scratch_path
         mask_file = self.dynamic_ancillary_file_group.mask_file
         geometry_files = self.dynamic_ancillary_file_group.geometry_files
@@ -413,6 +415,7 @@ def _compute_reference_dates(
     output_reference_idx: int = 0
     extra_reference_date: datetime.datetime | None = None
     reference_dates = sorted([d.date() for d in reference_datetimes])
+
     for ref_date in reference_dates:
         # Find the nearest index that is greater than or equal to the reference date
         candidate_dates = [d for d in input_dates if d >= ref_date]

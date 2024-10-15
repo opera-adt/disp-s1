@@ -1,4 +1,5 @@
 import datetime
+import random
 import sys
 import warnings
 from pathlib import Path
@@ -233,8 +234,13 @@ def test_reference_date_computation():
         datetime.datetime(2020, 8, 21, 16, 13, 4),
         datetime.datetime(2020, 9, 2, 16, 13, 5),
     ]
-    # burst id/real name doesn't matter, just date and "compressed" or not
-    cslc_file_list = [f"{d.strftime('%Y%m%d.tif')}" for d in sensing_time_list]
+    # Doesn't have to be the real name
+    cslc_file_list = [
+        f"OPERA_T042-088905-{swath}_{d.strftime('%Y%m%dT%H%M%S')}.h5"
+        for d in sensing_time_list
+        for swath in ["IW1", "IW2", "IW3"]
+    ]
+    random.shuffle(cslc_file_list)
 
     # Assume we nominally will reset the reference each august
     reference_datetimes = [datetime.datetime(y, 8, 1) for y in range(2018, 2025)]
@@ -268,7 +274,13 @@ def test_reference_first_in_stack():
         datetime.datetime(2017, 3, 26, 0, 0),
         datetime.datetime(2017, 4, 7, 0, 0),
     ]
-    cslc_file_list = [f"{d.strftime('%Y%m%d.tif')}" for d in sensing_time_list]
+    cslc_file_list = [
+        f"OPERA_T042-088905-{swath}_{d.strftime('%Y%m%dT%H%M%S')}.h5"
+        for d in sensing_time_list
+        for swath in ["IW1", "IW2", "IW3"]
+    ]
+    random.shuffle(cslc_file_list)
+
     # Assume we nominally will reset the reference each august
     reference_datetimes = [datetime.datetime(y, 8, 1) for y in range(2018, 2025)]
     #   "11114": [

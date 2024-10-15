@@ -171,7 +171,10 @@ class ProductPathGroup(YamlModel):
         ),
     )
     static_layers_data_access: Optional[str] = Field(
-        description="Location of the static layers product associated with this product"
+        None,
+        description=(
+            "Location of the static layers product associated with this product"
+        ),
     )
     model_config = ConfigDict(extra="forbid")
 

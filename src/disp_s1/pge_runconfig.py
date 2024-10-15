@@ -415,11 +415,11 @@ def _compute_reference_dates(
     # Mark any files beginning with "compressed" as compressed
     is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cslc_file_list]
     # Get the dates of the base phase (works for either compressed, or regular cslc)
-    input_dates = [get_dates(f)[0].date() for f in cslc_file_list]
+    input_dates = sorted({get_dates(f)[0].date() for f in cslc_file_list})
 
     output_reference_idx: int = 0
     extra_reference_date: datetime.datetime | None = None
-    reference_dates = sorted([d.date() for d in reference_datetimes])
+    reference_dates = sorted({d.date() for d in reference_datetimes})
 
     for ref_date in reference_dates:
         # Find the nearest index that is greater than or equal to the reference date

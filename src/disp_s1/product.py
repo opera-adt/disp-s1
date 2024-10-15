@@ -83,7 +83,10 @@ def create_output_product(
     temp_coh_filename: Filename,
     ifg_corr_filename: Filename,
     ps_mask_filename: Filename,
+    shp_count_filename: Filename,
     unwrapper_mask_filename: Filename | None,
+    similarity_filename: Filename,
+    water_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
     reference_cslc_files: list[Filename],
@@ -92,7 +95,7 @@ def create_output_product(
     los_north_file: Filename | None = None,
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
-    wavelength_cutoff: float = 50_000.0,
+    wavelength_cutoff: float = 25_000.0,
 ):
     """Create the OPERA output product in NetCDF format.
 
@@ -110,8 +113,14 @@ def create_output_product(
         The path to the input interferometric correlation image.
     ps_mask_filename : Filename
         The path to the input persistent scatterer mask image.
+    shp_count_filename : Filename
+        The path to statistically homogeneous pixels (SHP) counts.
     unwrapper_mask_filename : Filename, optional
         The path to the boolean mask used during unwrapping to ignore pixels.
+    similarity_filename : Filename
+        The path to the cosine similarity image.
+    water_mask_filename : Filename, optional
+        Path to the binary water mask to use in creating a recommended mask.
     pge_runconfig : Optional[RunConfig], optional
         The PGE run configuration, by default None
         Used to add extra metadata to the output file.
@@ -134,7 +143,7 @@ def create_output_product(
         A dictionary of corrections to write to the output file, by default None
     wavelength_cutoff : float, optional
         The wavelength cutoff for filtering long wavelengths.
-        Default is 50_000.0
+        Default is 25_000.0
 
 
     """
@@ -146,20 +155,27 @@ def create_output_product(
     cols, rows = io.get_raster_xysize(unw_filename)
     shape = (rows, cols)
 
-    # Sorting the reference files by name means the earlier Burst IDs come first.
-    # Since the Burst Ids are numbered in increasing order of acquisition time,
-    # This is also valid to get the start/end bursts within the frame.
-    reference_start, *_, reference_end = sorted(
-        reference_cslc_files, key=lambda f: Path(f).name
-    )
+    if len(reference_cslc_files) == 0:
+        raise ValueError("Missing input reference cslc files")
+    if len(secondary_cslc_files) == 0:
+        raise ValueError("Missing input secondary cslc files")
+
+    def _get_start_end_cslcs(files):
+        if len(files) == 1:
+            start = end = files[0]
+        else:
+            # Sorting by name means the earlier Burst IDs come first.
+            # Since the Burst Ids are numbered in increasing order of acquisition time,
+            # This is also valid to get the start/end bursts within the frame.
+            start, *_, end = sorted(files, key=lambda f: Path(f).name)
+        logger.debug(f"Start, end files: {start}, {end}")
+        return start, end
+
+    reference_start, reference_end = _get_start_end_cslcs(reference_cslc_files)
     reference_start_time = get_zero_doppler_time(reference_start, type_="start")
     reference_end_time = get_zero_doppler_time(reference_end, type_="end")
-    logger.debug(f"Start, end reference files: {reference_start}, {reference_end}")
 
-    secondary_start, *_, secondary_end = sorted(
-        secondary_cslc_files, key=lambda f: Path(f).name
-    )
-    logger.debug(f"Start, end secondary files: {secondary_start}, {secondary_end}")
+    secondary_start, secondary_end = _get_start_end_cslcs(secondary_cslc_files)
     secondary_start_time = get_zero_doppler_time(secondary_start, type_="start")
     secondary_end_time = get_zero_doppler_time(secondary_end, type_="end")
 
@@ -215,11 +231,34 @@ def create_output_product(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,
     )
-    bad_corr = io.load_gdal(ifg_corr_filename) < 0.5
-    bad_conncomp = io.load_gdal(conncomp_filename, masked=True).filled(0) == 0
+
+    # Create the commended mask:
+    temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
+    bad_temporal_coherence = temporal_coherence < 0.6
+    # Get summary statistics on the layers for CMR filtering/searching purposes
+    average_temporal_coherence = temporal_coherence.mean()
+
+    if water_mask_filename:
+        water_mask_data = io.load_gdal(water_mask_filename, masked=True).filled(0)
+        is_water = water_mask_data == 0
+    else:
+        # Not provided: Don't indicate anything is water in this mask.
+        is_water = np.zeros(temporal_coherence.shape, dtype=bool)
+
+    conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
+    bad_conncomp = conncomps == 0
+
+    similarity = io.load_gdal(similarity_filename, masked=True).mean()
+    bad_similarity = similarity < 0.5
+    bad_pixel_mask = is_water | bad_conncomp | (bad_temporal_coherence & bad_similarity)
+    # Note: An alternate way to view this:
+    # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
+    recommended_mask = ~bad_pixel_mask
+    del temporal_coherence, conncomps, similarity
+
     filtered_disp_arr = filtering.filter_long_wavelength(
         unwrapped_phase=disp_arr,
-        bad_pixel_mask=bad_corr | bad_conncomp,
+        bad_pixel_mask=bad_pixel_mask,
         wavelength_cutoff=wavelength_cutoff,
         pixel_spacing=pixel_spacing,
     ).astype(np.float32)
@@ -248,15 +287,34 @@ def create_output_product(
                 group=f,
                 name=info.name,
                 data=data,
+                long_name=info.long_name,
                 description=info.description,
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
             )
 
-            make_browse_image_from_arr(
-                Path(output_name).with_suffix(f".{info.name}.png"), data
-            )
-            del data  # Free up memory
+        # TODO: how to add "browse image configs" in the algo parameters config?
+        make_browse_image_from_arr(
+            output_filename=Path(output_name).with_suffix(
+                f".{product_infos[1].name}.png"
+            ),
+            arr=filtered_disp_arr,
+            mask=recommended_mask,
+        )
+        del disp_arr
+        del filtered_disp_arr
+
+        # Add the recommended mask, which is already loaded
+        info = product_infos[2]
+        _create_geo_dataset(
+            group=f,
+            name=info.name,
+            data=recommended_mask.astype("uint8"),
+            description=info.description,
+            long_name=info.long_name,
+            fillvalue=info.fillvalue,
+            attrs=info.attrs,
+        )
 
         # For the others, load and save each individually
         data_files = [
@@ -264,12 +322,14 @@ def create_output_product(
             temp_coh_filename,
             ifg_corr_filename,
             ps_mask_filename,
+            shp_count_filename,
             unwrapper_mask_filename,
+            similarity_filename,
         ]
 
-        for info, filename in zip(product_infos[2:], data_files):
+        for info, filename in zip(product_infos[3:], data_files, strict=True):
             if filename is not None and Path(filename).exists():
-                data = io.load_gdal(filename)
+                data = io.load_gdal(filename).astype(info.dtype)
             else:
                 data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
 
@@ -281,10 +341,10 @@ def create_output_product(
                 name=info.name,
                 data=data,
                 description=info.description,
+                long_name=info.long_name,
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
             )
-            del data  # Free up memory
 
     if los_east_file is not None and los_north_file is not None:
         logger.info("Calculating solid earth tide")
@@ -314,9 +374,6 @@ def create_output_product(
         secondary_start_time=secondary_start_time,
         reference_point=reference_point,
     )
-
-    # Get summary statistics on the layers for CMR filtering/searching purposes
-    average_temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
 
     _create_identification_group(
         output_name=output_name,
@@ -379,6 +436,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="tropospheric_delay",
+            long_name="Tropospheric Delay",
             data=troposphere,
             description="Tropospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
@@ -388,6 +446,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="ionospheric_delay",
+            long_name="Ionospheric Delay",
             data=ionosphere,
             description="Ionospheric phase delay used to correct the unwrapped phase",
             fillvalue=np.nan,
@@ -397,6 +456,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="solid_earth_tide",
+            long_name="Solid Earth Tide",
             data=solid_earth,
             description="Solid Earth tide used to correct the unwrapped phase",
             fillvalue=np.nan,
@@ -406,6 +466,7 @@ def _create_corrections_group(
         _create_geo_dataset(
             group=corrections_group,
             name="perpendicular_baseline",
+            long_name="Perpendicular Baseline",
             data=baseline,
             description=(
                 "Perpendicular baseline between reference and secondary acquisitions"
@@ -645,18 +706,21 @@ def _create_dataset(
     data: Union[np.ndarray, str],
     description: str,
     fillvalue: Optional[float],
+    long_name: str | None = None,
     attrs: Optional[dict[str, Any]] = None,
     dtype: Optional[DTypeLike] = None,
 ) -> h5netcdf.Variable:
     if attrs is None:
         attrs = {}
-    attrs.update(long_name=description)
+    attrs.update(description=description)
+    if long_name:
+        attrs["long_name"] = long_name
 
     options = HDF5_OPTS
     if isinstance(data, str):
         options = {}
         # This is a string, so we need to convert it to bytes or it will fail
-        data = np.string_(data)
+        data = np.bytes_(data)
     elif np.array(data).size <= 1:
         # Scalars don't need chunks/compression
         options = {}
@@ -677,6 +741,7 @@ def _create_geo_dataset(
     group: h5netcdf.Group,
     name: str,
     data: np.ndarray,
+    long_name: str,
     description: str,
     fillvalue: float,
     attrs: Optional[dict[str, Any]],
@@ -696,6 +761,7 @@ def _create_geo_dataset(
         name=name,
         dimensions=dimensions,
         data=data,
+        long_name=long_name,
         description=description,
         fillvalue=fillvalue,
         attrs=attrs,
@@ -838,7 +904,7 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
     with h5py.File(outname, "w") as hf:
         # add type to root for GDAL recognition of complex datasets in NetCDF
         ctype = h5py.h5t.py_create(np.complex64)
-        ctype.commit(hf["/"].id, np.string_("complex64"))
+        ctype.commit(hf["/"].id, np.bytes_("complex64"))
 
     # COMPASS used "_coordinates" instead of "x"/"y"
     x_name, y_name = "x_coordinates", "y_coordinates"
@@ -863,6 +929,7 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             group=data_group,
             name=dset_name,
             data=data,
+            long_name="Compressed SLC",
             description="Compressed SLC product",
             fillvalue=np.nan + 0j,
             attrs=attrs,
@@ -879,6 +946,7 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
             group=data_group,
             name=dispersion_dset_name,
             data=amp_dispersion_data,
+            long_name="Amplitude Dispersion",
             description="Amplitude dispersion for the compressed SLC files.",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
@@ -991,7 +1059,7 @@ def create_compressed_products(
     comp_slc_dict: Mapping[str, Sequence[Path]],
     output_dir: Filename,
     cslc_file_list: Sequence[Path],
-    max_workers: int = 2,
+    max_workers: int = 3,
 ) -> list[Path]:
     """Create all compressed SLC output products.
 

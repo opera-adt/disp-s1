@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import datetime
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, List, Optional, Sequence, Union
+from typing import Any, ClassVar, List, Optional, Union
 
 from dolphin.workflows.config import (
     CorrectionOptions,
@@ -20,7 +21,14 @@ from dolphin.workflows.config import (
 )
 from dolphin.workflows.config._common import _read_file_list_or_glob
 from dolphin.workflows.config._yaml_model import YamlModel
-from opera_utils import OPERA_DATASET_NAME, get_dates, get_frame_bbox
+from opera_utils import (
+    OPERA_DATASET_NAME,
+    get_burst_ids_for_frame,
+    get_dates,
+    get_frame_bbox,
+    group_by_burst,
+    sort_files_by_date,
+)
 from pydantic import ConfigDict, Field, field_validator
 
 from .enums import ProcessingMode
@@ -113,6 +121,13 @@ class StaticAncillaryFileGroup(YamlModel):
             "JSON file containing list of reference date changes for each frame"
         ),
     )
+    algorithm_parameters_overrides_json: Union[Path, None] = Field(
+        None,
+        description=(
+            "JSON file containing frame-specific algorithm parameters to override the"
+            " defaults passed in the `algorithm_parameters.yaml`."
+        ),
+    )
 
 
 class PrimaryExecutable(YamlModel):
@@ -155,6 +170,12 @@ class ProductPathGroup(YamlModel):
             " the standard product output."
         ),
     )
+    static_layers_data_access: Optional[str] = Field(
+        None,
+        description=(
+            "Location of the static layers product associated with this product"
+        ),
+    )
     model_config = ConfigDict(extra="forbid")
 
 
@@ -176,7 +197,7 @@ class AlgorithmParameters(YamlModel):
         description="Name of the subdataset to use in the input NetCDF files.",
     )
     spatial_wavelength_cutoff: float = Field(
-        50_000,
+        25_000,
         description=(
             "Spatial wavelength cutoff (in meters) for the spatial filter. Used to"
             " create the short wavelength displacement layer"
@@ -236,7 +257,8 @@ class RunConfig(YamlModel):
         # the output directory, and the scratch directory.
         # All the other things come from the AlgorithmParameters.
 
-        cslc_file_list = self.input_file_group.cslc_file_list
+        # PGE doesn't sort the CSLCs in date order (or any order?)
+        cslc_file_list = sort_files_by_date(self.input_file_group.cslc_file_list)[0]
         scratch_directory = self.product_path_group.scratch_path
         mask_file = self.dynamic_ancillary_file_group.mask_file
         geometry_files = self.dynamic_ancillary_file_group.geometry_files
@@ -249,21 +271,42 @@ class RunConfig(YamlModel):
             self.dynamic_ancillary_file_group.algorithm_parameters_file
         )
         param_dict = algorithm_parameters.model_dump()
-        input_options = {"subdataset": param_dict.pop("subdataset")}
+
+        frame_id = self.input_file_group.frame_id
+        # Load any overrides for this frame
+        override_params = _parse_algorithm_overrides(
+            self.static_ancillary_file_group.algorithm_parameters_overrides_json,
+            frame_id,
+        )
+        # Override the dict,
+        param_dict = _nested_update(param_dict, override_params)
+        # but then convert back to ensure all defaults remained in `param_dict`
+        param_dict = AlgorithmParameters(**param_dict).model_dump()
 
         # Convert the frame_id into an output bounding box
         frame_to_burst_file = self.static_ancillary_file_group.frame_to_burst_json
-        frame_id = self.input_file_group.frame_id
         bounds_epsg, bounds = get_frame_bbox(
             frame_id=frame_id, json_file=frame_to_burst_file
         )
 
+        # Check for consistency of frame and burst ids
+        frame_burst_ids = set(
+            get_burst_ids_for_frame(frame_id=frame_id, json_file=frame_to_burst_file)
+        )
+        data_burst_ids = set(group_by_burst(cslc_file_list).keys())
+        mismatched_bursts = data_burst_ids - frame_burst_ids
+        if mismatched_bursts:
+            raise ValueError("The CSLC data and frame id do not match")
+
+        input_options = {"subdataset": param_dict.pop("subdataset")}
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
         param_dict["output_options"]["add_overviews"] = False
-        # Always turn off velocity (not used)
+        # Always turn off velocity (not used) in output product
         param_dict["timeseries_options"]["run_velocity"] = False
+        # Always use L1 minimization for inverting unwrapped networks
+        param_dict["timeseries_options"]["method"] = "L1"
 
         # Get the current set of expected reference dates
         reference_datetimes = _parse_reference_date_json(
@@ -378,11 +421,12 @@ def _compute_reference_dates(
     # Mark any files beginning with "compressed" as compressed
     is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cslc_file_list]
     # Get the dates of the base phase (works for either compressed, or regular cslc)
-    input_dates = [get_dates(f)[0].date() for f in cslc_file_list]
+    input_dates = sorted({get_dates(f)[0].date() for f in cslc_file_list})
 
     output_reference_idx: int = 0
     extra_reference_date: datetime.datetime | None = None
-    reference_dates = sorted([d.date() for d in reference_datetimes])
+    reference_dates = sorted({d.date() for d in reference_datetimes})
+
     for ref_date in reference_dates:
         # Find the nearest index that is greater than or equal to the reference date
         candidate_dates = [d for d in input_dates if d >= ref_date]
@@ -390,13 +434,18 @@ def _compute_reference_dates(
             continue
         nearest_idx = _get_first_after_selected(input_dates, ref_date)
 
-        if is_compressed[nearest_idx]:
+        if nearest_idx == 0:
+            # We're only making a change if it's after the first date
+            # (we're looking for mid-stack changes)
+            continue
+        elif is_compressed[nearest_idx]:
             # Update the output_reference_idx for compressed SLCs
             output_reference_idx = nearest_idx
+            # But if it's a compressed SLC, it's not an "extra" reference date
         else:
             # Set extra_reference_date for non-compressed SLCs
             inp_date = input_dates[nearest_idx]
-            # Don't use if it it's before the requested changeover; only after
+            # Don't use this SLC if it's before the requested changeover; only after
             if inp_date >= ref_date:
                 extra_reference_date = inp_date
 
@@ -416,3 +465,26 @@ def _parse_reference_date_json(
     else:
         reference_datetimes = []
     return reference_datetimes
+
+
+def _parse_algorithm_overrides(
+    override_file: Path | str | None, frame_id: int | str
+) -> dict[str, Any]:
+    """Find the frame-specific parameters to override for algorithm_parameters."""
+    if override_file is not None:
+        with open(override_file) as f:
+            overrides = json.load(f)
+            if "data" in overrides:
+                return overrides["data"].get(str(frame_id), {})
+            else:
+                return overrides.get(str(frame_id), {})
+    return {}
+
+
+def _nested_update(base: dict, updates: dict):
+    for k, v in updates.items():
+        if isinstance(v, dict):
+            base[k] = _nested_update(base.get(k, {}), v)
+        else:
+            base[k] = v
+    return base

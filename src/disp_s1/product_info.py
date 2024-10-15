@@ -93,9 +93,9 @@ class DisplacementProducts:
     )
     interferometric_correlation: ProductInfo = field(
         default_factory=lambda: ProductInfo(
-            name="estimated_spatial_coherence",
-            long_name="Estimated spatial coherence",
-            description="Sliding window estimator of multi-looked phase noise",
+            name="estimated_phase_quality",
+            long_name="Estimated phase quality",
+            description="Sliding window estimate of multi-looked phase noise",
             fillvalue=np.nan,
             attrs={"units": "unitless"},
             # 8 bits (between 0 and 1) is around .001 precision

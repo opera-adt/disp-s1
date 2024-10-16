@@ -102,11 +102,12 @@ def run(
         )
 
     # Check and update connected components paths
+    assert out_paths.conncomp_paths is not None
     if set(group_by_date(out_paths.conncomp_paths).keys()) != disp_date_keys:
         method = cfg.unwrap_options.unwrap_method
         if method == "snaphu":
             out_paths.conncomp_paths = _update_snaphu_conncomps(
-                out_paths.timeseries_paths, out_paths, cfg
+                out_paths.timeseries_paths, out_paths, cfg.unwrap_options
             )
         elif method == "spurt":
             out_paths.conncomp_paths = _update_spurt_conncomps(

@@ -102,6 +102,7 @@ def run(
         )
 
     # Check and update connected components paths
+    assert out_paths.conncomp_paths is not None
     if set(group_by_date(out_paths.conncomp_paths).keys()) != disp_date_keys:
         method = cfg.unwrap_options.unwrap_method
         if method == "snaphu":

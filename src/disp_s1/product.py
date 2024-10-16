@@ -89,8 +89,8 @@ def create_output_product(
     water_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
-    reference_cslc_files: list[Filename],
-    secondary_cslc_files: list[Filename],
+    reference_cslc_files: Sequence[Filename],
+    secondary_cslc_files: Sequence[Filename],
     los_east_file: Filename | None = None,
     los_north_file: Filename | None = None,
     reference_point: ReferencePoint | None = None,
@@ -126,10 +126,10 @@ def create_output_product(
         Used to add extra metadata to the output file.
     dolphin_config : dolphin.workflows.DisplacementWorkflow
         Configuration object run by `dolphin`.
-    reference_cslc_files : list[Filename]
+    reference_cslc_files : Sequence[Filename]
         Input CSLC products corresponding to the reference date.
         Used for metadata generation.
-    secondary_cslc_files : list[Filename]
+    secondary_cslc_files : Sequence[Filename]
         Input CSLC products corresponding to the secondary date.
         Used for metadata generation.
     los_east_file : Path, optional

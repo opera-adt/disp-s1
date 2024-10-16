@@ -307,3 +307,35 @@ def test_reference_first_in_stack():
     )
     assert output_reference_idx == 0
     assert extra_reference_date is None
+
+
+def test_repeated_compressed_dates():
+    cslc_file_list = [
+        "compressed_t087_185680_iw1_20180722_20190412_20190705.h5",
+        "compressed_t087_185680_iw1_20190711_20190711_20191003.h5",
+        "compressed_t087_185680_iw1_20190711_20191009_20200107.h5",
+        "compressed_t087_185680_iw1_20190711_20200113_20200406.h5",
+        "compressed_t087_185680_iw1_20200717_20200412_20200729.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20200804T161629Z_20240501T010610Z_S1A_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20200810T161548Z_20240501T030849Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20200816T161630Z_20240501T042747Z_S1A_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20200822T161548Z_20240501T062744Z_S1B_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20200828T161631Z_20240501T075057Z_S1A_VV_v1.1.h5",
+        "OPERA_L2_CSLC-S1_T087-185680-IW1_20200903T161549Z_20240501T094950Z_S1B_VV_v1.1.h5",
+    ]
+    random.shuffle(cslc_file_list)
+
+    reference_datetimes = [
+        datetime.datetime(2017, 7, 9),
+        datetime.datetime(2018, 7, 16),
+        datetime.datetime(2019, 7, 11),
+        datetime.datetime(2020, 7, 17),
+        datetime.datetime(2021, 7, 12),
+    ]
+
+    output_reference_idx, extra_reference_date = pge_runconfig._compute_reference_dates(
+        reference_datetimes, cslc_file_list
+    )
+    # Should be the latest one: the compressed slc with 20200717
+    assert output_reference_idx == 4
+    assert extra_reference_date is None

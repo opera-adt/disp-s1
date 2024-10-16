@@ -418,10 +418,14 @@ def _get_first_after_selected(
 def _compute_reference_dates(
     reference_datetimes, cslc_file_list
 ) -> tuple[int, datetime.datetime | None]:
-    # Mark any files beginning with "compressed" as compressed
-    is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cslc_file_list]
     # Get the dates of the base phase (works for either compressed, or regular cslc)
-    input_dates = sorted({get_dates(f)[0].date() for f in cslc_file_list})
+    # Use one burst ID as the template.
+    burst_to_file_list = group_by_burst(cslc_file_list)
+    burst_id = list(burst_to_file_list.keys())[0]
+    cur_files = sort_files_by_date(burst_to_file_list[burst_id])[0]
+    # Mark any files beginning with "compressed" as compressed
+    is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cur_files]
+    input_dates = [get_dates(f)[0].date() for f in cur_files]
 
     output_reference_idx: int = 0
     extra_reference_date: datetime.datetime | None = None

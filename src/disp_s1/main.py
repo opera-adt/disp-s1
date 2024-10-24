@@ -20,7 +20,7 @@ from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
 
 from disp_s1 import __version__, product
-from disp_s1._masking import create_mask_from_distance
+from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
 from disp_s1.pge_runconfig import RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
@@ -59,6 +59,13 @@ def run(
             ocean_buffer=2,
         )
         cfg.mask_file = water_binary_mask
+
+    if len(cfg.correction_options.geometry_files) > 0:
+        layover_binary_mask_files = create_layover_shadow_masks(
+            cslc_static_files=cfg.correction_options.geometry_files,
+            output_dir=cfg.work_directory / "layover_shadow_masks",
+        )
+        cfg.layover_shadow_mask_files = layover_binary_mask_files
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)

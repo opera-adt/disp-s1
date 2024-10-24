@@ -137,7 +137,6 @@ def create_layover_shadow_masks(
     -------
     list[Path]
         List of paths to the created binary layover shadow mask files
-        0 indi
 
     """
     output_path = Path(output_dir)
@@ -153,7 +152,9 @@ def create_layover_shadow_masks(
         out_file = output_path / f"layover_shadow_{burst_id}.tif"
 
         logger.info(f"Extracting layover shadow mask from {f} to {out_file}")
-        layover_data = load_gdal(input_name, masked=True).filled(0)
+        layover_data = load_gdal(input_name)
+        # we'll ignore the nodata region to be conservative
+        layover_data[layover_data == 127] = 0
         not_layover_pixels = layover_data == 0
         write_arr(
             arr=not_layover_pixels,

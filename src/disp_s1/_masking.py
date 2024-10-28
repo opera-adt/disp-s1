@@ -1,7 +1,14 @@
+import logging
+from pathlib import Path
+from typing import Sequence
+
 import numpy as np
-from dolphin._types import PathOrStr
-from dolphin.io import load_gdal, write_arr
+from dolphin._types import Filename, PathOrStr
+from dolphin.io import format_nc_filename, load_gdal, write_arr
+from opera_utils import group_by_burst
 from scipy import ndimage
+
+logger = logging.getLogger(__name__)
 
 
 def create_mask_from_distance(
@@ -109,3 +116,53 @@ def convert_distance_to_binary(
         binary_mask.filled(0), structure=np.ones((3, 3)), border_value=1
     )
     return closed_mask
+
+
+def create_layover_shadow_masks(
+    cslc_static_files: Sequence[Filename],
+    output_dir: Filename,
+) -> list[Path]:
+    """Create binary masks from the layover shadow CSLC static files.
+
+    In the outputs, 0 indicates a bad masked pixel, 1 is a good pixel.
+
+    Parameters
+    ----------
+    cslc_static_files : Sequence[Filename]
+        List of CSLC static layer files to process
+    output_dir : Filename
+        Directory where output masks will be saved
+
+    Returns
+    -------
+    list[Path]
+        List of paths to the created binary layover shadow mask files
+
+    """
+    output_path = Path(output_dir)
+    output_path.mkdir(exist_ok=True)
+
+    output_files = []
+
+    for burst_id, files in group_by_burst(cslc_static_files).items():
+        if len(files) > 1:
+            logger.warning(f"Found multiple static files for {burst_id}: {files}")
+        f = files[0]
+        input_name = format_nc_filename(f, ds_name="/data/layover_shadow_mask")
+        out_file = output_path / f"layover_shadow_{burst_id}.tif"
+
+        logger.info(f"Extracting layover shadow mask from {f} to {out_file}")
+        layover_data = load_gdal(input_name)
+        # we'll ignore the nodata region to be conservative
+        layover_data[layover_data == 127] = 0
+        not_layover_pixels = layover_data == 0
+        write_arr(
+            arr=not_layover_pixels,
+            output_name=out_file,
+            like_filename=input_name,
+            nodata=127,
+        )
+
+        output_files.append(out_file)
+
+    return output_files

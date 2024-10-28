@@ -90,9 +90,12 @@ def run(
     ref_point = read_reference_point(out_paths.timeseries_paths[0].parent)
 
     # Find the geometry files, if created
+    los_east_file: Path | None
+    los_north_file: Path | None
     try:
-        los_east_file: Path | None = next(cfg.work_directory.rglob("los_east.tif"))
-        los_north_file: Path | None = los_east_file.parent / "los_north.tif"
+        los_east_file = next(cfg.work_directory.rglob("los_east.tif"))
+        assert los_east_file is not None
+        los_north_file = los_east_file.parent / "los_north.tif"
     except StopIteration:
         los_east_file = los_north_file = None
 

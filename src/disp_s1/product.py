@@ -267,7 +267,8 @@ def create_output_product(
     }
 
     disp_arr[mask] = np.nan
-    filtered_disp_arr[mask] = np.nan
+    # Be more aggressive with the short wavelength displacement mask:
+    filtered_disp_arr[bad_pixel_mask] = np.nan
 
     product_infos: list[ProductInfo] = list(DISPLACEMENT_PRODUCTS)
 

@@ -16,7 +16,6 @@ from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.wrapped_phase import _get_mask
 from opera_utils import group_by_burst
-from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +38,12 @@ def precompute_ps(cfg: DisplacementWorkflow) -> tuple[list[Path], list[Path]]:
         grouped_amp_mean_files = group_by_burst(cfg.amplitude_mean_files)
     else:
         grouped_amp_mean_files = defaultdict(list)
+    if cfg.layover_shadow_mask_files:
+        grouped_layover_shadow_mask_files = group_by_burst(
+            cfg.layover_shadow_mask_files
+        )
+    else:
+        grouped_layover_shadow_mask_files = defaultdict(list)
 
     # ######################################
     # 1. Burst-wise Wrapped phase estimation
@@ -54,6 +59,7 @@ def precompute_ps(cfg: DisplacementWorkflow) -> tuple[list[Path], list[Path]]:
                     grouped_slc_files,
                     grouped_amp_mean_files,
                     grouped_amp_dispersion_files,
+                    grouped_layover_shadow_mask_files,
                 ),
             )
             for burst in grouped_slc_files
@@ -76,29 +82,20 @@ def precompute_ps(cfg: DisplacementWorkflow) -> tuple[list[Path], list[Path]]:
     Executor = ProcessPoolExecutor if num_parallel > 1 else DummyProcessPoolExecutor
     mw = cfg.worker_settings.n_parallel_bursts
     ctx = mp.get_context("spawn")
-    tqdm.set_lock(ctx.RLock())
     with Executor(
         max_workers=mw,
         mp_context=ctx,
-        initializer=tqdm.set_lock,
-        initargs=(tqdm.get_lock(),),
     ) as exc:
         fut_to_burst = {
-            exc.submit(
-                run_burst_ps,
-                burst_cfg,
-                tqdm_kwargs={
-                    "position": i,
-                },
-            ): burst
+            exc.submit(run_burst_ps, burst_cfg): burst
             for i, (burst, burst_cfg) in enumerate(wrapped_phase_cfgs)
         }
         for fut in fut_to_burst:
             fut_to_burst[fut]
 
             combined_dispersion_file, combined_mean_file = fut.result()
-            combined_dispersion_files.extend(combined_dispersion_file)
-            combined_mean_files.extend(combined_mean_file)
+            combined_dispersion_files.append(combined_dispersion_file)
+            combined_mean_files.append(combined_mean_file)
 
     return combined_dispersion_files, combined_mean_files
 
@@ -142,22 +139,19 @@ def run_burst_ps(cfg: DisplacementWorkflow) -> tuple[Path, Path]:
         cfg.ps_options._amp_dispersion_file,
     ]
     ps_output = cfg.ps_options._output_file
-    if all(f.exists() for f in output_file_list):
-        logger.info(f"Skipping making existing PS files {output_file_list}")
-        return output_file_list
-
-    logger.info(f"Creating persistent scatterer file {ps_output}")
-    # dispersions: np.ndarray, means: np.ndarray, N: ArrayLike | Sequence
-    dolphin.ps.create_ps(
-        reader=vrt_stack,
-        output_file=output_file_list[0],
-        output_amp_mean_file=output_file_list[1],
-        output_amp_dispersion_file=output_file_list[2],
-        like_filename=vrt_stack.outfile,
-        amp_dispersion_threshold=cfg.ps_options.amp_dispersion_threshold,
-        nodata_mask=nodata_mask,
-        block_shape=cfg.worker_settings.block_shape,
-    )
+    if not all(f.exists() for f in output_file_list):
+        logger.info(f"Creating persistent scatterer file {ps_output}")
+        # dispersions: np.ndarray, means: np.ndarray, N: ArrayLike | Sequence
+        dolphin.ps.create_ps(
+            reader=vrt_stack,
+            output_file=output_file_list[0],
+            output_amp_mean_file=output_file_list[1],
+            output_amp_dispersion_file=output_file_list[2],
+            like_filename=vrt_stack.outfile,
+            amp_dispersion_threshold=cfg.ps_options.amp_dispersion_threshold,
+            nodata_mask=nodata_mask,
+            block_shape=cfg.worker_settings.block_shape,
+        )
 
     compressed_slc_files = [
         f for f, is_comp in zip(input_file_list, is_compressed) if is_comp
@@ -179,6 +173,12 @@ def run_combine(
     num_slc: int,
     subdataset: str = "/data/VV",
 ) -> tuple[Path, Path]:
+    out_dispersion = cur_dispersion.parent / "combined_dispersion.tif"
+    out_mean = cur_mean.parent / "combined_mean.tif"
+    if out_dispersion.exists() and out_mean.exists():
+        logger.info(f"{out_mean} and {out_dispersion} exist, skipping")
+        return out_dispersion, out_mean
+
     reader_compslc = io.HDF5StackReader.from_file_list(
         file_list=compressed_slc_files,
         dset_names=subdataset,
@@ -189,8 +189,8 @@ def run_combine(
         dset_names="/data/amplitude_dispersion",
         nodata=np.nan,
     )
-    reader_mean = io.RasterReader(cur_mean, band=1)
-    reader_dispersion = io.RasterReader(cur_dispersion, band=1)
+    reader_mean = io.RasterReader.from_file(cur_mean, band=1)
+    reader_dispersion = io.RasterReader.from_file(cur_dispersion, band=1)
 
     # writer_mean = io.BackgroundRasterWriter(filename="combined_mean.tif")
     # writer_dispersion = io.BackgroundRasterWriter(filename="combined_dispersions.tif")
@@ -208,8 +208,8 @@ def run_combine(
         if compslc_dispersion.ndim == 2:
             compslc_dispersion = compslc_dispersion[np.newaxis]
 
-        mean = reader_mean[rows, cols]
-        dispersion = reader_dispersion[rows, cols]
+        mean = reader_mean[rows, cols][np.newaxis]
+        dispersion = reader_dispersion[rows, cols][np.newaxis]
 
         # Fit a line to each pixel with weighted least squares
         dispersions = np.vstack([compslc_dispersion, dispersion])
@@ -218,25 +218,26 @@ def run_combine(
         # Increase the weights from older to newer.
         N = np.linspace(0, 1, num=len(means)) * num_slc
         return (
-            dolphin.ps.combine_amplitude_dispersions(
-                dispersions=dispersions,
-                means=means,
-                N=N,
+            np.stack(
+                dolphin.ps.combine_amplitude_dispersions(
+                    dispersions=dispersions,
+                    means=means,
+                    N=N,
+                )
             ),
             rows,
             cols,
         )
 
-    out_dispersion = cur_dispersion.parent / "combined_dispersion.tif"
-    out_mean = cur_mean.parent / "combined_mean.tif"
     out_paths = (out_dispersion, out_mean)
     readers = reader_compslc, reader_compslc_dispersion, reader_mean, reader_dispersion
-    writer = io.BackgroundStackWriter(out_paths, like_filename=cur_mean)
+    writer = io.BackgroundStackWriter(out_paths, like_filename=cur_mean, debug=True)
     io.process_blocks(
         readers=readers,
         writer=writer,
         func=read_and_combine,
         block_shape=(512, 512),
+        num_threads=1,
     )
 
     writer.notify_finished()

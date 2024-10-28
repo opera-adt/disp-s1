@@ -5,6 +5,7 @@ import multiprocessing as mp
 from collections import defaultdict
 from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
+from enum import Enum
 from pathlib import Path
 
 import dolphin.ps
@@ -18,6 +19,14 @@ from dolphin.workflows.wrapped_phase import _get_mask
 from opera_utils import group_by_burst
 
 logger = logging.getLogger(__name__)
+
+
+class WeightScheme(str, Enum):
+    """Methods for weighted combination of old and current amplitudes."""
+
+    LINEAR = "linear"
+    EQUAL = "equal"
+    EXPONENTIAL = "exponential"
 
 
 def precompute_ps(cfg: DisplacementWorkflow) -> tuple[list[Path], list[Path]]:
@@ -152,6 +161,8 @@ def run_burst_ps(cfg: DisplacementWorkflow) -> tuple[Path, Path]:
             nodata_mask=nodata_mask,
             block_shape=cfg.worker_settings.block_shape,
         )
+        # Remove the actual PS mask, since we're going to redo after combining
+        cfg.ps_options._output_file.unlink()
 
     compressed_slc_files = [
         f for f, is_comp in zip(input_file_list, is_compressed) if is_comp
@@ -171,6 +182,7 @@ def run_combine(
     cur_dispersion: Path,
     compressed_slc_files: list[PathOrStr],
     num_slc: int,
+    weight_scheme: WeightScheme = WeightScheme.EXPONENTIAL,
     subdataset: str = "/data/VV",
 ) -> tuple[Path, Path]:
     out_dispersion = cur_dispersion.parent / "combined_dispersion.tif"
@@ -192,8 +204,20 @@ def run_combine(
     reader_mean = io.RasterReader.from_file(cur_mean, band=1)
     reader_dispersion = io.RasterReader.from_file(cur_dispersion, band=1)
 
-    # writer_mean = io.BackgroundRasterWriter(filename="combined_mean.tif")
-    # writer_dispersion = io.BackgroundRasterWriter(filename="combined_dispersions.tif")
+    num_images = 1 + len(compressed_slc_files)
+    if weight_scheme == WeightScheme.LINEAR:
+        # Increase the weights from older to newer.
+        N = np.linspace(0, 1, num=num_images) * num_slc
+    elif weight_scheme == WeightScheme.EQUAL:
+        # Increase the weights from older to newer.
+        N = num_slc * np.ones((num_images,))
+    elif weight_scheme == WeightScheme.EXPONENTIAL:
+        alpha = 0.5
+        weights = np.exp(alpha * np.arange(num_images))
+        weights /= weights.max()
+        N = weights.round().astype(int)
+    else:
+        raise ValueError(f"Unrecognized {weight_scheme = }")
 
     def read_and_combine(
         readers: Sequence[io.StackReader], rows: slice, cols: slice
@@ -215,16 +239,13 @@ def run_combine(
         dispersions = np.vstack([compslc_dispersion, dispersion])
 
         means = np.vstack([compslc_mean, mean])
-        # Increase the weights from older to newer.
-        N = np.linspace(0, 1, num=len(means)) * num_slc
+        new_dispersion, new_mean = dolphin.ps.combine_amplitude_dispersions(
+            dispersions=dispersions,
+            means=means,
+            N=N,
+        )
         return (
-            np.stack(
-                dolphin.ps.combine_amplitude_dispersions(
-                    dispersions=dispersions,
-                    means=means,
-                    N=N,
-                )
-            ),
+            np.stack([np.nan_to_num(new_dispersion), np.nan_to_num(new_mean)]),
             rows,
             cols,
         )

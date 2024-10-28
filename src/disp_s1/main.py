@@ -20,7 +20,8 @@ from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_date
 
 from disp_s1 import __version__, product
-from disp_s1._masking import create_mask_from_distance
+from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
+from disp_s1._ps import precompute_ps
 from disp_s1.pge_runconfig import RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
@@ -33,7 +34,7 @@ def run(
     cfg: DisplacementWorkflow,
     pge_runconfig: RunConfig,
     debug: bool = False,
-):
+) -> None:
     """Run the displacement workflow on a stack of SLCs.
 
     Parameters
@@ -60,6 +61,21 @@ def run(
         )
         cfg.mask_file = water_binary_mask
 
+    if len(cfg.correction_options.geometry_files) > 0:
+        layover_binary_mask_files = create_layover_shadow_masks(
+            cslc_static_files=cfg.correction_options.geometry_files,
+            output_dir=cfg.work_directory / "layover_shadow_masks",
+        )
+        cfg.layover_shadow_mask_files = layover_binary_mask_files
+
+    # If we are passed Compressed SLCs, combine the old amplitudes with the
+    # current real SLCs for a better estimate of amplitude dispersion for PS/SHPs
+    if any("compressed" in f.name.lower() for f in cfg.cslc_file_list):
+        logger.info("Combining old amplitudes with current SLCs:")
+        combined_dispersion_files, combined_mean_files = precompute_ps(cfg=cfg)
+        cfg.amplitude_dispersion_files = combined_dispersion_files
+        cfg.amplitude_mean_files = combined_mean_files
+
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
 
@@ -75,8 +91,8 @@ def run(
 
     # Find the geometry files, if created
     try:
-        los_east_file = next(cfg.work_directory.rglob("los_east.tif"))
-        los_north_file = los_east_file.parent / "los_north.tif"
+        los_east_file: Path | None = next(cfg.work_directory.rglob("los_east.tif"))
+        los_north_file: Path | None = los_east_file.parent / "los_north.tif"
     except StopIteration:
         los_east_file = los_north_file = None
 
@@ -187,7 +203,7 @@ def run(
 
 
 def _assert_dates_match(
-    disp_date_keys: set[datetime], test_paths: Iterable[Path], name: str
+    disp_date_keys: set[tuple[datetime, ...]], test_paths: Iterable[Path], name: str
 ) -> None:
     """Assert that the dates in `paths_to_check` match the reference dates.
 

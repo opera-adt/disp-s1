@@ -1,24 +1,27 @@
 from __future__ import annotations
 
 import logging
+import multiprocessing as mp
 from collections import defaultdict
 from collections.abc import Sequence
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import dolphin.ps
 import numpy as np
 from dolphin import io, masking
 from dolphin._types import PathOrStr
-from dolphin.io import VRTStack
+from dolphin.utils import DummyProcessPoolExecutor
 from dolphin.workflows._utils import _create_burst_cfg, _remove_dir_if_empty
 from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.wrapped_phase import _get_mask
 from opera_utils import group_by_burst
+from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 
 
-def precompute_ps(cfg: DisplacementWorkflow):
+def precompute_ps(cfg: DisplacementWorkflow) -> tuple[list[Path], list[Path]]:
     try:
         grouped_slc_files = group_by_burst(cfg.cslc_file_list)
     except ValueError as e:
@@ -67,8 +70,40 @@ def precompute_ps(cfg: DisplacementWorkflow):
         b = next(iter(grouped_slc_files.keys()))
         wrapped_phase_cfgs = [(b, cfg)]
 
+    combined_dispersion_files: list[Path] = []
+    combined_mean_files: list[Path] = []
+    num_parallel = min(cfg.worker_settings.n_parallel_bursts, len(grouped_slc_files))
+    Executor = ProcessPoolExecutor if num_parallel > 1 else DummyProcessPoolExecutor
+    mw = cfg.worker_settings.n_parallel_bursts
+    ctx = mp.get_context("spawn")
+    tqdm.set_lock(ctx.RLock())
+    with Executor(
+        max_workers=mw,
+        mp_context=ctx,
+        initializer=tqdm.set_lock,
+        initargs=(tqdm.get_lock(),),
+    ) as exc:
+        fut_to_burst = {
+            exc.submit(
+                run_burst_ps,
+                burst_cfg,
+                tqdm_kwargs={
+                    "position": i,
+                },
+            ): burst
+            for i, (burst, burst_cfg) in enumerate(wrapped_phase_cfgs)
+        }
+        for fut in fut_to_burst:
+            fut_to_burst[fut]
 
-def run_burst_ps(cfg: DisplacementWorkflow):
+            combined_dispersion_file, combined_mean_file = fut.result()
+            combined_dispersion_files.extend(combined_dispersion_file)
+            combined_mean_files.extend(combined_mean_file)
+
+    return combined_dispersion_files, combined_mean_files
+
+
+def run_burst_ps(cfg: DisplacementWorkflow) -> tuple[Path, Path]:
     input_file_list = cfg.cslc_file_list
     if not input_file_list:
         msg = "No input files found"
@@ -81,7 +116,7 @@ def run_burst_ps(cfg: DisplacementWorkflow):
     non_compressed_slcs = [
         f for f, is_comp in zip(input_file_list, is_compressed) if not is_comp
     ]
-    vrt_stack = VRTStack(
+    vrt_stack = io.VRTStack(
         non_compressed_slcs,
         subdataset=subdataset,
         outfile=cfg.work_directory / "non_compressed_slc_stack.vrt",
@@ -128,7 +163,7 @@ def run_burst_ps(cfg: DisplacementWorkflow):
         f for f, is_comp in zip(input_file_list, is_compressed) if is_comp
     ]
     logger.info(f"Combining existing means/dispersions from {compressed_slc_files}")
-    run_combine(
+    return run_combine(
         cfg.ps_options._amp_mean_file,
         cfg.ps_options._amp_dispersion_file,
         compressed_slc_files,
@@ -143,7 +178,7 @@ def run_combine(
     compressed_slc_files: list[PathOrStr],
     num_slc: int,
     subdataset: str = "/data/VV",
-):
+) -> tuple[Path, Path]:
     reader_compslc = io.HDF5StackReader.from_file_list(
         file_list=compressed_slc_files,
         dset_names=subdataset,
@@ -192,7 +227,9 @@ def run_combine(
             cols,
         )
 
-    out_paths = ["combined_dispersion.tif", "combined_mean.tif"]
+    out_dispersion = cur_dispersion.parent / "combined_dispersion.tif"
+    out_mean = cur_mean.parent / "combined_mean.tif"
+    out_paths = (out_dispersion, out_mean)
     readers = reader_compslc, reader_compslc_dispersion, reader_mean, reader_dispersion
     writer = io.BackgroundStackWriter(out_paths, like_filename=cur_mean)
     io.process_blocks(

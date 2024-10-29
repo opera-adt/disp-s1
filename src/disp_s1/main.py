@@ -68,13 +68,17 @@ def run(
         )
         cfg.layover_shadow_mask_files = layover_binary_mask_files
 
-    # If we are passed Compressed SLCs, combine the old amplitudes with the
-    # current real SLCs for a better estimate of amplitude dispersion for PS/SHPs
     if any("compressed" in f.name.lower() for f in cfg.cslc_file_list):
+        # If we are passed Compressed SLCs, combine the old amplitudes with the
+        # current real SLCs for a better estimate of amplitude dispersion for PS/SHPs
         logger.info("Combining old amplitudes with current SLCs")
         combined_dispersion_files, combined_mean_files = precompute_ps(cfg=cfg)
         cfg.amplitude_dispersion_files = combined_dispersion_files
         cfg.amplitude_mean_files = combined_mean_files
+    else:
+        # This is the first ministack: The amplitude estimation will be weak.
+        # Drop the PS threshold to a conservate number to avoid false positives
+        cfg.ps_options.amp_dispersion_threshold = 0.15
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)

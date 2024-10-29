@@ -257,7 +257,7 @@ def run_combine(
         readers=readers,
         writer=writer,
         func=read_and_combine,
-        block_shape=(512, 512),
+        block_shape=(256, 256),
         num_threads=1,
     )
 

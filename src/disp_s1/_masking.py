@@ -150,6 +150,9 @@ def create_layover_shadow_masks(
         f = files[0]
         input_name = format_nc_filename(f, ds_name="/data/layover_shadow_mask")
         out_file = output_path / f"layover_shadow_{burst_id}.tif"
+        if out_file.exists():
+            output_files.append(out_file)
+            continue
 
         logger.info(f"Extracting layover shadow mask from {f} to {out_file}")
         layover_data = load_gdal(input_name)

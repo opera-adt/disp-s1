@@ -17,7 +17,7 @@ from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_
 from dolphin.workflows.config import DisplacementWorkflow, UnwrapOptions
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
-from opera_utils import get_dates, group_by_date
+from opera_utils import get_dates, group_by_burst, group_by_date
 
 from disp_s1 import __version__, product
 from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
@@ -49,6 +49,10 @@ def run(
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
     cfg.work_directory.mkdir(exist_ok=True, parents=True)
+
+    # Add a check to fail if passed duplicate dates area passed
+    _assert_no_duplicate_dates(cfg.cslc_file_list)
+
     # Setup the binary mask as dolphin expects
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
         water_binary_mask = cfg.work_directory / "water_binary_mask.tif"
@@ -104,9 +108,6 @@ def run(
         los_east_file = los_north_file = None
 
     # Finalize the output as an HDF5 product
-    # Group all the CSLCs by date to pick out ref/secondaries
-    date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
-
     out_dir = pge_runconfig.product_path_group.output_directory
     out_dir.mkdir(exist_ok=True, parents=True)
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
@@ -177,6 +178,8 @@ def run(
         aggressive_water_binary_mask = None
 
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
+    # Group all the CSLCs by date to pick out ref/secondaries
+    date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
     create_displacement_products(
         out_paths,
         out_dir=out_dir,
@@ -233,6 +236,23 @@ def _assert_dates_match(
         msg = f"Mismatch of dates found for {name}:"
         msg += f"{disp_date_keys = }, but {name} has {test_paths}"
         raise ValueError(msg)
+
+
+def _assert_no_duplicate_dates(input_file_list: Sequence[Path]) -> None:
+    """Assert that for each burst ID, there is only one real SLC passed per date."""
+    is_compressed = ["compressed" in str(f).lower() for f in input_file_list]
+
+    non_compressed_slcs = [
+        f for f, is_comp in zip(input_file_list, is_compressed) if not is_comp
+    ]
+    for burst_id, file_list in group_by_burst(non_compressed_slcs):
+        sensing_date_list = [get_dates(f)[0] for f in file_list]
+        # Use a set to check for duplicate dates
+        if len(sensing_date_list) > len(set(sensing_date_list)):
+            msg = f"Duplicate dates passed for {burst_id}:\n"
+            file_string = "\n".join(file_list)
+            msg += file_string
+            raise ValueError(msg)
 
 
 class ProductFiles(NamedTuple):

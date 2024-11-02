@@ -280,7 +280,14 @@ def create_output_product(
         _create_time_dset(
             group=f,
             time=secondary_start_time,
-            long_name="Time corresponding to beginning of Displacement frame",
+            long_name="Time corresponding to beginning of secondary acquisition",
+            variable_name="time",
+        )
+        _create_time_dset(
+            group=f,
+            time=reference_start_time,
+            long_name="Time corresponding to beginning of reference acquisition",
+            variable_name="reference_time",
         )
         for info, data in zip(product_infos[:2], [disp_arr, filtered_disp_arr]):
             round_mantissa(data, keep_bits=info.keep_bits)
@@ -431,7 +438,7 @@ def _create_corrections_group(
         _create_time_dset(
             group=corrections_group,
             time=secondary_start_time,
-            long_name="time corresponding to beginning of Displacement frame",
+            long_name="Time corresponding to beginning of secondary image",
         )
         troposphere = corrections.get("troposphere", empty_arr)
         _create_geo_dataset(
@@ -816,11 +823,17 @@ def _create_yx_dsets(
 
 
 def _create_time_dset(
-    group: h5netcdf.Group, time: datetime.datetime, long_name: str = "time"
+    group: h5netcdf.Group,
+    time: datetime.datetime,
+    long_name: str = "time",
+    variable_name: str = "time",
+    dimension_name: str = "time",
 ) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
     """Create the time coordinate dataset."""
     times, calendar, units = _create_time_array([time])
-    t_ds = group.create_variable("time", ("time",), data=times, dtype=float)
+    t_ds = group.create_variable(
+        variable_name, (dimension_name,), data=times, dtype=float
+    )
     t_ds.attrs["standard_name"] = "time"
     t_ds.attrs["long_name"] = long_name
     t_ds.attrs["calendar"] = calendar

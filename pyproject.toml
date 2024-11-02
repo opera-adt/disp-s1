@@ -99,4 +99,5 @@ filterwarnings = [
   # DeprecationWarning thrown in pkg_resources for older numba verions and llvmlite
   "ignore:.*pkg_resources.*",
   "ignore:h5py is running against HDF5.*:UserWarning",
+  "ignore:Exception ignored in.* <_io.FileIO.*:pytest.PytestUnraisableExceptionWarning"
 ]

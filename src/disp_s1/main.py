@@ -245,7 +245,7 @@ def _assert_no_duplicate_dates(input_file_list: Sequence[Path]) -> None:
     non_compressed_slcs = [
         f for f, is_comp in zip(input_file_list, is_compressed) if not is_comp
     ]
-    for burst_id, file_list in group_by_burst(non_compressed_slcs):
+    for burst_id, file_list in group_by_burst(non_compressed_slcs).items():
         sensing_date_list = [get_dates(f)[0] for f in file_list]
         # Use a set to check for duplicate dates
         if len(sensing_date_list) > len(set(sensing_date_list)):

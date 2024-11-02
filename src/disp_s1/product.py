@@ -1109,7 +1109,7 @@ def create_compressed_products(
         max_workers=max_workers,
         mp_context=ctx,
     ) as executor:
-        results = executor.map(process_compressed_slc, compressed_slc_infos)
+        results = list(executor.map(process_compressed_slc, compressed_slc_infos))
 
     logger.info("Finished creating all compressed SLC products.")
     return results

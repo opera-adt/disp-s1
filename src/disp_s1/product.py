@@ -652,6 +652,15 @@ def _create_identification_group(
             description="Mean value of valid pixels within temporal_coherence layer.",
             attrs={"units": "unitless"},
         )
+        _create_dataset(
+            group=identification_group,
+            name="ceos_analysis_ready_data_document_identifier",
+            dimensions=(),
+            data="https://ceos.org/ard/files/PFS/NRB/v5.5/CARD4L-PFS_NRB_v5.5.pdf",
+            fillvalue=None,
+            description="CEOS Analysis Ready Data (CARD) document identifier",
+            attrs={"units": "unitless"},
+        )
 
 
 def _create_metadata_group(

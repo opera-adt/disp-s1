@@ -210,6 +210,8 @@ def create_output_product(
     except Exception:
         logger.error("Failed to extract raster footprint", exc_info=True)
         footprint_wkt = ""
+    # Get bounds for "Bounding box corners"
+    bounds = io.get_raster_bounds(unw_filename)
     # Load and process unwrapped phase data, needs more custom masking
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
     unw_arr = np.ma.filled(unw_arr_ma, 0)
@@ -392,6 +394,7 @@ def create_output_product(
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
+        product_bounds=bounds,
         average_temporal_coherence=average_temporal_coherence,
     )
 
@@ -526,6 +529,7 @@ def _create_identification_group(
     secondary_start_time: datetime.datetime,
     secondary_end_time: datetime.datetime,
     footprint_wkt: str,
+    product_bounds: tuple[float, float, float, float],
     average_temporal_coherence: float,
 ) -> None:
     """Create the identification group in the output file."""
@@ -660,6 +664,38 @@ def _create_identification_group(
             fillvalue=None,
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},
+        )
+        # CEOS: Section 1.6.7
+        _create_dataset(
+            group=identification_group,
+            name="source_data_x_spacing",
+            dimensions=(),
+            data=5,
+            fillvalue=None,
+            description="Pixel spacing of source geocoded SLC data in the x-direction.",
+            attrs={"units": "meters"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_y_spacing",
+            dimensions=(),
+            data=10,
+            fillvalue=None,
+            description="Pixel spacing of source geocoded SLC data in the y-direction.",
+            attrs={"units": "meters"},
+        )
+        # CEOS: 1.7.7
+        _create_dataset(
+            group=identification_group,
+            name="product_bounding_box",
+            dimensions=(),
+            data=product_bounds,
+            fillvalue=None,
+            description=(
+                "Opposite corners of the product file in the UTM coordinates as (west,"
+                " south, east, north)"
+            ),
+            attrs={"units": "meters"},
         )
 
 

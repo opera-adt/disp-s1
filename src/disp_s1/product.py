@@ -394,7 +394,7 @@ def create_output_product(
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
-        product_bounds=bounds,
+        product_bounds=tuple(bounds),
         average_temporal_coherence=average_temporal_coherence,
     )
 
@@ -700,7 +700,7 @@ def _create_identification_group(
             group=identification_group,
             name="product_bounding_box",
             dimensions=(),
-            data=product_bounds,
+            data=",".join(map(str, product_bounds)),
             fillvalue=None,
             description=(
                 "Opposite corners of the product file in the UTM coordinates as (west,"

@@ -210,6 +210,8 @@ def create_output_product(
     except Exception:
         logger.error("Failed to extract raster footprint", exc_info=True)
         footprint_wkt = ""
+    # Get bounds for "Bounding box corners"
+    bounds = io.get_raster_bounds(unw_filename)
     # Load and process unwrapped phase data, needs more custom masking
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
     unw_arr = np.ma.filled(unw_arr_ma, 0)
@@ -280,7 +282,14 @@ def create_output_product(
         _create_time_dset(
             group=f,
             time=secondary_start_time,
-            long_name="Time corresponding to beginning of Displacement frame",
+            long_name="Time corresponding to beginning of secondary acquisition",
+            variable_name="time",
+        )
+        _create_time_dset(
+            group=f,
+            time=reference_start_time,
+            long_name="Time corresponding to beginning of reference acquisition",
+            variable_name="reference_time",
         )
         for info, data in zip(product_infos[:2], [disp_arr, filtered_disp_arr]):
             round_mantissa(data, keep_bits=info.keep_bits)
@@ -385,6 +394,7 @@ def create_output_product(
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
+        product_bounds=tuple(bounds),
         average_temporal_coherence=average_temporal_coherence,
     )
 
@@ -431,7 +441,7 @@ def _create_corrections_group(
         _create_time_dset(
             group=corrections_group,
             time=secondary_start_time,
-            long_name="time corresponding to beginning of Displacement frame",
+            long_name="Time corresponding to beginning of secondary image",
         )
         troposphere = corrections.get("troposphere", empty_arr)
         _create_geo_dataset(
@@ -519,6 +529,7 @@ def _create_identification_group(
     secondary_start_time: datetime.datetime,
     secondary_end_time: datetime.datetime,
     footprint_wkt: str,
+    product_bounds: tuple[float, float, float, float],
     average_temporal_coherence: float,
 ) -> None:
     """Create the identification group in the output file."""
@@ -539,6 +550,25 @@ def _create_identification_group(
             data=pge_runconfig.product_path_group.product_version,
             fillvalue=None,
             description="Version of the product.",
+        )
+        _create_dataset(
+            group=identification_group,
+            name="static_layers_data_access",
+            dimensions=(),
+            data=pge_runconfig.product_path_group.static_layers_data_access,
+            fillvalue=None,
+            description=(
+                "Location of the static layers product associated with this product"
+                " (URL or DOI)"
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
+            name="radar_band",
+            dimensions=(),
+            data="C",
+            fillvalue=None,
+            description="Acquired radar frequency band",
         )
 
         _create_dataset(
@@ -636,6 +666,47 @@ def _create_identification_group(
             fillvalue=None,
             description="Mean value of valid pixels within temporal_coherence layer.",
             attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="ceos_analysis_ready_data_document_identifier",
+            dimensions=(),
+            data="https://ceos.org/ard/files/PFS/NRB/v5.5/CARD4L-PFS_NRB_v5.5.pdf",
+            fillvalue=None,
+            description="CEOS Analysis Ready Data (CARD) document identifier",
+            attrs={"units": "unitless"},
+        )
+        # CEOS: Section 1.6.7
+        _create_dataset(
+            group=identification_group,
+            name="source_data_x_spacing",
+            dimensions=(),
+            data=5,
+            fillvalue=None,
+            description="Pixel spacing of source geocoded SLC data in the x-direction.",
+            attrs={"units": "meters"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_y_spacing",
+            dimensions=(),
+            data=10,
+            fillvalue=None,
+            description="Pixel spacing of source geocoded SLC data in the y-direction.",
+            attrs={"units": "meters"},
+        )
+        # CEOS: 1.7.7
+        _create_dataset(
+            group=identification_group,
+            name="product_bounding_box",
+            dimensions=(),
+            data=",".join(map(str, product_bounds)),
+            fillvalue=None,
+            description=(
+                "Opposite corners of the product file in the UTM coordinates as (west,"
+                " south, east, north)"
+            ),
+            attrs={"units": "meters"},
         )
 
 
@@ -816,11 +887,17 @@ def _create_yx_dsets(
 
 
 def _create_time_dset(
-    group: h5netcdf.Group, time: datetime.datetime, long_name: str = "time"
+    group: h5netcdf.Group,
+    time: datetime.datetime,
+    long_name: str = "time",
+    variable_name: str = "time",
+    dimension_name: str = "time",
 ) -> tuple[h5netcdf.Variable, h5netcdf.Variable]:
     """Create the time coordinate dataset."""
     times, calendar, units = _create_time_array([time])
-    t_ds = group.create_variable("time", ("time",), data=times, dtype=float)
+    t_ds = group.create_variable(
+        variable_name, (dimension_name,), data=times, dtype=float
+    )
     t_ds.attrs["standard_name"] = "time"
     t_ds.attrs["long_name"] = long_name
     t_ds.attrs["calendar"] = calendar
@@ -1010,10 +1087,13 @@ def copy_cslc_metadata_to_compressed(
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
-        "/identification/look_direction",
         "/identification/mission_id",
+        "/identification/platform_id",
+        "/identification/instrument_name",
+        "/identification/look_direction",
         "/identification/track_number",
         "/identification/orbit_pass_direction",
+        "/identification/absolute_orbit_number",
     ]
     _copy_hdf5_dsets(
         source_file=opera_cslc_file,
@@ -1045,9 +1125,12 @@ def copy_cslc_metadata_to_displacement(
     # Add ones which should be same for both ref/sec
     common_dsets = [
         "/identification/mission_id",
+        "/identification/platform_id",
+        "/identification/instrument_name",
         "/identification/look_direction",
         "/identification/track_number",
         "/identification/orbit_pass_direction",
+        "/identification/absolute_orbit_number",
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

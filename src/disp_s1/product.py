@@ -547,6 +547,14 @@ def _create_identification_group(
             fillvalue=None,
             description="Version of the product.",
         )
+        _create_dataset(
+            group=identification_group,
+            name="radar_band",
+            dimensions=(),
+            data="C",
+            fillvalue=None,
+            description="Acquired radar frequency band",
+        )
 
         _create_dataset(
             group=identification_group,
@@ -1023,10 +1031,13 @@ def copy_cslc_metadata_to_compressed(
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
-        "/identification/look_direction",
         "/identification/mission_id",
+        "/identification/platform_id",
+        "/identification/instrument_name",
+        "/identification/look_direction",
         "/identification/track_number",
         "/identification/orbit_pass_direction",
+        "/identification/absolute_orbit_number",
     ]
     _copy_hdf5_dsets(
         source_file=opera_cslc_file,
@@ -1058,9 +1069,12 @@ def copy_cslc_metadata_to_displacement(
     # Add ones which should be same for both ref/sec
     common_dsets = [
         "/identification/mission_id",
+        "/identification/platform_id",
+        "/identification/instrument_name",
         "/identification/look_direction",
         "/identification/track_number",
         "/identification/orbit_pass_direction",
+        "/identification/absolute_orbit_number",
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

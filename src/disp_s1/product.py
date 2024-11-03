@@ -553,6 +553,17 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
+            name="static_layers_data_access",
+            dimensions=(),
+            data=pge_runconfig.product_path_group.static_layers_data_access,
+            fillvalue=None,
+            description=(
+                "Location of the static layers product associated with this product"
+                " (URL or DOI)"
+            ),
+        )
+        _create_dataset(
+            group=identification_group,
             name="radar_band",
             dimensions=(),
             data="C",

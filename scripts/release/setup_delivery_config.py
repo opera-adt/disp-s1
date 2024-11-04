@@ -27,12 +27,8 @@ def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
         # Dynamic ancillary files #
         ###########################
         # TODO # seasonal coherence averages
-        # Troposphere files:
-        " --troposphere-files ./dynamic_ancillary_files/troposphere_files/*"
         # Ionosphere files:
         " --ionosphere-files ./dynamic_ancillary_files/ionosphere_files/*"
-        # DEM files:
-        " --dem ./dynamic_ancillary_files/dem.tif"
         # Geometry files/static layers
         " --geometry-files ./dynamic_ancillary_files/static_layers/*"
         " --mask-file ./dynamic_ancillary_files/water_mask.tif"

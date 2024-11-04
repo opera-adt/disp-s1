@@ -443,16 +443,6 @@ def _create_corrections_group(
             time=secondary_start_time,
             long_name="Time corresponding to beginning of secondary image",
         )
-        troposphere = corrections.get("troposphere", empty_arr)
-        _create_geo_dataset(
-            group=corrections_group,
-            name="tropospheric_delay",
-            long_name="Tropospheric Delay",
-            data=troposphere,
-            description="Tropospheric phase delay used to correct the unwrapped phase",
-            fillvalue=np.nan,
-            attrs={"units": "meters"},
-        )
         ionosphere = corrections.get("ionosphere", empty_arr)
         _create_geo_dataset(
             group=corrections_group,

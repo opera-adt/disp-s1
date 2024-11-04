@@ -88,12 +88,6 @@ def run(
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
 
-    # Ensure the wavelength is set for the short wavelength layer
-    if hasattr(cfg, "spatial_wavelength_cutoff"):
-        wavelength_cutoff = cfg.spatial_wavelength_cutoff
-    else:
-        wavelength_cutoff = 25_000
-
     # Read the reference point
     assert out_paths.timeseries_paths is not None
     ref_point = read_reference_point(out_paths.timeseries_paths[0].parent)
@@ -190,7 +184,6 @@ def run(
         date_to_cslc_files=date_to_cslc_files,
         pge_runconfig=pge_runconfig,
         dolphin_config=cfg,
-        wavelength_cutoff=wavelength_cutoff,
         reference_point=ref_point,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
@@ -309,7 +302,6 @@ def process_product(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
-    wavelength_cutoff: float,
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
@@ -329,8 +321,6 @@ def process_product(
         Configuration object for the PGE run.
     dolphin_config : dolphin.workflows.DisplacementWorkflow
         Configuration object run by `dolphin`.
-    wavelength_cutoff : float
-        Wavelength cutoff for filtering long wavelengths.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
@@ -387,7 +377,6 @@ def process_product(
         reference_cslc_files=ref_slc_files,
         secondary_cslc_files=secondary_slc_files,
         corrections=corrections,
-        wavelength_cutoff=wavelength_cutoff,
         reference_point=reference_point,
     )
 
@@ -400,7 +389,6 @@ def create_displacement_products(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
-    wavelength_cutoff: float = 25_000.0,
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
@@ -425,9 +413,6 @@ def create_displacement_products(
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
         If None, will record empty in the dataset's attributes
-    wavelength_cutoff : float
-        Wavelength cutoff (in meters) for filtering long wavelengths.
-        Default is 25_000.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
@@ -492,7 +477,6 @@ def create_displacement_products(
                 repeat(date_to_cslc_files),
                 repeat(pge_runconfig),
                 repeat(dolphin_config),
-                repeat(wavelength_cutoff),
                 repeat(reference_point),
                 repeat(los_east_file),
                 repeat(los_north_file),

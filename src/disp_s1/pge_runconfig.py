@@ -203,6 +203,14 @@ class AlgorithmParameters(YamlModel):
             " create the short wavelength displacement layer"
         ),
     )
+    browse_image_vmin_vmax: tuple[float, float] = Field(
+        (-0.10, 0.10),
+        description=(
+            "`vmin, vmax` matplotlib arguments (in meters) passed to browse image"
+            " creator."
+        ),
+    )
+
     model_config = ConfigDict(extra="forbid")
 
 

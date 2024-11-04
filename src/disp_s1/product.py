@@ -36,7 +36,7 @@ from ._baselines import _interpolate_data, compute_baselines
 from ._common import DATETIME_FORMAT
 from ._reference import ReferencePoint
 from .browse_image import make_browse_image_from_arr
-from .pge_runconfig import RunConfig
+from .pge_runconfig import AlgorithmParameters, RunConfig
 from .product_info import DISPLACEMENT_PRODUCTS, ProductInfo
 from .solid_earth_tides import calculate_solid_earth_tides_correction
 
@@ -96,7 +96,6 @@ def create_output_product(
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
-    wavelength_cutoff: float = 25_000.0,
 ):
     """Create the OPERA output product in NetCDF format.
 
@@ -145,14 +144,13 @@ def create_output_product(
         If None, will record empty in the dataset's attributes
     corrections : dict[str, ArrayLike], optional
         A dictionary of corrections to write to the output file, by default None
-    wavelength_cutoff : float, optional
-        The wavelength cutoff for filtering long wavelengths.
-        Default is 25_000.0
-
 
     """
     if corrections is None:
         corrections = {}
+    algorithm_parameters = AlgorithmParameters.from_yaml(
+        pge_runconfig.dynamic_ancillary_file_group.algorithm_parameters_file
+    )
 
     crs = io.get_raster_crs(unw_filename)
     gt = io.get_raster_gt(unw_filename)
@@ -234,6 +232,7 @@ def create_output_product(
     _, x_res, _, _, _, y_res = gt
     # Average for the pixel spacing for filtering
     pixel_spacing = (abs(x_res) + abs(y_res)) / 2
+    wavelength_cutoff = algorithm_parameters.spatial_wavelength_cutoff
     logger.info(
         "Creating short wavelength displacement product with %s meter cutoff",
         wavelength_cutoff,
@@ -308,13 +307,14 @@ def create_output_product(
                 attrs=info.attrs,
             )
 
-        # TODO: how to add "browse image configs" in the algo parameters config?
         make_browse_image_from_arr(
             output_filename=Path(output_name).with_suffix(
                 f".{product_infos[1].name}.png"
             ),
             arr=filtered_disp_arr,
             mask=recommended_mask,
+            vmin=algorithm_parameters.browse_image_vmin_vmax[0],
+            vmax=algorithm_parameters.browse_image_vmin_vmax[1],
         )
         del disp_arr
         del filtered_disp_arr

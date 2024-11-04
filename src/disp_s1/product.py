@@ -809,7 +809,7 @@ def _create_metadata_group(
             group=metadata_group,
             name="algorithm_parameters_yaml",
             dimensions=(),
-            data=_to_string(algo_param_path.read_text()),
+            data=algo_param_path.read_text(),
             fillvalue=None,
             description=(
                 "The full PGE runconfig YAML file used to generate the product."

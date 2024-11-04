@@ -1150,11 +1150,11 @@ def copy_cslc_metadata_to_compressed(
     dsets_to_copy = [
         "/metadata/orbit",  #          Group
         "/metadata/processing_information/input_burst_metadata/wavelength",
+        "/metadata/processing_information/input_burst_metadata/platform_id",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
         "/identification/mission_id",
-        "/identification/platform_id",
         "/identification/instrument_name",
         "/identification/look_direction",
         "/identification/track_number",
@@ -1191,12 +1191,12 @@ def copy_cslc_metadata_to_displacement(
     # Add ones which should be same for both ref/sec
     common_dsets = [
         "/identification/mission_id",
-        "/identification/platform_id",
         "/identification/instrument_name",
         "/identification/look_direction",
         "/identification/track_number",
         "/identification/orbit_pass_direction",
         "/identification/absolute_orbit_number",
+        "/metadata/processing_information/input_burst_metadata/platform_id",
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

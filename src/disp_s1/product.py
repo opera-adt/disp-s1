@@ -802,6 +802,20 @@ def _create_metadata_group(
                 "The full PGE runconfig YAML file used to generate the product."
             ),
         )
+        algo_param_path = (
+            pge_runconfig.dynamic_ancillary_file_group.algorithm_parameters_file
+        )
+        param_str = "".join(c for c in algo_param_path.read_text() if ord(c) < 128)
+        _create_dataset(
+            group=metadata_group,
+            name="algorithm_parameters_yaml",
+            dimensions=(),
+            data=param_str,
+            fillvalue=None,
+            description=(
+                "The full PGE runconfig YAML file used to generate the product."
+            ),
+        )
         _create_dataset(
             group=metadata_group,
             name="dolphin_workflow_config",

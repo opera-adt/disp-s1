@@ -142,12 +142,6 @@ def run(
                 f"Regrowing connected components not implemented for {method}"
             )
 
-    # Check tropospheric corrections
-    if out_paths.tropospheric_corrections is not None:
-        _assert_dates_match(
-            disp_date_keys, out_paths.tropospheric_corrections, "troposphere"
-        )
-
     # Check ionospheric corrections
     if out_paths.ionospheric_corrections is not None:
         _assert_dates_match(
@@ -264,7 +258,6 @@ class ProductFiles(NamedTuple):
     correlation: Path
     shp_counts: Path
     ps_mask: Path
-    troposphere: Path | None
     ionosphere: Path | None
     unwrapper_mask: Path | None
     similarity: Path
@@ -313,14 +306,6 @@ def process_product(
 
     """
     corrections = {}
-
-    if files.troposphere is not None:
-        corrections["troposphere"] = load_gdal(files.troposphere)
-    else:
-        logger.warning(
-            "Missing tropospheric correction for %s. Creating empty layer.",
-            files.unwrapped,
-        )
 
     if files.ionosphere is not None:
         corrections["ionosphere"] = load_gdal(files.ionosphere)
@@ -415,9 +400,6 @@ def create_displacement_products(
     """
     # Extra logging for product creation
     setup_logging(logger_name="disp_s1", debug=True)
-    tropo_files = out_paths.tropospheric_corrections or [None] * len(
-        out_paths.timeseries_paths
-    )
     iono_files = out_paths.ionospheric_corrections or [None] * len(
         out_paths.timeseries_paths
     )
@@ -435,17 +417,15 @@ def create_displacement_products(
             correlation=cor,
             ps_mask=out_paths.stitched_ps_file,
             shp_counts=out_paths.stitched_shp_count_file,
-            troposphere=tropo,
             ionosphere=iono,
             unwrapper_mask=mask_f,
             similarity=out_paths.stitched_similarity_file,
             water_mask=water_mask,
         )
-        for unw, cc, cor, tropo, iono, mask_f in zip(
+        for unw, cc, cor, iono, mask_f in zip(
             out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
-            tropo_files,
             iono_files,
             unwrapper_mask_files,
         )

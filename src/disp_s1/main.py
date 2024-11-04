@@ -18,6 +18,7 @@ from dolphin.workflows.config import DisplacementWorkflow, UnwrapOptions
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_burst, group_by_date
+from opera_utils.geometry import get_incidence_angles
 
 from disp_s1 import __version__, product
 from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
@@ -171,6 +172,15 @@ def run(
     else:
         aggressive_water_binary_mask = None
 
+    # Get the incidence angles for /identification metadata
+    if len(cfg.correction_options.geometry_files) > 0:
+        near_far_incidence_angles = _get_near_far_incidence_angles(
+            cfg.correction_options.geometry_files
+        )
+    else:
+        logger.warning("Using approximate incidence angles")
+        near_far_incidence_angles = 30.0, 45.0
+
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
     # Group all the CSLCs by date to pick out ref/secondaries
     date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
@@ -184,6 +194,7 @@ def run(
         reference_point=ref_point,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
+        near_far_incidence_angles=near_far_incidence_angles,
         water_mask=aggressive_water_binary_mask,
     )
     logger.info("Finished creating output products.")
@@ -249,6 +260,34 @@ def _assert_no_duplicate_dates(input_file_list: Sequence[Path]) -> None:
             raise ValueError(msg)
 
 
+def _get_near_far_incidence_angles(geometry_files: list[Path]) -> tuple[float, float]:
+    import numpy as np
+
+    burst_to_static_layers = group_by_burst(sorted(geometry_files))
+    burst_ids = list(burst_to_static_layers.keys())
+
+    # Sort the bursts by IW first, then burst ID number
+    def get_iw_key(burst):
+        return burst.split("_")[::-1]
+
+    sorted_bursts = sorted(burst_ids, key=get_iw_key)
+
+    near_burst = sorted_bursts[0]  # IW1 (if exists, or lowerst IW)
+    far_burst = sorted_bursts[-1]  # IW3, or furthest range IW
+
+    # There's only 1 static layers file per burst id
+    near_static_layers_file = burst_to_static_layers[near_burst][0]
+    far_static_layers_file = burst_to_static_layers[far_burst][0]
+    # Get any normal cslc file
+    near_incidence = np.nanmin(
+        get_incidence_angles(near_static_layers_file, subsample_factor=30)
+    ).round(1)
+    far_incidence = np.nanmax(
+        get_incidence_angles(far_static_layers_file, subsample_factor=30)
+    ).round(1)
+    return near_incidence, far_incidence
+
+
 class ProductFiles(NamedTuple):
     """Named tuple to hold the files for each NetCDF product."""
 
@@ -274,6 +313,7 @@ def process_product(
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
+    near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
 ) -> Path:
     """Create a single displacement product.
 
@@ -298,6 +338,9 @@ def process_product(
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
         Path to the north component of line of sight unit vector
+    near_far_incidence_angles : tuple[float, float]
+        Tuple of near range incidence angle, far range incidence angle.
+        If not specified, uses approximate Sentinel-1 values of (30.0, 45.0)
 
     Returns
     -------
@@ -338,6 +381,7 @@ def process_product(
         water_mask_filename=files.water_mask,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
+        near_far_incidence_angles=near_far_incidence_angles,
         pge_runconfig=pge_runconfig,
         dolphin_config=dolphin_config,
         reference_cslc_files=ref_slc_files,
@@ -360,6 +404,7 @@ def create_displacement_products(
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
+    near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
     water_mask: Path | None = None,
     max_workers: int = 3,
 ) -> None:
@@ -390,6 +435,9 @@ def create_displacement_products(
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
         Path to the north component of line of sight unit vector
+    near_far_incidence_angles : tuple[float, float]
+        Tuple of near range incidence angle, far range incidence angle.
+        If not specified, uses approximate Sentinel-1 values of (30.0, 45.0)
     water_mask : Path, optional
         Binary water mask to use for output product.
         If provided, is used in the `recommended_mask`.
@@ -448,6 +496,7 @@ def create_displacement_products(
                 repeat(reference_point),
                 repeat(los_east_file),
                 repeat(los_north_file),
+                repeat(near_far_incidence_angles),
             )
         )
 

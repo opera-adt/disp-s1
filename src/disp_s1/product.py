@@ -93,6 +93,7 @@ def create_output_product(
     secondary_cslc_files: Sequence[Filename],
     los_east_file: Filename | None = None,
     los_north_file: Filename | None = None,
+    near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
     reference_point: ReferencePoint | None = None,
     corrections: Optional[dict[str, ArrayLike]] = None,
     wavelength_cutoff: float = 25_000.0,
@@ -136,6 +137,9 @@ def create_output_product(
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
         Path to the north component of line of sight unit vector
+    near_far_incidence_angles : tuple[float, float]
+        Tuple of near range incidence angle, far range incidence angle.
+        If not specified, uses approximate Sentinel-1 values of (30.0, 45.0)
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
         If None, will record empty in the dataset's attributes
@@ -212,6 +216,7 @@ def create_output_product(
         footprint_wkt = ""
     # Get bounds for "Bounding box corners"
     bounds = io.get_raster_bounds(unw_filename)
+
     # Load and process unwrapped phase data, needs more custom masking
     unw_arr_ma = io.load_gdal(unw_filename, masked=True)
     unw_arr = np.ma.filled(unw_arr_ma, 0)
@@ -396,6 +401,7 @@ def create_output_product(
         footprint_wkt=footprint_wkt,
         product_bounds=tuple(bounds),
         average_temporal_coherence=average_temporal_coherence,
+        near_far_incidence_angles=near_far_incidence_angles,
     )
 
     _create_metadata_group(
@@ -521,6 +527,7 @@ def _create_identification_group(
     footprint_wkt: str,
     product_bounds: tuple[float, float, float, float],
     average_temporal_coherence: float,
+    near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
 ) -> None:
     """Create the identification group in the output file."""
     with h5netcdf.File(output_name, "a") as f:
@@ -666,7 +673,21 @@ def _create_identification_group(
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},
         )
-        # CEOS: Section 1.6.7
+        # CEOS: Section 1.6.7 source data attributes
+        _create_dataset(
+            group=identification_group,
+            name="source_data_access",
+            dimensions=(),
+            data=",".join(
+                p.stem for p in pge_runconfig.input_file_group.cslc_file_list
+            ),
+            fillvalue=None,
+            description=(
+                "List of input coregistered SLC granules used to create displacement"
+                " frame"
+            ),
+            attrs={"units": "unitless"},
+        )
         _create_dataset(
             group=identification_group,
             name="source_data_x_spacing",
@@ -685,6 +706,37 @@ def _create_identification_group(
             description="Pixel spacing of source geocoded SLC data in the y-direction.",
             attrs={"units": "meters"},
         )
+        _create_dataset(
+            group=identification_group,
+            name="near_range_incidence_angle",
+            dimensions=(),
+            data=near_far_incidence_angles[0],
+            fillvalue=None,
+            description="Incidence angle at the near range of the displacement frame",
+            attrs={"units": "degrees"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="far_range_incidence_angle",
+            dimensions=(),
+            data=near_far_incidence_angles[1],
+            fillvalue=None,
+            description="Incidence angle at the far range of the displacement frame",
+            attrs={"units": "degrees"},
+        )
+        # CEOS: 1.7.3
+        _create_dataset(
+            group=identification_group,
+            name="product_sample_spacing",
+            dimensions=(),
+            data=30,
+            fillvalue=None,
+            description=(
+                "Spacing between adjacent X/Y samples of displacement product in UTM"
+                " coordinates"
+            ),
+            attrs={"units": "meters"},
+        )
         # CEOS: 1.7.7
         _create_dataset(
             group=identification_group,
@@ -697,6 +749,16 @@ def _create_identification_group(
                 " south, east, north)"
             ),
             attrs={"units": "meters"},
+        )
+        # CEOS 1.7.10
+        _create_dataset(
+            group=identification_group,
+            name="product_pixel_coordinate_convention",
+            dimensions=(),
+            data="center",
+            fillvalue=None,
+            description="x/y coordinate convention referring to pixel center or corner",
+            attrs={"units": "unitless"},
         )
 
 

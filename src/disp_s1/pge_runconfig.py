@@ -121,13 +121,6 @@ class StaticAncillaryFileGroup(YamlModel):
             "JSON file containing list of reference date changes for each frame"
         ),
     )
-    algorithm_parameters_overrides_json: Union[Path, None] = Field(
-        None,
-        description=(
-            "JSON file containing frame-specific algorithm parameters to override the"
-            " defaults passed in the `algorithm_parameters.yaml`."
-        ),
-    )
 
 
 class PrimaryExecutable(YamlModel):
@@ -182,6 +175,14 @@ class ProductPathGroup(YamlModel):
 class AlgorithmParameters(YamlModel):
     """Class containing all the other `DisplacementWorkflow` classes."""
 
+    algorithm_parameters_overrides_json: Union[Path, None] = Field(
+        None,
+        description=(
+            "JSON file containing frame-specific algorithm parameters to override the"
+            " defaults passed in the `algorithm_parameters.yaml`."
+        ),
+    )
+
     # Options for each step in the workflow
     ps_options: PsOptions = Field(default_factory=PsOptions)
     phase_linking: PhaseLinkingOptions = Field(default_factory=PhaseLinkingOptions)
@@ -196,6 +197,8 @@ class AlgorithmParameters(YamlModel):
         default=OPERA_DATASET_NAME,
         description="Name of the subdataset to use in the input NetCDF files.",
     )
+
+    # Extra product creation options
     spatial_wavelength_cutoff: float = Field(
         25_000,
         description=(
@@ -278,14 +281,13 @@ class RunConfig(YamlModel):
             self.dynamic_ancillary_file_group.algorithm_parameters_file
         )
         param_dict = algorithm_parameters.model_dump()
+        overrides_json = param_dict.pop("algorithm_parameters_overrides_json")
 
         frame_id = self.input_file_group.frame_id
         # Load any overrides for this frame
-        override_params = _parse_algorithm_overrides(
-            self.static_ancillary_file_group.algorithm_parameters_overrides_json,
-            frame_id,
-        )
-        # Override the dict,
+        override_params = _parse_algorithm_overrides(overrides_json, frame_id)
+
+        # Override the dict with the new options
         param_dict = _nested_update(param_dict, override_params)
         # but then convert back to ensure all defaults remained in `param_dict`
         param_dict = AlgorithmParameters(**param_dict).model_dump()

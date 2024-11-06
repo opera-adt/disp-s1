@@ -70,10 +70,10 @@ RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 # Install whirlwind from source
 RUN pip install git+https://github.com/isce-framework/whirlwind@40defb38d2d6deca2819934788ebbc57e418e32d
+RUN pip install git+https://github.com/isce-framework/spurt@03562d957edd65da778d1db48a4223a9be633886
 # --no-deps because they are installed with conda
 RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.14.0
 RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.31
-RUN pip install --no-deps git+https://github.com/isce-framework/spurt@30562d4e883e93d11e5d3fb4fcdf953214875591
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .

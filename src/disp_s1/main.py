@@ -61,10 +61,12 @@ def run(
             water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
             output_file=water_binary_mask,
             # Set a little conservative for the general processing
-            land_buffer=2,
-            ocean_buffer=2,
+            land_buffer=1,
+            ocean_buffer=1,
         )
         cfg.mask_file = water_binary_mask
+    else:
+        water_binary_mask = None
 
     if len(cfg.correction_options.geometry_files) > 0:
         layover_binary_mask_files = create_layover_shadow_masks(
@@ -82,7 +84,7 @@ def run(
         cfg.amplitude_mean_files = combined_mean_files
     else:
         # This is the first ministack: The amplitude estimation will be weak.
-        # Drop the PS threshold to a conservate number to avoid false positives
+        # Drop the PS threshold to a conservative number to avoid false positives
         cfg.ps_options.amp_dispersion_threshold = 0.15
 
     # Run dolphin's displacement workflow
@@ -144,27 +146,17 @@ def run(
         )
 
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
-        aggressive_water_binary_mask = (
-            cfg.work_directory / "water_binary_mask_nobuffer.tif"
+        matching_water_binary_mask = (
+            cfg.work_directory / "water_binary_mask_matching.tif"
         )
-        tmp_outfile = aggressive_water_binary_mask.with_suffix(".temp.tif")
-        create_mask_from_distance(
-            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
-            # Make the file in lat/lon
-            output_file=tmp_outfile,
-            # Still don't trust the land water 100%
-            land_buffer=1,
-            # Trust the ocean buffer
-            ocean_buffer=0,
-        )
-        # Then need to warp to match the output UTM files
+        # Warp to match the output UTM files
         stitching.warp_to_match(
-            input_file=tmp_outfile,
+            input_file=water_binary_mask,
             match_file=out_paths.timeseries_paths[0],
-            output_file=aggressive_water_binary_mask,
+            output_file=matching_water_binary_mask,
         )
     else:
-        aggressive_water_binary_mask = None
+        matching_water_binary_mask = None
 
     # Get the incidence angles for /identification metadata
     if len(cfg.correction_options.geometry_files) > 0:
@@ -188,7 +180,7 @@ def run(
         los_east_file=los_east_file,
         los_north_file=los_north_file,
         near_far_incidence_angles=near_far_incidence_angles,
-        water_mask=aggressive_water_binary_mask,
+        water_mask=matching_water_binary_mask,
     )
     logger.info("Finished creating output products.")
 
@@ -265,7 +257,7 @@ def _get_near_far_incidence_angles(geometry_files: list[Path]) -> tuple[float, f
 
     sorted_bursts = sorted(burst_ids, key=get_iw_key)
 
-    near_burst = sorted_bursts[0]  # IW1 (if exists, or lowerst IW)
+    near_burst = sorted_bursts[0]  # IW1 (if exists, or lowest IW)
     far_burst = sorted_bursts[-1]  # IW3, or furthest range IW
 
     # There's only 1 static layers file per burst id

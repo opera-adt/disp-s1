@@ -240,7 +240,6 @@ def create_output_product(
 
     # Create the commended mask:
     temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
-    bad_temporal_coherence = temporal_coherence < 0.6
     # Get summary statistics on the layers for CMR filtering/searching purposes
     average_temporal_coherence = temporal_coherence.mean()
 
@@ -252,11 +251,16 @@ def create_output_product(
         is_water = np.zeros(temporal_coherence.shape, dtype=bool)
 
     conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
-    bad_conncomp = conncomps == 0
-
     similarity = io.load_gdal(similarity_filename, masked=True).mean()
+
+    # Mark pixels that are bad
+    is_zero_conncomp = conncomps == 0
+    bad_temporal_coherence = temporal_coherence < 0.6
     bad_similarity = similarity < 0.5
-    bad_pixel_mask = is_water | bad_conncomp | (bad_temporal_coherence & bad_similarity)
+    is_low_quality = bad_temporal_coherence & bad_similarity
+
+    # If a pixel has any of the reasons to be bad, recommend masking
+    bad_pixel_mask = is_water | is_zero_conncomp | is_low_quality
     # Note: An alternate way to view this:
     # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
     recommended_mask = np.logical_not(bad_pixel_mask)

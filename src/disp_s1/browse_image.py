@@ -45,13 +45,8 @@ def make_browse_image_from_arr(
     vmax: float = 0.10,
 ) -> None:
     """Create a PNG browse image for the output product from given array."""
-    # Apply mask
     arr[mask == 0] = np.nan
-
-    # Resize array
     arr = _resize_to_max_pixel_dim(arr, max_dim_allowed)
-
-    # Save as color image
     _save_to_disk_as_color(arr, output_filename, cmap, vmin, vmax)
 
 

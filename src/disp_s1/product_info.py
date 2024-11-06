@@ -139,6 +139,16 @@ class DisplacementProducts:
             dtype=np.uint8,
         )
     )
+    water_mask: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
+            name="water_mask",
+            long_name="Water Mask",
+            description="Binary mask created to ignore water during processing.",
+            fillvalue=255,
+            attrs={"units": "unitless"},
+            dtype=np.uint8,
+        )
+    )
     phase_similarity: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="phase_similarity",

@@ -259,7 +259,7 @@ def create_output_product(
     bad_pixel_mask = is_water | bad_conncomp | (bad_temporal_coherence & bad_similarity)
     # Note: An alternate way to view this:
     # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
-    recommended_mask = ~bad_pixel_mask
+    recommended_mask = np.logical_not(bad_pixel_mask)
     del temporal_coherence, conncomps, similarity
 
     filtered_disp_arr = filtering.filter_long_wavelength(
@@ -339,6 +339,7 @@ def create_output_product(
             ps_mask_filename,
             shp_count_filename,
             unwrapper_mask_filename,
+            water_mask_filename,
             similarity_filename,
         ]
 

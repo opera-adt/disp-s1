@@ -127,12 +127,18 @@ def run(
     if set(group_by_date(out_paths.conncomp_paths).keys()) != disp_date_keys:
         method = cfg.unwrap_options.unwrap_method
         if method == "snaphu":
+            row_looks, col_looks = cfg.phase_linking.half_window.to_looks()
+            nlooks = row_looks * col_looks
             out_paths.conncomp_paths = _update_snaphu_conncomps(
-                out_paths.timeseries_paths, out_paths, cfg.unwrap_options
+                timeseries_paths=out_paths.timeseries_paths,
+                stitched_cor_paths=out_paths.stitched_cor_paths,
+                unwrap_options=cfg.unwrap_options,
+                nlooks=nlooks,
             )
         elif method == "spurt":
             out_paths.conncomp_paths = _update_spurt_conncomps(
-                out_paths.conncomp_paths, out_paths.timeseries_paths
+                timeseries_paths=out_paths.timeseries_paths,
+                conncomp_paths=out_paths.conncomp_paths,
             )
         else:
             raise NotImplementedError(
@@ -479,19 +485,24 @@ def create_displacement_products(
 
 def _update_snaphu_conncomps(
     timeseries_paths: Sequence[Path],
-    out_paths: OutputPaths,
+    stitched_cor_paths: Sequence[Path],
     unwrap_options: UnwrapOptions,
+    nlooks: int,
 ) -> list[Path]:
-    """Update connected components using SNAPHU unwrapping method.
+    """Recompute connected components from SNAPHU after a timeseries inversion.
+
+    `timeseries_paths` contains the post-inversion rasters, one per secondary date.
 
     Parameters
     ----------
     timeseries_paths : list[Path]
         list of paths to the timeseries files.
-    out_paths : OutPaths
-        Object containing various output paths.
+    stitched_cor_paths : list[Path]
+        list of paths to the pseuedo-correlation rasters.
     unwrap_options : [dolphin.workflows.config.UnwrapOptions][]
         Configuration object containing unwrapping options.
+    nlooks : int
+        Effective number of looks used to make correlation.
 
     Returns
     -------
@@ -500,12 +511,12 @@ def _update_snaphu_conncomps(
 
     """
     new_paths = []
-    for unw_f, cor_f in zip(timeseries_paths, out_paths.stitched_cor_paths):
+    for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths):
         mask_file = Path(str(cor_f).replace(".cor.tif", ".mask.tif"))
         new_path = grow_conncomp_snaphu(
             unw_filename=unw_f,
             corr_filename=cor_f,
-            nlooks=50,
+            nlooks=nlooks,
             mask_filename=mask_file,
             cost=unwrap_options.snaphu_options.cost,
             scratchdir=unwrap_options._directory / "scratch2",
@@ -515,16 +526,17 @@ def _update_snaphu_conncomps(
 
 
 def _update_spurt_conncomps(
-    conncomp_paths: Sequence[Path], timeseries_paths: Sequence[Path]
+    timeseries_paths: Sequence[Path],
+    conncomp_paths: Sequence[Path],
 ) -> list[Path]:
-    """Update connected components using SPURT unwrapping method.
+    """Recompute connected components from spurt after a timeseries inversion.
 
     Parameters
     ----------
-    conncomp_paths : list[Path]
-        list of original connected component paths.
     timeseries_paths : list[Path]
         list of paths to the timeseries files.
+    conncomp_paths : list[Path]
+        list of connected component paths from the spurt unwrapping
 
     Returns
     -------

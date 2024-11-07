@@ -9,10 +9,10 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
-from dolphin import interferogram, stitching
+from dolphin import PathOrStr, interferogram, io, stitching
 from dolphin._log import log_runtime, setup_logging
-from dolphin.io import load_gdal
 from dolphin.unwrap import grow_conncomp_snaphu
+from dolphin.unwrap._utils import create_combined_mask
 from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_usage
 from dolphin.workflows.config import DisplacementWorkflow, UnwrapOptions
 from dolphin.workflows.displacement import OutputPaths
@@ -113,6 +113,34 @@ def run(
     grouped_timeseries_paths = group_by_date(out_paths.timeseries_paths)
     disp_date_keys = set(grouped_timeseries_paths.keys())
 
+    # Check ionospheric corrections
+    if out_paths.ionospheric_corrections is not None:
+        _assert_dates_match(
+            disp_date_keys, out_paths.ionospheric_corrections, "ionosphere"
+        )
+
+    combined_mask_file = cfg.work_directory / "combined_water_nodata_mask.tif"
+    if pge_runconfig.dynamic_ancillary_file_group.mask_file:
+        matching_water_binary_mask = (
+            cfg.work_directory / "water_binary_mask_matching.tif"
+        )
+        # Warp to match the output UTM files
+        stitching.warp_to_match(
+            input_file=water_binary_mask,
+            match_file=out_paths.timeseries_paths[0],
+            output_file=matching_water_binary_mask,
+        )
+        create_combined_mask(
+            mask_filename=matching_water_binary_mask,
+            image_filename=out_paths.timeseries_paths[0],
+            output_filename=combined_mask_file,
+        )
+    else:
+        matching_water_binary_mask = None
+        _create_nodata_mask(
+            filename=out_paths.timeseries_paths[0], output_filename=combined_mask_file
+        )
+
     # Check and update correlation paths
     if set(group_by_date(out_paths.stitched_cor_paths).keys()) != disp_date_keys:
         out_paths.stitched_cor_paths = (
@@ -132,6 +160,7 @@ def run(
             out_paths.conncomp_paths = _update_snaphu_conncomps(
                 timeseries_paths=out_paths.timeseries_paths,
                 stitched_cor_paths=out_paths.stitched_cor_paths,
+                mask_filename=combined_mask_file,
                 unwrap_options=cfg.unwrap_options,
                 nlooks=nlooks,
             )
@@ -144,25 +173,6 @@ def run(
             raise NotImplementedError(
                 f"Regrowing connected components not implemented for {method}"
             )
-
-    # Check ionospheric corrections
-    if out_paths.ionospheric_corrections is not None:
-        _assert_dates_match(
-            disp_date_keys, out_paths.ionospheric_corrections, "ionosphere"
-        )
-
-    if pge_runconfig.dynamic_ancillary_file_group.mask_file:
-        matching_water_binary_mask = (
-            cfg.work_directory / "water_binary_mask_matching.tif"
-        )
-        # Warp to match the output UTM files
-        stitching.warp_to_match(
-            input_file=water_binary_mask,
-            match_file=out_paths.timeseries_paths[0],
-            output_file=matching_water_binary_mask,
-        )
-    else:
-        matching_water_binary_mask = None
 
     # Get the incidence angles for /identification metadata
     if len(cfg.correction_options.geometry_files) > 0:
@@ -339,7 +349,7 @@ def process_product(
     corrections = {}
 
     if files.ionosphere is not None:
-        corrections["ionosphere"] = load_gdal(files.ionosphere)
+        corrections["ionosphere"] = io.load_gdal(files.ionosphere)
     else:
         logger.warning(
             "Missing ionospheric correction for %s. Creating empty layer.",
@@ -486,6 +496,7 @@ def create_displacement_products(
 def _update_snaphu_conncomps(
     timeseries_paths: Sequence[Path],
     stitched_cor_paths: Sequence[Path],
+    mask_filename: PathOrStr,
     unwrap_options: UnwrapOptions,
     nlooks: int,
 ) -> list[Path]:
@@ -499,6 +510,8 @@ def _update_snaphu_conncomps(
         list of paths to the timeseries files.
     stitched_cor_paths : list[Path]
         list of paths to the pseuedo-correlation rasters.
+    mask_filename : PathOrStr
+        Path to a binary mask matching shape of `timeseries_paths`.
     unwrap_options : [dolphin.workflows.config.UnwrapOptions][]
         Configuration object containing unwrapping options.
     nlooks : int
@@ -512,12 +525,11 @@ def _update_snaphu_conncomps(
     """
     new_paths = []
     for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths):
-        mask_file = Path(str(cor_f).replace(".cor.tif", ".mask.tif"))
         new_path = grow_conncomp_snaphu(
             unw_filename=unw_f,
             corr_filename=cor_f,
             nlooks=nlooks,
-            mask_filename=mask_file,
+            mask_filename=mask_filename,
             cost=unwrap_options.snaphu_options.cost,
             scratchdir=unwrap_options._directory / "scratch2",
         )
@@ -551,3 +563,12 @@ def _update_spurt_conncomps(
         )
         new_conncomp_paths.append(cc_p.rename(new_name))
     return new_conncomp_paths
+
+
+def _create_nodata_mask(filename: PathOrStr, output_filename: PathOrStr) -> None:
+    # Mark nodata as 0/False, valid as 1/True
+    mask = io.load_gdal(filename, masked=True).filled(0) != 0
+    # A valid output has to be valid in the mask, AND not be a `nodata`
+    io.write_arr(
+        like_filename=filename, arr=mask, nodata=255, output_name=output_filename
+    )

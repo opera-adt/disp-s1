@@ -530,14 +530,14 @@ def _update_spurt_conncomps(
     timeseries_paths: Sequence[Path],
     conncomp_paths: Sequence[Path],
 ) -> list[Path]:
-    """Update connected components using SPURT unwrapping method.
+    """Recompute connected components from spurt after a timeseries inversion.
 
     Parameters
     ----------
     timeseries_paths : list[Path]
         list of paths to the timeseries files.
     conncomp_paths : list[Path]
-        list of original connected component paths.
+        list of connected component paths from the spurt unwrapping
 
     Returns
     -------

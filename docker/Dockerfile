@@ -73,7 +73,7 @@ RUN pip install git+https://github.com/isce-framework/whirlwind@40defb38d2d6deca
 RUN pip install git+https://github.com/isce-framework/spurt@03562d957edd65da778d1db48a4223a9be633886
 # --no-deps because they are installed with conda
 RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.14.0
-RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.31
+RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.33.0
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .

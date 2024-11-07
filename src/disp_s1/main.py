@@ -492,7 +492,6 @@ def _update_snaphu_conncomps(
     """Recompute connected components from SNAPHU after a timeseries inversion.
 
     `timeseries_paths` contains the post-inversion rasters, one per secondary date.
-    The
 
     Parameters
     ----------

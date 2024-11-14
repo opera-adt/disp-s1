@@ -47,11 +47,11 @@ IDENTIFICATION_GROUP_NAME = "identification"
 METADATA_GROUP_NAME = "metadata"
 GLOBAL_ATTRS = {
     "Conventions": "CF-1.8",
-    "contact": "operaops@jpl.nasa.gov",
+    "contact": "opera-sds-ops@jpl.nasa.gov",
     "institution": "NASA JPL",
     "mission_name": "OPERA",
-    "reference_document": "TBD",
-    "title": "OPERA L3_DISP-S1 Product",
+    "reference_document": "JPL D–108765",
+    "title": "OPERA_L3_DISP-S1 Product",
 }
 
 # Use the "paging file space strategy"

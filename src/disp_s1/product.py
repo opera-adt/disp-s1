@@ -251,7 +251,7 @@ def create_output_product(
         is_water = np.zeros(temporal_coherence.shape, dtype=bool)
 
     conncomps = io.load_gdal(conncomp_filename, masked=True).filled(0)
-    similarity = io.load_gdal(similarity_filename, masked=True).mean()
+    similarity = io.load_gdal(similarity_filename, masked=True).filled(0)
 
     # Mark pixels that are bad
     is_zero_conncomp = conncomps == 0

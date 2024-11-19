@@ -14,7 +14,7 @@ from disp_s1.browse_image import DEFAULT_CMAP
 def plot_product(
     filename: Filename,
     downsample=3,
-    mask_on_conncomp: bool = True,
+    use_recommended_mask: bool = True,
     figsize: tuple[float, float] = (9, 6),
     disp_cmap: str = DEFAULT_CMAP,
     disp_limits: tuple[float, float] = (-0.20, 0.20),
@@ -28,8 +28,8 @@ def plot_product(
         Path to the DISP product.
     downsample : int, optional
         Downsample factor, by default 3.
-    mask_on_conncomp : bool, optional
-        Mask the data where connected component label = 0, by default True.
+    use_recommended_mask : bool, optional
+        Mask the data using the `recommended_mask` layer.
         Otherwise, Mask the data where the data value = 0/nan.
     figsize : tuple[float, float], optional
         Figure size, by default (9, 6).
@@ -49,6 +49,8 @@ def plot_product(
         Figure and axes objects.
 
     """
+    # from disp_s1.product_info import DISPLACEMENT_PRODUCTS
+    # product_infos = list(DISPLACEMENT_PRODUCTS)
     ds = rioxarray.open_rasterio(filename, masked=True).sel(band=1)
 
     dsets = [
@@ -56,33 +58,48 @@ def plot_product(
         "short_wavelength_displacement",
         "connected_component_labels",
         "temporal_coherence",
-        "interferometric_correlation",
+        "estimated_phase_quality",
+        "phase_similarity",
         "persistent_scatterer_mask",
+        "unwrapper_mask",
+        "water_mask",
     ]
     cmaps = [
         disp_cmap,
         disp_cmap,
         "tab10",
-        "viridis",
-        "plasma",
+        # Quality masks
         "plasma_r",
+        "plasma_r",
+        "plasma_r",
+        # binary masks
+        "gray_r",
+        "viridis",
+        "viridis",
     ]
 
-    vms = [disp_limits, filtered_disp_limits, (0, None), (0, 1), (0, 1), (0, 1)]
+    vms = [
+        disp_limits,
+        filtered_disp_limits,
+        (0, None),
+        (0, 1),
+        (0, 1),
+        (0, 1),
+        (0, 1),
+        (0, 1),
+        (0, 1),
+    ]
 
-    if mask_on_conncomp:
-        bad_mask = ds["connected_component_labels"][::downsample, ::downsample] == 0
-        bad_mask = bad_mask & (
-            ds["temporal_coherence"][::downsample, ::downsample] < 0.5
-        )
+    if use_recommended_mask:
+        bad_mask = ds["recommended_mask"][::downsample, ::downsample] == 0
 
     fig, axes = plt.subplots(
-        ncols=2, nrows=3, sharex=True, sharey=True, figsize=figsize
+        ncols=3, nrows=3, sharex=True, sharey=True, figsize=figsize
     )
 
-    for ax, dset_name, cmap, vm in zip(axes.ravel(), dsets, cmaps, vms):
+    for ax, dset_name, cmap, vm in zip(axes.ravel(), dsets, cmaps, vms, strict=True):
         dset = ds[dset_name][::downsample, ::downsample]
-        if not mask_on_conncomp:
+        if not use_recommended_mask:
             bad_mask = dset == 0
 
         dset.where(~bad_mask, np.nan).plot.imshow(
@@ -92,7 +109,7 @@ def plot_product(
             vmax=vm[1],
             cbar_kwargs={"label": dset.attrs["units"]},
         )
-        # ax.set_title(dset.attrs["long_name"])
+        ax.set_title(dset.attrs["long_name"])
         ax.set_aspect("equal")
 
     fig.tight_layout()

@@ -63,6 +63,7 @@ def plot_product(
         "persistent_scatterer_mask",
         "unwrapper_mask",
         "water_mask",
+        "recommended_mask",
     ]
     cmaps = [
         disp_cmap,
@@ -74,6 +75,7 @@ def plot_product(
         "plasma_r",
         # binary masks
         "gray_r",
+        "viridis",
         "viridis",
         "viridis",
     ]
@@ -88,13 +90,14 @@ def plot_product(
         (0, 1),
         (0, 1),
         (0, 1),
+        (0, 1),
     ]
 
     if use_recommended_mask:
         bad_mask = ds["recommended_mask"][::downsample, ::downsample] == 0
 
     fig, axes = plt.subplots(
-        ncols=3, nrows=3, sharex=True, sharey=True, figsize=figsize
+        ncols=5, nrows=2, sharex=True, sharey=True, figsize=figsize
     )
 
     for ax, dset_name, cmap, vm in zip(axes.ravel(), dsets, cmaps, vms, strict=True):

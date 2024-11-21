@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import multiprocessing as mp
 from collections import defaultdict
-from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
 from pathlib import Path
@@ -219,21 +218,27 @@ def run_combine(
     else:
         raise ValueError(f"Unrecognized {weight_scheme = }")
 
-    def read_and_combine(
-        readers: Sequence[io.StackReader], rows: slice, cols: slice
-    ) -> tuple[np.ndarray, slice, slice]:
-        reader_compslc, reader_compslc_dispersion, reader_mean, reader_dispersion = (
-            readers
-        )
-        compslc_mean = np.abs(reader_compslc[:, rows, cols])
+    io.write_arr(arr=None, output_name=out_dispersion, like_filename=cur_dispersion)
+    io.write_arr(arr=None, output_name=out_mean, like_filename=cur_mean)
+
+    block_manager = io.StridedBlockManager(
+        arr_shape=reader_compslc.shape[-2:], block_shape=(256, 256)
+    )
+    for out_idxs, trim_idxs, in_idxs, _, _ in block_manager.iter_blocks():
+        in_rows, in_cols = in_idxs
+        out_rows, out_cols = out_idxs
+        trim_rows, trim_cols = trim_idxs
+
+        rows, cols = in_rows, in_cols
+        compslc_mean = np.abs(reader_compslc[:, rows, cols].filled(0))
         if compslc_mean.ndim == 2:
             compslc_mean = compslc_mean[np.newaxis]
-        compslc_dispersion = reader_compslc_dispersion[:, rows, cols]
+        compslc_dispersion = reader_compslc_dispersion[:, rows, cols].filled(0)
         if compslc_dispersion.ndim == 2:
             compslc_dispersion = compslc_dispersion[np.newaxis]
 
-        mean = reader_mean[rows, cols][np.newaxis]
-        dispersion = reader_dispersion[rows, cols][np.newaxis]
+        mean = reader_mean[rows, cols][np.newaxis].filled(0)
+        dispersion = reader_dispersion[rows, cols][np.newaxis].filled(0)
 
         # Fit a line to each pixel with weighted least squares
         dispersions = np.vstack([compslc_dispersion, dispersion])
@@ -244,22 +249,20 @@ def run_combine(
             means=means,
             N=N,
         )
-        return (
-            np.stack([np.nan_to_num(new_dispersion), np.nan_to_num(new_mean)]),
-            rows,
-            cols,
+
+        trimmed_disp = np.nan_to_num(new_dispersion)[trim_rows, trim_cols]
+        trimmed_mean = np.nan_to_num(new_mean)[trim_rows, trim_cols]
+        io.write_block(
+            trimmed_disp,
+            filename=out_dispersion,
+            row_start=out_rows.start,
+            col_start=out_cols.start,
+        )
+        io.write_block(
+            trimmed_mean,
+            filename=out_dispersion,
+            row_start=out_rows.start,
+            col_start=out_cols.start,
         )
 
-    out_paths = (out_dispersion, out_mean)
-    readers = reader_compslc, reader_compslc_dispersion, reader_mean, reader_dispersion
-    writer = io.BackgroundStackWriter(out_paths, like_filename=cur_mean, debug=True)
-    io.process_blocks(
-        readers=readers,
-        writer=writer,
-        func=read_and_combine,
-        block_shape=(256, 256),
-        num_threads=1,
-    )
-
-    writer.notify_finished()
-    return out_paths
+    return (out_dispersion, out_mean)

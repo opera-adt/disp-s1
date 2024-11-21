@@ -224,10 +224,9 @@ def run_combine(
     block_manager = io.StridedBlockManager(
         arr_shape=reader_compslc.shape[-2:], block_shape=(256, 256)
     )
-    for out_idxs, trim_idxs, in_idxs, _, _ in block_manager.iter_blocks():
+    for out_idxs, _trim_idxs, in_idxs, _, _ in block_manager.iter_blocks():
         in_rows, in_cols = in_idxs
         out_rows, out_cols = out_idxs
-        trim_rows, trim_cols = trim_idxs
 
         rows, cols = in_rows, in_cols
         compslc_mean = np.abs(reader_compslc[:, rows, cols].filled(0))
@@ -250,17 +249,15 @@ def run_combine(
             N=N,
         )
 
-        trimmed_disp = np.nan_to_num(new_dispersion)[trim_rows, trim_cols]
-        trimmed_mean = np.nan_to_num(new_mean)[trim_rows, trim_cols]
         io.write_block(
-            trimmed_disp,
+            np.nan_to_num(new_dispersion),
             filename=out_dispersion,
             row_start=out_rows.start,
             col_start=out_cols.start,
         )
         io.write_block(
-            trimmed_mean,
-            filename=out_dispersion,
+            np.nan_to_num(new_mean),
+            filename=out_mean,
             row_start=out_rows.start,
             col_start=out_cols.start,
         )

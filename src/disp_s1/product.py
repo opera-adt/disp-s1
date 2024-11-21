@@ -239,7 +239,7 @@ def create_output_product(
     )
 
     # Create the commended mask:
-    temporal_coherence = io.load_gdal(temp_coh_filename, masked=True).mean()
+    temporal_coherence = io.load_gdal(temp_coh_filename, masked=True)
     # Get summary statistics on the layers for CMR filtering/searching purposes
     average_temporal_coherence = temporal_coherence.mean()
 

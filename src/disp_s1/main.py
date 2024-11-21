@@ -154,7 +154,7 @@ def run(
     assert out_paths.conncomp_paths is not None
     if set(group_by_date(out_paths.conncomp_paths).keys()) != disp_date_keys:
         method = cfg.unwrap_options.unwrap_method
-        if method == "snaphu":
+        if method in ("snaphu", "phass", "whirlwind"):
             row_looks, col_looks = cfg.phase_linking.half_window.to_looks()
             nlooks = row_looks * col_looks
             out_paths.conncomp_paths = _update_snaphu_conncomps(

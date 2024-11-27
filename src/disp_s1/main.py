@@ -402,7 +402,7 @@ def create_displacement_products(
     los_north_file: Path | None = None,
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
     water_mask: Path | None = None,
-    max_workers: int = 3,
+    max_workers: int = 4,
 ) -> None:
     """Run parallel processing for all interferograms.
 

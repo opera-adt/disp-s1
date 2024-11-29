@@ -239,7 +239,6 @@ def run_combine(
         mean = reader_mean[rows, cols][np.newaxis].filled(0)
         dispersion = reader_dispersion[rows, cols][np.newaxis].filled(0)
 
-        # Fit a line to each pixel with weighted least squares
         dispersions = np.vstack([compslc_dispersion, dispersion])
 
         means = np.vstack([compslc_mean, mean])

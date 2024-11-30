@@ -15,7 +15,7 @@ def plot_product(
     filename: Filename,
     downsample=3,
     use_recommended_mask: bool = True,
-    figsize: tuple[float, float] = (9, 6),
+    figsize: tuple[float, float] = (10, 10),
     disp_cmap: str = DEFAULT_CMAP,
     disp_limits: tuple[float, float] = (-0.20, 0.20),
     filtered_disp_limits: tuple[float, float] = (-0.05, 0.05),
@@ -97,10 +97,12 @@ def plot_product(
         bad_mask = ds["recommended_mask"][::downsample, ::downsample] == 0
 
     fig, axes = plt.subplots(
-        ncols=5, nrows=2, sharex=True, sharey=True, figsize=figsize
+        ncols=4, nrows=3, sharex=True, sharey=True, figsize=figsize
     )
 
-    for ax, dset_name, cmap, vm in zip(axes.ravel(), dsets, cmaps, vms, strict=True):
+    for ax, dset_name, cmap, vm in zip(
+        axes.ravel()[: len(dsets)], dsets, cmaps, vms, strict=True
+    ):
         dset = ds[dset_name][::downsample, ::downsample]
         if not use_recommended_mask:
             bad_mask = dset == 0

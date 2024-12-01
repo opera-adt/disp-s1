@@ -123,11 +123,21 @@ def run(
     combined_mask_file = cfg.work_directory / "combined_water_nodata_mask.tif"
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
         matching_water_binary_mask = (
-            cfg.work_directory / "water_binary_mask_matching.tif"
+            cfg.work_directory / "water_binary_mask_nobuffer.tif"
         )
+        tmp_outfile = matching_water_binary_mask.with_suffix(".temp.tif")
+        create_mask_from_distance(
+            water_distance_file=pge_runconfig.dynamic_ancillary_file_group.mask_file,
+            # Make the file in lat/lon
+            output_file=tmp_outfile,
+            # Give no buffer around the water
+            land_buffer=0,
+            ocean_buffer=0,
+        )
+        # Then need to warp to match the output UTM files
         # Warp to match the output UTM files
         stitching.warp_to_match(
-            input_file=water_binary_mask,
+            input_file=tmp_outfile,
             match_file=out_paths.timeseries_paths[0],
             output_file=matching_water_binary_mask,
         )

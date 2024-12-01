@@ -42,10 +42,11 @@ def run(
     ----------
     cfg : DisplacementWorkflow
         `DisplacementWorkflow` object for controlling the workflow.
-    debug : bool, optional
-        Enable debug logging, by default False.
-    pge_runconfig : RunConfig, optional
+    pge_runconfig : RunConfig
         PGE-specific metadata for the output product.
+    debug : bool, optional
+        Enable debug logging.
+        Default is False.
 
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
@@ -90,7 +91,33 @@ def run(
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
+    create_products(out_paths=out_paths, cfg=cfg, pge_runconfig=pge_runconfig)
 
+    logger.info(f"Product type: {pge_runconfig.primary_executable.product_type}")
+    logger.info(f"Product version: {pge_runconfig.product_path_group.product_version}")
+    max_mem = get_max_memory_usage(units="GB")
+    logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
+    logger.info(f"Config file dolphin version: {cfg._dolphin_version}")
+    logger.info(f"Current running disp_s1 version: {__version__}")
+
+
+def create_products(
+    out_paths: OutputPaths,
+    cfg: DisplacementWorkflow,
+    pge_runconfig: RunConfig,
+):
+    """Create NetCDF products from the outputs of dolphin's displacement workflow.
+
+    Parameters
+    ----------
+    out_paths: [dolphin.workflows.displacement.OutputPaths][]
+        Output files of the `dolphin.workflows.DisplacementWorkflow`.
+    cfg : DisplacementWorkflow
+        `DisplacementWorkflow` object for controlling the workflow.
+    pge_runconfig : disp_s1.pge_config.RunConfig
+        PGE-specific metadata for the output product.
+
+    """
     # Read the reference point
     assert out_paths.timeseries_paths is not None
     ref_point = read_reference_point(out_paths.timeseries_paths[0].parent)
@@ -224,13 +251,6 @@ def run(
             output_dir=output_dir,
             cslc_file_list=cfg.cslc_file_list,
         )
-
-    logger.info(f"Product type: {pge_runconfig.primary_executable.product_type}")
-    logger.info(f"Product version: {pge_runconfig.product_path_group.product_version}")
-    max_mem = get_max_memory_usage(units="GB")
-    logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
-    logger.info(f"Config file dolphin version: {cfg._dolphin_version}")
-    logger.info(f"Current running disp_s1 version: {__version__}")
 
 
 def _assert_dates_match(

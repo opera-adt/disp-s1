@@ -172,7 +172,7 @@ class DisplacementProducts:
     @property
     def names(self) -> list[str]:
         """Return all displacement dataset names as a list."""
-        return list(self.__dict__.keys())
+        return [v.name for v in self.__dict__.values()]
 
 
 # Create a single instance to be used throughout the application

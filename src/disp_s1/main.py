@@ -23,7 +23,7 @@ from opera_utils.geometry import get_incidence_angles
 from disp_s1 import __version__, product
 from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
 from disp_s1._ps import precompute_ps
-from disp_s1.pge_runconfig import RunConfig
+from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
 
@@ -49,6 +49,7 @@ def run(
 
     """
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
+    setup_logging(logger_name="dolphin", filename=cfg.log_file)
     cfg.work_directory.mkdir(exist_ok=True, parents=True)
 
     # Add a check to fail if passed duplicate dates area passed
@@ -184,6 +185,9 @@ def run(
         near_far_incidence_angles = 30.0, 45.0
 
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
+    algorithm_parameters = AlgorithmParameters.from_yaml(
+        pge_runconfig.dynamic_ancillary_file_group.algorithm_parameters_file
+    )
     # Group all the CSLCs by date to pick out ref/secondaries
     date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
     create_displacement_products(
@@ -197,6 +201,7 @@ def run(
         los_north_file=los_north_file,
         near_far_incidence_angles=near_far_incidence_angles,
         water_mask=matching_water_binary_mask,
+        max_workers=algorithm_parameters.num_parallel_products,
     )
     logger.info("Finished creating output products.")
 
@@ -346,6 +351,11 @@ def process_product(
         Path to the processed output.
 
     """
+    output_name = files.unwrapped.name.replace(full_suffix(files.unwrapped), ".nc")
+    # Extra logging for product creation
+    product_filename = files.unwrapped.parent / f"log_{output_name}.log"
+    setup_logging(logger_name="disp_s1", debug=True, filename=product_filename)
+
     corrections = {}
 
     if files.ionosphere is not None:
@@ -356,7 +366,6 @@ def process_product(
             files.unwrapped,
         )
 
-    output_name = files.unwrapped.name.replace(full_suffix(files.unwrapped), ".nc")
     output_path = out_dir / output_name
     ref_date, secondary_date = get_dates(output_name)[:2]
     # The reference one could be compressed, or real
@@ -439,8 +448,6 @@ def create_displacement_products(
         Default is 3.
 
     """
-    # Extra logging for product creation
-    setup_logging(logger_name="disp_s1", debug=True)
     iono_files = out_paths.ionospheric_corrections or [None] * len(
         out_paths.timeseries_paths
     )

@@ -84,7 +84,7 @@ unwrap_options:
   unwrap_method: snaphu
   # Number of interferograms to unwrap in parallel.
   #   Type: integer.
-  n_parallel_jobs: 4
+  n_parallel_jobs: 2
   # Set wrapped phase/correlation to 0 where mask is 0 before unwrapping. .
   #   Type: boolean.
   zero_where_masked: false
@@ -116,7 +116,7 @@ unwrap_options:
       - 400
     # Number of tiles to unwrap in parallel for each interferogram.
     #   Type: integer.
-    n_parallel_tiles: 2
+    n_parallel_tiles: 5
     # Initialization method for SNAPHU.
     #   Type: string.
     #   Options: ['mcf', 'mst'].
@@ -321,3 +321,6 @@ spatial_wavelength_cutoff: 25000.0
 browse_image_vmin_vmax:
   - -0.1
   - 0.1
+# Number of NetCDF products to create in parallel.
+#   Type: number.
+num_parallel_products: 3

@@ -238,6 +238,7 @@ def create_products(
         los_north_file=los_north_file,
         near_far_incidence_angles=near_far_incidence_angles,
         water_mask=matching_water_binary_mask,
+        max_workers=3,
     )
     logger.info("Finished creating output products.")
 
@@ -440,7 +441,7 @@ def create_displacement_products(
     los_north_file: Path | None = None,
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
     water_mask: Path | None = None,
-    max_workers: int = 4,
+    max_workers: int = 3,
 ) -> None:
     """Run parallel processing for all interferograms.
 

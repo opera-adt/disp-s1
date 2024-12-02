@@ -334,7 +334,6 @@ class ProductFiles(NamedTuple):
     shp_counts: Path
     ps_mask: Path
     ionosphere: Path | None
-    unwrapper_mask: Path | None
     similarity: Path
     water_mask: Path | None
 
@@ -413,7 +412,6 @@ def process_product(
         ifg_corr_filename=files.correlation,
         ps_mask_filename=files.ps_mask,
         shp_count_filename=files.shp_counts,
-        unwrapper_mask_filename=files.unwrapper_mask,
         similarity_filename=files.similarity,
         water_mask_filename=files.water_mask,
         los_east_file=los_east_file,
@@ -481,12 +479,7 @@ def create_displacement_products(
     iono_files = out_paths.ionospheric_corrections or [None] * len(
         out_paths.timeseries_paths
     )
-    unwrapper_mask_files = [
-        # TODO: probably relying too much on dolphin's internals to be safe
-        # we should figure out how to save/use the "combined_mask" from dolphin
-        Path(str(p).replace(".cor.tif", ".mask.tif"))
-        for p in out_paths.stitched_cor_paths
-    ]
+
     files = [
         ProductFiles(
             unwrapped=unw,
@@ -496,16 +489,14 @@ def create_displacement_products(
             ps_mask=out_paths.stitched_ps_file,
             shp_counts=out_paths.stitched_shp_count_file,
             ionosphere=iono,
-            unwrapper_mask=mask_f,
             similarity=out_paths.stitched_similarity_file,
             water_mask=water_mask,
         )
-        for unw, cc, cor, iono, mask_f in zip(
+        for unw, cc, cor, iono in zip(
             out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
             iono_files,
-            unwrapper_mask_files,
         )
     ]
 

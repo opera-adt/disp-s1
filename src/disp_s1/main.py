@@ -222,7 +222,7 @@ def create_products(
         near_far_incidence_angles = 30.0, 45.0
 
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
-    algorithm_parameters = AlgorithmParameters.from_yaml(
+    AlgorithmParameters.from_yaml(
         pge_runconfig.dynamic_ancillary_file_group.algorithm_parameters_file
     )
     # Group all the CSLCs by date to pick out ref/secondaries
@@ -238,7 +238,6 @@ def create_products(
         los_north_file=los_north_file,
         near_far_incidence_angles=near_far_incidence_angles,
         water_mask=matching_water_binary_mask,
-        max_workers=algorithm_parameters.num_parallel_products,
     )
     logger.info("Finished creating output products.")
 

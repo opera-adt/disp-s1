@@ -23,7 +23,7 @@ from opera_utils.geometry import get_incidence_angles
 from disp_s1 import __version__, product
 from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
 from disp_s1._ps import precompute_ps
-from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig
+from disp_s1.pge_runconfig import RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
 
@@ -222,9 +222,6 @@ def create_products(
         near_far_incidence_angles = 30.0, 45.0
 
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
-    AlgorithmParameters.from_yaml(
-        pge_runconfig.dynamic_ancillary_file_group.algorithm_parameters_file
-    )
     # Group all the CSLCs by date to pick out ref/secondaries
     date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
     create_displacement_products(

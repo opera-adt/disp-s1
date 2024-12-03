@@ -129,16 +129,6 @@ class DisplacementProducts:
             dtype=np.int16,
         )
     )
-    unwrapper_mask: ProductInfo = field(
-        default_factory=lambda: ProductInfo(
-            name="unwrapper_mask",
-            long_name="Unwrapper Mask",
-            description="Mask used during phase unwrapping to ignore input pixels",
-            fillvalue=255,
-            attrs={"units": "unitless"},
-            dtype=np.uint8,
-        )
-    )
     water_mask: ProductInfo = field(
         default_factory=lambda: ProductInfo(
             name="water_mask",

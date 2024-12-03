@@ -84,7 +84,6 @@ def create_output_product(
     ifg_corr_filename: Filename,
     ps_mask_filename: Filename,
     shp_count_filename: Filename,
-    unwrapper_mask_filename: Filename | None,
     similarity_filename: Filename,
     water_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
@@ -115,8 +114,6 @@ def create_output_product(
         The path to the input persistent scatterer mask image.
     shp_count_filename : Filename
         The path to statistically homogeneous pixels (SHP) counts.
-    unwrapper_mask_filename : Filename, optional
-        The path to the boolean mask used during unwrapping to ignore pixels.
     similarity_filename : Filename
         The path to the cosine similarity image.
     water_mask_filename : Filename, optional
@@ -342,7 +339,6 @@ def create_output_product(
             ifg_corr_filename,
             ps_mask_filename,
             shp_count_filename,
-            unwrapper_mask_filename,
             water_mask_filename,
             similarity_filename,
         ]

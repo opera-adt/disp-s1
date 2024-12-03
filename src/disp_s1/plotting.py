@@ -59,9 +59,9 @@ def plot_product(
         "connected_component_labels",
         "temporal_coherence",
         "estimated_phase_quality",
+        "shp_counts",
         "phase_similarity",
         "persistent_scatterer_mask",
-        "unwrapper_mask",
         "water_mask",
         "recommended_mask",
     ]
@@ -72,10 +72,10 @@ def plot_product(
         # Quality masks
         "plasma_r",
         "plasma_r",
+        "viridis",
         "plasma_r",
         # binary masks
         "gray_r",
-        "viridis",
         "viridis",
         "viridis",
     ]

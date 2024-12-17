@@ -688,6 +688,24 @@ def _create_identification_group(
         # CEOS: Section 1.6.4 source acquisition parameters
         _create_dataset(
             group=identification_group,
+            name="acquisition_mode",
+            dimensions=(),
+            data="IW",
+            fillvalue=None,
+            description="Radar acquisition mode for input products",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="radar_center_frequency",
+            dimensions=(),
+            data=5405000454.33435,
+            fillvalue=None,
+            description="Radar center frequency of input products",
+            attrs={"units": "Hertz"},
+        )
+        _create_dataset(
+            group=identification_group,
             name="source_data_polarization",
             dimensions=(),
             data="VV",

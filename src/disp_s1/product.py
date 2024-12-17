@@ -665,6 +665,17 @@ def _create_identification_group(
             description="Mean value of valid pixels within temporal_coherence layer.",
             attrs={"units": "unitless"},
         )
+        # CEOS: Section 1.3
+        _create_dataset(
+            group=identification_group,
+            name="ceos_analysis_ready_data_product_type",
+            dimensions=(),
+            data="InSAR",
+            fillvalue=None,
+            description="CEOS Analysis Ready Data (CARD) product type name",
+            attrs={"units": "unitless"},
+        )
+        # CEOS: Section 1.4
         _create_dataset(
             group=identification_group,
             name="ceos_analysis_ready_data_document_identifier",
@@ -674,10 +685,32 @@ def _create_identification_group(
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},
         )
+        # CEOS: Section 1.6.4 source acquisition parameters
+        _create_dataset(
+            group=identification_group,
+            name="source_data_polarization",
+            dimensions=(),
+            data="VV",
+            fillvalue=None,
+            description="Radar polarization of input products",
+            attrs={"units": "unitless"},
+        )
         # CEOS: Section 1.6.7 source data attributes
         _create_dataset(
             group=identification_group,
             name="source_data_access",
+            dimensions=(),
+            data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=CSLC",
+            fillvalue=None,
+            description=(
+                "The metadata identifies the location from where the source data can be"
+                " retrieved, expressed as a URL or DOI."
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_file_list",
             dimensions=(),
             data=",".join(
                 p.stem for p in pge_runconfig.input_file_group.cslc_file_list
@@ -1152,6 +1185,7 @@ def copy_cslc_metadata_to_compressed(
         "/metadata/orbit",  #          Group
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/metadata/processing_information/input_burst_metadata/platform_id",
+        "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
@@ -1198,6 +1232,8 @@ def copy_cslc_metadata_to_displacement(
         "/identification/orbit_pass_direction",
         "/identification/absolute_orbit_number",
         "/metadata/processing_information/input_burst_metadata/platform_id",
+        "/metadata/processing_information/input_burst_metadata/wavelength",
+        "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

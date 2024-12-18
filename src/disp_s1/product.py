@@ -751,25 +751,34 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
-            name="source_data_range_resolution",
+            name="source_data_range_resolutions",
             dimensions=(),
             data=[2.7, 3.1, 3.5],
             fillvalue=None,
             description=(
-                "List of [IW1, IW2, IW3] range resolutions from source Sentinel-1 SLCs"
+                "List of [IW1, IW2, IW3] range resolutions from source L1 Sentinel-1"
+                " SLCs"
             ),
             attrs={"units": "meters"},
         )
         _create_dataset(
             group=identification_group,
-            name="source_data_azimuth_spacing",
+            name="source_data_azimuth_resolutions",
             dimensions=(),
             data=[22.5, 22.7, 22.6],
             fillvalue=None,
             description=(
-                "List of [IW1, IW2, IW3] azimuth resolutions from source Sentinel-1"
-                " SLCs"
+                "List of [IW1, IW2, IW3] azimuth resolutions from L1 Sentinel-1 SLCs"
             ),
+            attrs={"units": "meters"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_x_spacing",
+            dimensions=(),
+            data=5,
+            fillvalue=None,
+            description="Pixel spacing of source geocoded SLC data in the x-direction.",
             attrs={"units": "meters"},
         )
         _create_dataset(

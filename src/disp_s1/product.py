@@ -716,6 +716,15 @@ def _create_identification_group(
         # CEOS: Section 1.6.7 source data attributes
         _create_dataset(
             group=identification_group,
+            name="source_data_original_institution",
+            dimensions=(),
+            data="European Space Agency",
+            fillvalue=None,
+            description="Original processing institution of Sentinel-1 SLC data",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
             name="source_data_access",
             dimensions=(),
             data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=CSLC",
@@ -742,11 +751,25 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
-            name="source_data_x_spacing",
+            name="source_data_range_resolution",
             dimensions=(),
-            data=5,
+            data=[2.7, 3.1, 3.5],
             fillvalue=None,
-            description="Pixel spacing of source geocoded SLC data in the x-direction.",
+            description=(
+                "List of [IW1, IW2, IW3] range resolutions from source Sentinel-1 SLCs"
+            ),
+            attrs={"units": "meters"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_azimuth_spacing",
+            dimensions=(),
+            data=[22.5, 22.7, 22.6],
+            fillvalue=None,
+            description=(
+                "List of [IW1, IW2, IW3] azimuth resolutions from source Sentinel-1"
+                " SLCs"
+            ),
             attrs={"units": "meters"},
         )
         _create_dataset(
@@ -757,6 +780,18 @@ def _create_identification_group(
             fillvalue=None,
             description="Pixel spacing of source geocoded SLC data in the y-direction.",
             attrs={"units": "meters"},
+        )
+        # Source for the max. NESZ:
+        # (https://sentinels.copernicus.eu/web/sentinel/user-guides/
+        # 1.6.9
+        _create_dataset(
+            group=identification_group,
+            name="source_data_max_noise_equivalent_sigma_zero",
+            dimensions=(),
+            data=-22.0,
+            fillvalue=None,
+            description="Maximum Noise equivalent sigma0 in dB",
+            attrs={"units": "dB"},
         )
         _create_dataset(
             group=identification_group,
@@ -1204,6 +1239,10 @@ def copy_cslc_metadata_to_compressed(
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/metadata/processing_information/input_burst_metadata/platform_id",
         "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
+        "/metadata/processing_information/input_burst_metadata/ipf_version",
+        "/metadata/processing_information/algorithms/COMPASS_version",
+        "/metadata/processing_information/algorithms/ISCE3_version",
+        "/metadata/processing_information/algorithms/s1_reader_version",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
@@ -1252,6 +1291,9 @@ def copy_cslc_metadata_to_displacement(
         "/metadata/processing_information/input_burst_metadata/platform_id",
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
+        "/metadata/processing_information/algorithms/COMPASS_version",
+        "/metadata/processing_information/algorithms/ISCE3_version",
+        "/metadata/processing_information/algorithms/s1_reader_version",
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

@@ -670,7 +670,7 @@ def _create_identification_group(
             group=identification_group,
             name="ceos_analysis_ready_data_product_type",
             dimensions=(),
-            data="Displacement",
+            data="InSAR",
             fillvalue=None,
             description="CEOS Analysis Ready Data (CARD) product type name",
             attrs={"units": "unitless"},

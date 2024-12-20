@@ -275,22 +275,15 @@ class RunConfig(YamlModel):
         geometry_files = self.dynamic_ancillary_file_group.geometry_files
         ionosphere_files = self.dynamic_ancillary_file_group.ionosphere_files
         dem_file = self.dynamic_ancillary_file_group.dem_file
+        frame_id = self.input_file_group.frame_id
 
         # Load the algorithm parameters from the file
         algorithm_parameters = AlgorithmParameters.from_yaml(
-            self.dynamic_ancillary_file_group.algorithm_parameters_file
+            self.dynamic_ancillary_file_group.algorithm_parameters_file,
         )
-        param_dict = algorithm_parameters.model_dump()
-        overrides_json = param_dict.pop("algorithm_parameters_overrides_json")
-
-        frame_id = self.input_file_group.frame_id
-        # Load any overrides for this frame
-        override_params = _parse_algorithm_overrides(overrides_json, frame_id)
-
-        # Override the dict with the new options
-        param_dict = _nested_update(param_dict, override_params)
-        # but then convert back to ensure all defaults remained in `param_dict`
-        param_dict = AlgorithmParameters(**param_dict).model_dump()
+        new_parameters = _override_parameters(algorithm_parameters, frame_id=frame_id)
+        # regenerate to ensure all defaults remained in updated version
+        param_dict = AlgorithmParameters(**new_parameters.model_dump()).model_dump()
 
         # Convert the frame_id into an output bounding box
         frame_to_burst_file = self.static_ancillary_file_group.frame_to_burst_json
@@ -307,6 +300,7 @@ class RunConfig(YamlModel):
         if mismatched_bursts:
             raise ValueError("The CSLC data and frame id do not match")
 
+        # Setup the OPERA-specific options to adjust from dolphin's defaults
         input_options = {"subdataset": param_dict.pop("subdataset")}
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
@@ -410,6 +404,21 @@ class RunConfig(YamlModel):
             worker_settings=workflow.worker_settings,
             log_file=workflow.log_file,
         )
+
+
+def _override_parameters(
+    algorithm_parameters: AlgorithmParameters, frame_id: int
+) -> AlgorithmParameters:
+    param_dict = algorithm_parameters.model_dump()
+    # Get the "override" file for this set of parameters
+    overrides_json = param_dict.pop("algorithm_parameters_overrides_json")
+
+    # Load any overrides for this frame
+    override_params = _parse_algorithm_overrides(overrides_json, frame_id)
+
+    # Override the dict with the new options
+    param_dict = _nested_update(param_dict, override_params)
+    return AlgorithmParameters(**param_dict)
 
 
 def _get_first_after_selected(

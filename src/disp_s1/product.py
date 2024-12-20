@@ -395,10 +395,12 @@ def create_output_product(
         reference_point=reference_point,
     )
 
+    orbit_type = _get_orbit_type(reference_cslc_files[0])
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
         radar_wavelength=radar_wavelength,
+        orbit_type=orbit_type,
         reference_start_time=reference_start_time,
         reference_end_time=reference_end_time,
         secondary_start_time=secondary_start_time,
@@ -525,6 +527,7 @@ def _create_identification_group(
     output_name: Filename,
     pge_runconfig: RunConfig,
     radar_wavelength: float,
+    orbit_type: str,
     reference_start_time: datetime.datetime,
     reference_end_time: datetime.datetime,
     secondary_start_time: datetime.datetime,
@@ -712,7 +715,7 @@ def _create_identification_group(
         # CEOS: Section 1.5
         _create_dataset(
             group=identification_group,
-            name="ceos_source_data_satellite_names",
+            name="source_data_satellite_names",
             dimensions=(),
             data=",".join(input_sensors),
             fillvalue=None,
@@ -722,7 +725,7 @@ def _create_identification_group(
         starting_date_str = input_dts[0].isoformat()
         _create_dataset(
             group=identification_group,
-            name="ceos_source_data_earliest_acquisition",
+            name="source_data_earliest_acquisition",
             dimensions=(),
             data=starting_date_str,
             fillvalue=None,
@@ -732,7 +735,7 @@ def _create_identification_group(
         last_date_str = input_dts[-1].isoformat()
         _create_dataset(
             group=identification_group,
-            name="ceos_source_data_latest_acquisition",
+            name="source_data_latest_acquisition",
             dimensions=(),
             data=last_date_str,
             fillvalue=None,
@@ -746,6 +749,17 @@ def _create_identification_group(
             data=len(pge_runconfig.input_file_group.cslc_file_list),
             fillvalue=None,
             description="Number of input data granule used during processing.",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_orbit_type",
+            dimensions=(),
+            data=orbit_type,
+            fillvalue=None,
+            description=(
+                "Type of orbit (precise, restituted) used during input data processing"
+            ),
             attrs={"units": "unitless"},
         )
 
@@ -991,6 +1005,16 @@ def _create_metadata_group(
 def _get_orbit_direction(cslc_filename: Filename) -> Literal["ascending", "descending"]:
     with h5py.File(cslc_filename) as hf:
         out = hf["/identification/orbit_pass_direction"][()]
+        if isinstance(out, bytes):
+            out = out.decode("utf-8")
+    return out
+
+
+def _get_orbit_type(
+    cslc_filename: Filename,
+) -> Literal["precise orbit file", "restituted orbit file"]:
+    with h5py.File(cslc_filename) as hf:
+        out = hf["/quality_assurance/orbit_information/orbit_type"][()]
         if isinstance(out, bytes):
             out = out.decode("utf-8")
     return out

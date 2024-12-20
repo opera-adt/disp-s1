@@ -957,14 +957,16 @@ def _create_identification_group(
             ),
             attrs={"units": "meters"},
         )
-        # CEOS 1.7.10
         _create_dataset(
             group=identification_group,
-            name="product_pixel_coordinate_convention",
+            name="product_data_access",
             dimensions=(),
-            data="center",
+            data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1",
             fillvalue=None,
-            description="x/y coordinate convention referring to pixel center or corner",
+            description=(
+                "The metadata identifies the location from where the source data can be"
+                " retrieved, expressed as a URL or DOI."
+            ),
             attrs={"units": "unitless"},
         )
 
@@ -1032,6 +1034,36 @@ def _create_metadata_group(
             description=(
                 "The configuration parameters used by `dolphin` during the processing."
             ),
+        )
+        # CEOS 1.7.10
+        _create_dataset(
+            group=metadata_group,
+            name="product_pixel_coordinate_convention",
+            dimensions=(),
+            data="center",
+            fillvalue=None,
+            description="x/y coordinate convention referring to pixel center or corner",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="product_persistent_scatterer_selection_criteria",
+            dimensions=(),
+            data="Amplitude Dispersion",
+            fillvalue=None,
+            description=("Name of persistent scatterer selection criteria"),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="product_persistent_scatterer_selection_criteria_doi",
+            dimensions=(),
+            data="https://doi.org/10.1109/36.898661",
+            fillvalue=None,
+            description=(
+                "DOI of reference describing persistent scatterer selection criteria"
+            ),
+            attrs={"units": "unitless"},
         )
 
 

@@ -753,7 +753,7 @@ def _create_identification_group(
             group=identification_group,
             name="source_data_range_resolutions",
             dimensions=(),
-            data=[2.7, 3.1, 3.5],
+            data="[2.7, 3.1, 3.5]",
             fillvalue=None,
             description=(
                 "List of [IW1, IW2, IW3] range resolutions from source L1 Sentinel-1"
@@ -765,7 +765,7 @@ def _create_identification_group(
             group=identification_group,
             name="source_data_azimuth_resolutions",
             dimensions=(),
-            data=[22.5, 22.7, 22.6],
+            data="[22.5, 22.7, 22.6]",
             fillvalue=None,
             description=(
                 "List of [IW1, IW2, IW3] azimuth resolutions from L1 Sentinel-1 SLCs"

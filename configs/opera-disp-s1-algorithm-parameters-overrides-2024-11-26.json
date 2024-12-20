@@ -3,7 +3,7 @@
     "unwrap_options": {
       "unwrap_method": "phass",
       "run_interpolation": false,
-      "n_parallel_jobs": 2,
+      "n_parallel_jobs": 2
     }
   },
   "23210": {

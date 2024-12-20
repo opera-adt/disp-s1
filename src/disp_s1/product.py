@@ -542,11 +542,19 @@ def _create_identification_group(
         identification_group = f.create_group(IDENTIFICATION_GROUP_NAME)
         _create_dataset(
             group=identification_group,
+            name="processing_facility",
+            dimensions=(),
+            data="NASA Jet Propulsion Laboratory on AWS",
+            fillvalue=None,
+            description="Product processing facility",
+        )
+        _create_dataset(
+            group=identification_group,
             name="frame_id",
             dimensions=(),
             data=pge_runconfig.input_file_group.frame_id,
             fillvalue=None,
-            description="ID number of the processed frame.",
+            description="ID number of the processed frame",
         )
         _create_dataset(
             group=identification_group,
@@ -554,7 +562,7 @@ def _create_identification_group(
             dimensions=(),
             data=pge_runconfig.product_path_group.product_version,
             fillvalue=None,
-            description="Version of the product.",
+            description="Version of the product",
         )
         _create_dataset(
             group=identification_group,
@@ -705,6 +713,11 @@ def _create_identification_group(
         input_dts = sorted(
             [get_dates(f)[0] for f in pge_runconfig.input_file_group.cslc_file_list]
         )
+        processing_dts = sorted(
+            get_dates(f)[1]
+            for f in pge_runconfig.input_file_group.cslc_file_list
+            if "compressed" not in str(f).lower()
+        )
         parsed_files = [
             parse_filename(f)
             for f in pge_runconfig.input_file_group.cslc_file_list
@@ -740,6 +753,26 @@ def _create_identification_group(
             data=last_date_str,
             fillvalue=None,
             description="Datetime of latest input granule used during processing",
+            attrs={"units": "unitless"},
+        )
+        early_processing_date_str = processing_dts[0].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="source_data_earliest_processing_datetime",
+            dimensions=(),
+            data=early_processing_date_str,
+            fillvalue=None,
+            description="Earliest processing datetime of input granules",
+            attrs={"units": "unitless"},
+        )
+        last_processing_date_str = processing_dts[-1].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="source_data_latest_processing_datetime",
+            dimensions=(),
+            data=last_processing_date_str,
+            fillvalue=None,
+            description="Latest processing datetime of input granules",
             attrs={"units": "unitless"},
         )
         _create_dataset(

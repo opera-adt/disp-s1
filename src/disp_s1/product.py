@@ -680,7 +680,7 @@ def _create_identification_group(
             group=identification_group,
             name="ceos_analysis_ready_data_document_identifier",
             dimensions=(),
-            data="https://ceos.org/ard/files/PFS/NRB/v5.5/CARD4L-PFS_NRB_v5.5.pdf",
+            data="https://github.com/ceos-org/",
             fillvalue=None,
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},

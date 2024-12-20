@@ -915,6 +915,17 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
+            name="source_data_dem_name",
+            dimensions=(),
+            data="Copernicus GLO-30",
+            fillvalue=None,
+            description=(
+                "Name of Digital Elevation Model used during input data processing."
+            ),
+            attrs={"units": "dB"},
+        )
+        _create_dataset(
+            group=identification_group,
             name="near_range_incidence_angle",
             dimensions=(),
             data=near_far_incidence_angles[0],
@@ -961,7 +972,9 @@ def _create_identification_group(
             group=identification_group,
             name="product_data_access",
             dimensions=(),
-            data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1",
+            data=(
+                "https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1"
+            ),
             fillvalue=None,
             description=(
                 "The metadata identifies the location from where the source data can be"
@@ -1051,7 +1064,7 @@ def _create_metadata_group(
             dimensions=(),
             data="Amplitude Dispersion",
             fillvalue=None,
-            description=("Name of persistent scatterer selection criteria"),
+            description="Name of persistent scatterer selection criteria",
             attrs={"units": "unitless"},
         )
         _create_dataset(
@@ -1062,6 +1075,46 @@ def _create_metadata_group(
             fillvalue=None,
             description=(
                 "DOI of reference describing persistent scatterer selection criteria"
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="phase_unwrapping_method",
+            dimensions=(),
+            data=str(dolphin_config.unwrap_options.unwrap_method),
+            fillvalue=None,
+            description="Name of phase unwrapping method",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="atmospheric_phase_correction",
+            dimensions=(),
+            data="None",
+            fillvalue=None,
+            description="Method used to correct for atmosphere phase noise.",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ionospheric_phase_correction",
+            dimensions=(),
+            data="None",
+            fillvalue=None,
+            description="Method used to correct for ionospheric phase noise.",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_noise_removal",
+            dimensions=(),
+            data="No",
+            fillvalue=None,
+            description=(
+                "Flag if noise removal* has been applied (Y/N). Metadata should include"
+                " the noise removal algorithm and reference to the algorithm as URL or"
+                " DOI."
             ),
             attrs={"units": "unitless"},
         )

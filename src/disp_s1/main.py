@@ -518,12 +518,26 @@ def create_displacement_products(
         )
 
 
+def _regrow(args: tuple[Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
+    unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
+    new_path = grow_conncomp_snaphu(
+        unw_filename=unw_f,
+        corr_filename=cor_f,
+        nlooks=nlooks,
+        mask_filename=mask_filename,
+        cost=unwrap_options.snaphu_options.cost,
+        scratchdir=unwrap_options._directory / "scratch2",
+    )
+    return new_path
+
+
 def _update_snaphu_conncomps(
     timeseries_paths: Sequence[Path],
     stitched_cor_paths: Sequence[Path],
     mask_filename: PathOrStr,
     unwrap_options: UnwrapOptions,
     nlooks: int,
+    max_workers: int = 2,
 ) -> list[Path]:
     """Recompute connected components from SNAPHU after a timeseries inversion.
 
@@ -541,6 +555,9 @@ def _update_snaphu_conncomps(
         Configuration object containing unwrapping options.
     nlooks : int
         Effective number of looks used to make correlation.
+    max_workers : int
+        Number of parallel files to process.
+        Default is 2.
 
     Returns
     -------
@@ -548,18 +565,14 @@ def _update_snaphu_conncomps(
         list of updated connected component paths.
 
     """
-    new_paths = []
-    for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths):
-        new_path = grow_conncomp_snaphu(
-            unw_filename=unw_f,
-            corr_filename=cor_f,
-            nlooks=nlooks,
-            mask_filename=mask_filename,
-            cost=unwrap_options.snaphu_options.cost,
-            scratchdir=unwrap_options._directory / "scratch2",
-        )
-        new_paths.append(new_path)
-    return new_paths
+    args_list = [
+        (unw_f, cor_f, nlooks, mask_filename, unwrap_options)
+        for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths)
+    ]
+
+    mp_context = get_context("spawn")
+    with mp_context.Pool(max_workers) as pool:
+        return list(pool.map(_regrow, args_list))
 
 
 def _update_spurt_conncomps(

@@ -685,6 +685,16 @@ def _create_identification_group(
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},
         )
+        # CEOS: Section 1.5
+        _create_dataset(
+            group=identification_group,
+            name="ceos_number_of_input_granules",
+            dimensions=(),
+            data=len(pge_runconfig.input_file_group.cslc_file_list),
+            fillvalue=None,
+            description="Number of input data granule used during processing.",
+            attrs={"units": "unitless"},
+        )
         # CEOS: Section 1.6.4 source acquisition parameters
         _create_dataset(
             group=identification_group,

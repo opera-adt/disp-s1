@@ -339,3 +339,25 @@ def test_repeated_compressed_dates():
     # Should be the latest one: the compressed slc with 20200717
     assert output_reference_idx == 4
     assert extra_reference_date is None
+
+
+@pytest.fixture
+def overrides_file():
+    return (
+        Path(__file__).parent
+        / "data/opera-disp-s1-algorithm-parameters-overrides-2024-11-26.json"
+    )
+
+
+def test_algorithm_overrides(overrides_file, algorithm_parameters_file):
+    orig_params = AlgorithmParameters.from_yaml(algorithm_parameters_file)
+    orig_params.algorithm_parameters_overrides_json = overrides_file
+
+    p2 = pge_runconfig._override_parameters(orig_params, 23210)  # hawaii
+    assert p2.unwrap_options.unwrap_method == "spurt"
+    p3 = pge_runconfig._override_parameters(orig_params, 18903)  # ridgecrest
+    assert p3.unwrap_options.unwrap_method == "phass"
+    p4 = pge_runconfig._override_parameters(
+        orig_params, 1234
+    )  # frame id with no override
+    assert p4.unwrap_options == orig_params.unwrap_options

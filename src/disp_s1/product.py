@@ -665,6 +665,17 @@ def _create_identification_group(
             description="Mean value of valid pixels within temporal_coherence layer.",
             attrs={"units": "unitless"},
         )
+        # CEOS: Section 1.3
+        _create_dataset(
+            group=identification_group,
+            name="ceos_analysis_ready_data_product_type",
+            dimensions=(),
+            data="InSAR",
+            fillvalue=None,
+            description="CEOS Analysis Ready Data (CARD) product type name",
+            attrs={"units": "unitless"},
+        )
+        # CEOS: Section 1.4
         _create_dataset(
             group=identification_group,
             name="ceos_analysis_ready_data_document_identifier",
@@ -674,10 +685,59 @@ def _create_identification_group(
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},
         )
+        # CEOS: Section 1.6.4 source acquisition parameters
+        _create_dataset(
+            group=identification_group,
+            name="acquisition_mode",
+            dimensions=(),
+            data="IW",
+            fillvalue=None,
+            description="Radar acquisition mode for input products",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="radar_center_frequency",
+            dimensions=(),
+            data=5405000454.33435,
+            fillvalue=None,
+            description="Radar center frequency of input products",
+            attrs={"units": "Hertz"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_polarization",
+            dimensions=(),
+            data="VV",
+            fillvalue=None,
+            description="Radar polarization of input products",
+            attrs={"units": "unitless"},
+        )
         # CEOS: Section 1.6.7 source data attributes
         _create_dataset(
             group=identification_group,
+            name="source_data_original_institution",
+            dimensions=(),
+            data="European Space Agency",
+            fillvalue=None,
+            description="Original processing institution of Sentinel-1 SLC data",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
             name="source_data_access",
+            dimensions=(),
+            data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=CSLC",
+            fillvalue=None,
+            description=(
+                "The metadata identifies the location from where the source data can be"
+                " retrieved, expressed as a URL or DOI."
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_file_list",
             dimensions=(),
             data=",".join(
                 p.stem for p in pge_runconfig.input_file_group.cslc_file_list
@@ -688,6 +748,29 @@ def _create_identification_group(
                 " frame"
             ),
             attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_range_resolutions",
+            dimensions=(),
+            data="[2.7, 3.1, 3.5]",
+            fillvalue=None,
+            description=(
+                "List of [IW1, IW2, IW3] range resolutions from source L1 Sentinel-1"
+                " SLCs"
+            ),
+            attrs={"units": "meters"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_azimuth_resolutions",
+            dimensions=(),
+            data="[22.5, 22.7, 22.6]",
+            fillvalue=None,
+            description=(
+                "List of [IW1, IW2, IW3] azimuth resolutions from L1 Sentinel-1 SLCs"
+            ),
+            attrs={"units": "meters"},
         )
         _create_dataset(
             group=identification_group,
@@ -706,6 +789,18 @@ def _create_identification_group(
             fillvalue=None,
             description="Pixel spacing of source geocoded SLC data in the y-direction.",
             attrs={"units": "meters"},
+        )
+        # Source for the max. NESZ:
+        # (https://sentinels.copernicus.eu/web/sentinel/user-guides/
+        # 1.6.9
+        _create_dataset(
+            group=identification_group,
+            name="source_data_max_noise_equivalent_sigma_zero",
+            dimensions=(),
+            data=-22.0,
+            fillvalue=None,
+            description="Maximum Noise equivalent sigma0 in dB",
+            attrs={"units": "dB"},
         )
         _create_dataset(
             group=identification_group,
@@ -1152,6 +1247,11 @@ def copy_cslc_metadata_to_compressed(
         "/metadata/orbit",  #          Group
         "/metadata/processing_information/input_burst_metadata/wavelength",
         "/metadata/processing_information/input_burst_metadata/platform_id",
+        "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
+        "/metadata/processing_information/input_burst_metadata/ipf_version",
+        "/metadata/processing_information/algorithms/COMPASS_version",
+        "/metadata/processing_information/algorithms/ISCE3_version",
+        "/metadata/processing_information/algorithms/s1_reader_version",
         "/identification/zero_doppler_end_time",
         "/identification/zero_doppler_start_time",
         "/identification/bounding_polygon",
@@ -1198,6 +1298,11 @@ def copy_cslc_metadata_to_displacement(
         "/identification/orbit_pass_direction",
         "/identification/absolute_orbit_number",
         "/metadata/processing_information/input_burst_metadata/platform_id",
+        "/metadata/processing_information/input_burst_metadata/wavelength",
+        "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
+        "/metadata/processing_information/algorithms/COMPASS_version",
+        "/metadata/processing_information/algorithms/ISCE3_version",
+        "/metadata/processing_information/algorithms/s1_reader_version",
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

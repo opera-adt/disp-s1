@@ -29,6 +29,7 @@ from opera_utils import (
     get_dates,
     get_radar_wavelength,
     get_zero_doppler_time,
+    parse_filename,
 )
 
 from . import __version__ as disp_s1_version
@@ -170,9 +171,11 @@ def create_output_product(
         logger.debug(f"Start, end files: {start}, {end}")
         return start, end
 
-    reference_start, reference_end = _get_start_end_cslcs(reference_cslc_files)
-    reference_start_time = get_zero_doppler_time(reference_start, type_="start")
-    reference_end_time = get_zero_doppler_time(reference_end, type_="end")
+    reference_start_file, reference_end_file = _get_start_end_cslcs(
+        reference_cslc_files
+    )
+    reference_start_time = get_zero_doppler_time(reference_start_file, type_="start")
+    reference_end_time = get_zero_doppler_time(reference_end_file, type_="end")
 
     secondary_start, secondary_end = _get_start_end_cslcs(secondary_cslc_files)
     secondary_start_time = get_zero_doppler_time(secondary_start, type_="start")
@@ -188,7 +191,7 @@ def create_output_product(
     try:
         logger.info("Calculating perpendicular baselines subsampled by %s", subsample)
         baseline_arr = compute_baselines(
-            reference_start,
+            reference_start_file,
             secondary_start,
             x=x,
             y=y,
@@ -197,7 +200,8 @@ def create_output_product(
         )
     except Exception:
         logger.error(
-            f"Failed to compute baselines for {reference_start}, {secondary_start}",
+            f"Failed to compute baselines for {reference_start_file},"
+            f" {secondary_start}",
             exc_info=True,
         )
         baseline_arr = np.zeros((100, 100))
@@ -411,7 +415,7 @@ def create_output_product(
         dolphin_config=dolphin_config,
     )
     copy_cslc_metadata_to_displacement(
-        reference_cslc_file=reference_start,
+        reference_cslc_file=reference_start_file,
         secondary_cslc_file=secondary_start,
         output_disp_file=output_name,
     )
@@ -695,6 +699,56 @@ def _create_identification_group(
             description="Number of input data granule used during processing.",
             attrs={"units": "unitless"},
         )
+        input_dts = sorted(
+            [get_dates(f)[0] for f in pge_runconfig.input_file_group.cslc_file_list]
+        )
+        parsed_files = [
+            parse_filename(f)
+            for f in pge_runconfig.input_file_group.cslc_file_list
+            if "compressed" not in str(f).lower()
+        ]
+        input_sensors = {p.get("sensor") for p in parsed_files if p.get("sensor")}
+
+        # CEOS: Section 1.5
+        _create_dataset(
+            group=identification_group,
+            name="ceos_source_data_satellite_names",
+            dimensions=(),
+            data=",".join(input_sensors),
+            fillvalue=None,
+            description="Names of satellites included in input granules",
+            attrs={"units": "unitless"},
+        )
+        starting_date_str = input_dts[0].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="ceos_source_data_earliest_acquisition",
+            dimensions=(),
+            data=starting_date_str,
+            fillvalue=None,
+            description="Datetime of earliest input granule used during processing",
+            attrs={"units": "unitless"},
+        )
+        last_date_str = input_dts[-1].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="ceos_source_data_latest_acquisition",
+            dimensions=(),
+            data=last_date_str,
+            fillvalue=None,
+            description="Datetime of latest input granule used during processing",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="ceos_number_of_input_granules",
+            dimensions=(),
+            data=len(pge_runconfig.input_file_group.cslc_file_list),
+            fillvalue=None,
+            description="Number of input data granule used during processing.",
+            attrs={"units": "unitless"},
+        )
+
         # CEOS: Section 1.6.4 source acquisition parameters
         _create_dataset(
             group=identification_group,

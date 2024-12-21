@@ -29,6 +29,7 @@ from opera_utils import (
     get_dates,
     get_radar_wavelength,
     get_zero_doppler_time,
+    parse_filename,
 )
 
 from . import __version__ as disp_s1_version
@@ -170,9 +171,11 @@ def create_output_product(
         logger.debug(f"Start, end files: {start}, {end}")
         return start, end
 
-    reference_start, reference_end = _get_start_end_cslcs(reference_cslc_files)
-    reference_start_time = get_zero_doppler_time(reference_start, type_="start")
-    reference_end_time = get_zero_doppler_time(reference_end, type_="end")
+    reference_start_file, reference_end_file = _get_start_end_cslcs(
+        reference_cslc_files
+    )
+    reference_start_time = get_zero_doppler_time(reference_start_file, type_="start")
+    reference_end_time = get_zero_doppler_time(reference_end_file, type_="end")
 
     secondary_start, secondary_end = _get_start_end_cslcs(secondary_cslc_files)
     secondary_start_time = get_zero_doppler_time(secondary_start, type_="start")
@@ -188,7 +191,7 @@ def create_output_product(
     try:
         logger.info("Calculating perpendicular baselines subsampled by %s", subsample)
         baseline_arr = compute_baselines(
-            reference_start,
+            reference_start_file,
             secondary_start,
             x=x,
             y=y,
@@ -197,7 +200,8 @@ def create_output_product(
         )
     except Exception:
         logger.error(
-            f"Failed to compute baselines for {reference_start}, {secondary_start}",
+            f"Failed to compute baselines for {reference_start_file},"
+            f" {secondary_start}",
             exc_info=True,
         )
         baseline_arr = np.zeros((100, 100))
@@ -391,10 +395,12 @@ def create_output_product(
         reference_point=reference_point,
     )
 
+    orbit_type = _get_orbit_type(reference_cslc_files[0])
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
         radar_wavelength=radar_wavelength,
+        orbit_type=orbit_type,
         reference_start_time=reference_start_time,
         reference_end_time=reference_end_time,
         secondary_start_time=secondary_start_time,
@@ -411,7 +417,7 @@ def create_output_product(
         dolphin_config=dolphin_config,
     )
     copy_cslc_metadata_to_displacement(
-        reference_cslc_file=reference_start,
+        reference_cslc_file=reference_start_file,
         secondary_cslc_file=secondary_start,
         output_disp_file=output_name,
     )
@@ -521,6 +527,7 @@ def _create_identification_group(
     output_name: Filename,
     pge_runconfig: RunConfig,
     radar_wavelength: float,
+    orbit_type: str,
     reference_start_time: datetime.datetime,
     reference_end_time: datetime.datetime,
     secondary_start_time: datetime.datetime,
@@ -535,11 +542,19 @@ def _create_identification_group(
         identification_group = f.create_group(IDENTIFICATION_GROUP_NAME)
         _create_dataset(
             group=identification_group,
+            name="processing_facility",
+            dimensions=(),
+            data="NASA Jet Propulsion Laboratory on AWS",
+            fillvalue=None,
+            description="Product processing facility",
+        )
+        _create_dataset(
+            group=identification_group,
             name="frame_id",
             dimensions=(),
             data=pge_runconfig.input_file_group.frame_id,
             fillvalue=None,
-            description="ID number of the processed frame.",
+            description="ID number of the processed frame",
         )
         _create_dataset(
             group=identification_group,
@@ -547,7 +562,7 @@ def _create_identification_group(
             dimensions=(),
             data=pge_runconfig.product_path_group.product_version,
             fillvalue=None,
-            description="Version of the product.",
+            description="Version of the product",
         )
         _create_dataset(
             group=identification_group,
@@ -680,11 +695,107 @@ def _create_identification_group(
             group=identification_group,
             name="ceos_analysis_ready_data_document_identifier",
             dimensions=(),
-            data="https://ceos.org/ard/files/PFS/NRB/v5.5/CARD4L-PFS_NRB_v5.5.pdf",
+            data="https://github.com/ceos-org/",
             fillvalue=None,
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},
         )
+        # CEOS: Section 1.5
+        _create_dataset(
+            group=identification_group,
+            name="ceos_number_of_input_granules",
+            dimensions=(),
+            data=len(pge_runconfig.input_file_group.cslc_file_list),
+            fillvalue=None,
+            description="Number of input data granule used during processing.",
+            attrs={"units": "unitless"},
+        )
+        input_dts = sorted(
+            [get_dates(f)[0] for f in pge_runconfig.input_file_group.cslc_file_list]
+        )
+        processing_dts = sorted(
+            get_dates(f)[1]
+            for f in pge_runconfig.input_file_group.cslc_file_list
+            if "compressed" not in str(f).lower()
+        )
+        parsed_files = [
+            parse_filename(f)
+            for f in pge_runconfig.input_file_group.cslc_file_list
+            if "compressed" not in str(f).lower()
+        ]
+        input_sensors = {p.get("sensor") for p in parsed_files if p.get("sensor")}
+
+        # CEOS: Section 1.5
+        _create_dataset(
+            group=identification_group,
+            name="source_data_satellite_names",
+            dimensions=(),
+            data=",".join(input_sensors),
+            fillvalue=None,
+            description="Names of satellites included in input granules",
+            attrs={"units": "unitless"},
+        )
+        starting_date_str = input_dts[0].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="source_data_earliest_acquisition",
+            dimensions=(),
+            data=starting_date_str,
+            fillvalue=None,
+            description="Datetime of earliest input granule used during processing",
+            attrs={"units": "unitless"},
+        )
+        last_date_str = input_dts[-1].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="source_data_latest_acquisition",
+            dimensions=(),
+            data=last_date_str,
+            fillvalue=None,
+            description="Datetime of latest input granule used during processing",
+            attrs={"units": "unitless"},
+        )
+        early_processing_date_str = processing_dts[0].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="source_data_earliest_processing_datetime",
+            dimensions=(),
+            data=early_processing_date_str,
+            fillvalue=None,
+            description="Earliest processing datetime of input granules",
+            attrs={"units": "unitless"},
+        )
+        last_processing_date_str = processing_dts[-1].isoformat()
+        _create_dataset(
+            group=identification_group,
+            name="source_data_latest_processing_datetime",
+            dimensions=(),
+            data=last_processing_date_str,
+            fillvalue=None,
+            description="Latest processing datetime of input granules",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="ceos_number_of_input_granules",
+            dimensions=(),
+            data=len(pge_runconfig.input_file_group.cslc_file_list),
+            fillvalue=None,
+            description="Number of input data granule used during processing.",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_orbit_type",
+            dimensions=(),
+            data=orbit_type,
+            fillvalue=None,
+            description=(
+                "Type of orbit (precise, restituted) used during input data processing"
+            ),
+            attrs={"units": "unitless"},
+        )
+
         # CEOS: Section 1.6.4 source acquisition parameters
         _create_dataset(
             group=identification_group,
@@ -804,6 +915,17 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
+            name="source_data_dem_name",
+            dimensions=(),
+            data="Copernicus GLO-30",
+            fillvalue=None,
+            description=(
+                "Name of Digital Elevation Model used during input data processing."
+            ),
+            attrs={"units": "dB"},
+        )
+        _create_dataset(
+            group=identification_group,
             name="near_range_incidence_angle",
             dimensions=(),
             data=near_far_incidence_angles[0],
@@ -846,14 +968,18 @@ def _create_identification_group(
             ),
             attrs={"units": "meters"},
         )
-        # CEOS 1.7.10
         _create_dataset(
             group=identification_group,
-            name="product_pixel_coordinate_convention",
+            name="product_data_access",
             dimensions=(),
-            data="center",
+            data=(
+                "https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1"
+            ),
             fillvalue=None,
-            description="x/y coordinate convention referring to pixel center or corner",
+            description=(
+                "The metadata identifies the location from where the source data can be"
+                " retrieved, expressed as a URL or DOI."
+            ),
             attrs={"units": "unitless"},
         )
 
@@ -922,11 +1048,91 @@ def _create_metadata_group(
                 "The configuration parameters used by `dolphin` during the processing."
             ),
         )
+        # CEOS 1.7.10
+        _create_dataset(
+            group=metadata_group,
+            name="product_pixel_coordinate_convention",
+            dimensions=(),
+            data="center",
+            fillvalue=None,
+            description="x/y coordinate convention referring to pixel center or corner",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="product_persistent_scatterer_selection_criteria",
+            dimensions=(),
+            data="Amplitude Dispersion",
+            fillvalue=None,
+            description="Name of persistent scatterer selection criteria",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="product_persistent_scatterer_selection_criteria_doi",
+            dimensions=(),
+            data="https://doi.org/10.1109/36.898661",
+            fillvalue=None,
+            description=(
+                "DOI of reference describing persistent scatterer selection criteria"
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="phase_unwrapping_method",
+            dimensions=(),
+            data=str(dolphin_config.unwrap_options.unwrap_method),
+            fillvalue=None,
+            description="Name of phase unwrapping method",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="atmospheric_phase_correction",
+            dimensions=(),
+            data="None",
+            fillvalue=None,
+            description="Method used to correct for atmosphere phase noise.",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ionospheric_phase_correction",
+            dimensions=(),
+            data="None",
+            fillvalue=None,
+            description="Method used to correct for ionospheric phase noise.",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_noise_removal",
+            dimensions=(),
+            data="No",
+            fillvalue=None,
+            description=(
+                "Flag if noise removal* has been applied (Y/N). Metadata should include"
+                " the noise removal algorithm and reference to the algorithm as URL or"
+                " DOI."
+            ),
+            attrs={"units": "unitless"},
+        )
 
 
 def _get_orbit_direction(cslc_filename: Filename) -> Literal["ascending", "descending"]:
     with h5py.File(cslc_filename) as hf:
         out = hf["/identification/orbit_pass_direction"][()]
+        if isinstance(out, bytes):
+            out = out.decode("utf-8")
+    return out
+
+
+def _get_orbit_type(
+    cslc_filename: Filename,
+) -> Literal["precise orbit file", "restituted orbit file"]:
+    with h5py.File(cslc_filename) as hf:
+        out = hf["/quality_assurance/orbit_information/orbit_type"][()]
         if isinstance(out, bytes):
             out = out.decode("utf-8")
     return out

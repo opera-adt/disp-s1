@@ -9,9 +9,8 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
-from dolphin import PathOrStr, interferogram, io, stitching
+from dolphin import PathOrStr, io, stitching
 from dolphin._log import log_runtime, setup_logging
-from dolphin.unwrap import grow_conncomp_snaphu
 from dolphin.unwrap._utils import create_combined_mask
 from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_usage
 from dolphin.workflows.config import DisplacementWorkflow, UnwrapOptions
@@ -26,6 +25,7 @@ from disp_s1._ps import precompute_ps
 from disp_s1.pge_runconfig import RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
+from ._utils import _create_correlation_images, _regrow
 
 logger = logging.getLogger(__name__)
 
@@ -181,11 +181,10 @@ def create_products(
 
     # Check and update correlation paths
     if set(group_by_date(out_paths.stitched_cor_paths).keys()) != disp_date_keys:
-        out_paths.stitched_cor_paths = (
-            interferogram.estimate_interferometric_correlations(
-                ifg_filenames=out_paths.timeseries_paths,
-                window_size=(11, 11),
-            )
+        out_paths.stitched_cor_paths = _create_correlation_images(
+            # interferogram.estimate_interferometric_correlations(
+            out_paths.timeseries_paths,
+            window_size=(11, 11),
         )
 
     # Check and update connected components paths
@@ -362,7 +361,7 @@ def process_product(
         Configuration object run by `dolphin`.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
-        If none, leaves product attributes empty.
+        If None, leaves product attributes empty.
     los_east_file : Path, optional
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
@@ -516,19 +515,6 @@ def create_displacement_products(
                 repeat(near_far_incidence_angles),
             )
         )
-
-
-def _regrow(args: tuple[Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
-    unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
-    new_path = grow_conncomp_snaphu(
-        unw_filename=unw_f,
-        corr_filename=cor_f,
-        nlooks=nlooks,
-        mask_filename=mask_filename,
-        cost=unwrap_options.snaphu_options.cost,
-        scratchdir=unwrap_options._directory / "scratch2",
-    )
-    return new_path
 
 
 def _update_snaphu_conncomps(

@@ -18,7 +18,7 @@ def _create_correlation_images(
     window_size: tuple[int, int] = (11, 11),
     keep_bits: int = 8,
     num_workers: int = 3,
-):
+) -> list[Path]:
     path_tuples: list[tuple[Path, Path]] = []
     output_paths: list[Path] = []
     for fn in ts_filenames:
@@ -35,7 +35,7 @@ def _create_correlation_images(
         logger.debug(f"Estimating correlation for {ifg_path}, writing to {cor_path}")
         disp = io.load_gdal(ifg_path)
         disp_rad = disp * (-4 * pi) / SENTINEL_1_WAVELENGTH
-        disp_rad = disp
+
         cor = estimate_correlation_from_phase(disp_rad, window_size=window_size)
         if keep_bits:
             io.round_mantissa(cor, keep_bits=keep_bits)
@@ -53,6 +53,8 @@ def _create_correlation_images(
         max_workers=num_workers,
         desc="Estimating correlations",
     )
+
+    return output_paths
 
 
 def _regrow(args: tuple[Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:

@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import logging
 from collections.abc import Sequence
 from math import pi
+from multiprocessing import get_context
 from pathlib import Path
 
 from dolphin import PathOrStr, io
@@ -55,6 +58,50 @@ def _create_correlation_images(
     )
 
     return output_paths
+
+
+def _update_snaphu_conncomps(
+    timeseries_paths: Sequence[Path],
+    stitched_cor_paths: Sequence[Path],
+    mask_filename: PathOrStr,
+    unwrap_options: UnwrapOptions,
+    nlooks: int,
+    max_workers: int = 2,
+) -> list[Path]:
+    """Recompute connected components from SNAPHU after a timeseries inversion.
+
+    `timeseries_paths` contains the post-inversion rasters, one per secondary date.
+
+    Parameters
+    ----------
+    timeseries_paths : list[Path]
+        list of paths to the timeseries files.
+    stitched_cor_paths : list[Path]
+        list of paths to the pseuedo-correlation rasters.
+    mask_filename : PathOrStr
+        Path to a binary mask matching shape of `timeseries_paths`.
+    unwrap_options : [dolphin.workflows.config.UnwrapOptions][]
+        Configuration object containing unwrapping options.
+    nlooks : int
+        Effective number of looks used to make correlation.
+    max_workers : int
+        Number of parallel files to process.
+        Default is 2.
+
+    Returns
+    -------
+    list[Path]
+        list of updated connected component paths.
+
+    """
+    args_list = [
+        (unw_f, cor_f, nlooks, mask_filename, unwrap_options)
+        for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths)
+    ]
+
+    mp_context = get_context("spawn")
+    with mp_context.Pool(max_workers) as pool:
+        return list(pool.map(_regrow, args_list))
 
 
 def _regrow(args: tuple[Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:

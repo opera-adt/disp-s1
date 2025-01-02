@@ -1,6 +1,7 @@
 import os
 import tarfile
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pytest
@@ -71,7 +72,9 @@ def _untar_dir(tmp_path, delivery_data_tar_file: Path, target_dir=None):
     pathlib.Path
         The directory where the specific directory was untarred.
     """
-    mode = "r:gz" if delivery_data_tar_file.suffix == ".gz" else "r"
+    mode: Literal["r", "r:gz"] = (
+        "r:gz" if delivery_data_tar_file.suffix == ".gz" else "r"
+    )
     with tarfile.open(delivery_data_tar_file, mode) as tar:
         if target_dir is None:
             tar.extractall(path=tmp_path)

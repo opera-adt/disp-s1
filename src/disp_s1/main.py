@@ -186,7 +186,6 @@ def create_products(
     # Check and update correlation paths
     if set(group_by_date(out_paths.stitched_cor_paths).keys()) != disp_date_keys:
         out_paths.stitched_cor_paths = _create_correlation_images(
-            # interferogram.estimate_interferometric_correlations(
             out_paths.timeseries_paths,
             window_size=(11, 11),
         )

@@ -9,12 +9,11 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
-from dolphin import PathOrStr, interferogram, io, stitching
+from dolphin import PathOrStr, io, stitching
 from dolphin._log import log_runtime, setup_logging
-from dolphin.unwrap import grow_conncomp_snaphu
 from dolphin.unwrap._utils import create_combined_mask
 from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_usage
-from dolphin.workflows.config import DisplacementWorkflow, UnwrapOptions
+from dolphin.workflows.config import DisplacementWorkflow
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_burst, group_by_date
@@ -26,6 +25,11 @@ from disp_s1._ps import precompute_ps
 from disp_s1.pge_runconfig import RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
+from ._utils import (
+    _create_correlation_images,
+    _update_snaphu_conncomps,
+    _update_spurt_conncomps,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -181,11 +185,9 @@ def create_products(
 
     # Check and update correlation paths
     if set(group_by_date(out_paths.stitched_cor_paths).keys()) != disp_date_keys:
-        out_paths.stitched_cor_paths = (
-            interferogram.estimate_interferometric_correlations(
-                ifg_filenames=out_paths.timeseries_paths,
-                window_size=(11, 11),
-            )
+        out_paths.stitched_cor_paths = _create_correlation_images(
+            out_paths.timeseries_paths,
+            window_size=(11, 11),
         )
 
     # Check and update connected components paths
@@ -362,7 +364,7 @@ def process_product(
         Configuration object run by `dolphin`.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
-        If none, leaves product attributes empty.
+        If None, leaves product attributes empty.
     los_east_file : Path, optional
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
@@ -516,91 +518,6 @@ def create_displacement_products(
                 repeat(near_far_incidence_angles),
             )
         )
-
-
-def _regrow(args: tuple[Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
-    unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
-    new_path = grow_conncomp_snaphu(
-        unw_filename=unw_f,
-        corr_filename=cor_f,
-        nlooks=nlooks,
-        mask_filename=mask_filename,
-        cost=unwrap_options.snaphu_options.cost,
-        scratchdir=unwrap_options._directory / "scratch2",
-    )
-    return new_path
-
-
-def _update_snaphu_conncomps(
-    timeseries_paths: Sequence[Path],
-    stitched_cor_paths: Sequence[Path],
-    mask_filename: PathOrStr,
-    unwrap_options: UnwrapOptions,
-    nlooks: int,
-    max_workers: int = 2,
-) -> list[Path]:
-    """Recompute connected components from SNAPHU after a timeseries inversion.
-
-    `timeseries_paths` contains the post-inversion rasters, one per secondary date.
-
-    Parameters
-    ----------
-    timeseries_paths : list[Path]
-        list of paths to the timeseries files.
-    stitched_cor_paths : list[Path]
-        list of paths to the pseuedo-correlation rasters.
-    mask_filename : PathOrStr
-        Path to a binary mask matching shape of `timeseries_paths`.
-    unwrap_options : [dolphin.workflows.config.UnwrapOptions][]
-        Configuration object containing unwrapping options.
-    nlooks : int
-        Effective number of looks used to make correlation.
-    max_workers : int
-        Number of parallel files to process.
-        Default is 2.
-
-    Returns
-    -------
-    list[Path]
-        list of updated connected component paths.
-
-    """
-    args_list = [
-        (unw_f, cor_f, nlooks, mask_filename, unwrap_options)
-        for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths)
-    ]
-
-    mp_context = get_context("spawn")
-    with mp_context.Pool(max_workers) as pool:
-        return list(pool.map(_regrow, args_list))
-
-
-def _update_spurt_conncomps(
-    timeseries_paths: Sequence[Path],
-    conncomp_paths: Sequence[Path],
-) -> list[Path]:
-    """Recompute connected components from spurt after a timeseries inversion.
-
-    Parameters
-    ----------
-    timeseries_paths : list[Path]
-        list of paths to the timeseries files.
-    conncomp_paths : list[Path]
-        list of connected component paths from the spurt unwrapping
-
-    Returns
-    -------
-    list[Path]
-        list of updated connected component paths.
-
-    """
-    new_conncomp_paths: list[Path] = []
-    for cc_p, ts_p in zip(conncomp_paths, timeseries_paths, strict=False):
-        new_name = cc_p.parent / str(ts_p.name).replace(
-            full_suffix(ts_p), full_suffix(cc_p)
-        )
-        new_conncomp_paths.append(cc_p.rename(new_name))
-    return new_conncomp_paths
 
 
 def _create_nodata_mask(filename: PathOrStr, output_filename: PathOrStr) -> None:

@@ -207,7 +207,7 @@ def create_products(
         elif method == "spurt":
             out_paths.conncomp_paths = _update_spurt_conncomps(
                 timeseries_paths=out_paths.timeseries_paths,
-                conncomp_paths=out_paths.conncomp_paths,
+                template_conncomp_path=out_paths.conncomp_paths[0],
             )
         else:
             raise NotImplementedError(

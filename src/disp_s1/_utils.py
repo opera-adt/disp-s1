@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from collections.abc import Sequence
 from math import pi
 from multiprocessing import get_context
@@ -63,7 +64,7 @@ def _update_snaphu_conncomps(
 
 def _update_spurt_conncomps(
     timeseries_paths: Sequence[Path],
-    conncomp_paths: Sequence[Path],
+    template_conncomp_path: Path,
 ) -> list[Path]:
     """Recompute connected components from spurt after a timeseries inversion.
 
@@ -74,8 +75,9 @@ def _update_spurt_conncomps(
     ----------
     timeseries_paths : list[Path]
         list of paths to the timeseries files.
-    conncomp_paths : list[Path]
-        list of connected component paths from the spurt unwrapping
+    template_conncomp_path : Path
+        One connected component paths from the spurt unwrapping.
+        Only one is needed while spurt uses only a single mask for pixel selection.
 
     Returns
     -------
@@ -84,11 +86,15 @@ def _update_spurt_conncomps(
 
     """
     new_conncomp_paths: list[Path] = []
-    for cc_p, ts_p in zip(conncomp_paths, timeseries_paths, strict=False):
-        new_name = cc_p.parent / str(ts_p.name).replace(
-            full_suffix(ts_p), full_suffix(cc_p)
+    for ts_p in timeseries_paths:
+        new_name = template_conncomp_path.parent / str(ts_p.name).replace(
+            full_suffix(ts_p), full_suffix(template_conncomp_path)
         )
-        new_conncomp_paths.append(cc_p.rename(new_name))
+        try:
+            shutil.copy(template_conncomp_path, new_name)
+        except shutil.SameFileError:
+            pass
+        new_conncomp_paths.append(new_name)
     return new_conncomp_paths
 
 

@@ -53,8 +53,8 @@ def _update_snaphu_conncomps(
 
     """
     args_list = [
-        (unw_f, cor_f, nlooks, mask_filename, unwrap_options)
-        for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths)
+        (idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options)
+        for idx, (unw_f, cor_f) in enumerate(zip(timeseries_paths, stitched_cor_paths))
     ]
 
     mp_context = get_context("spawn")
@@ -96,6 +96,19 @@ def _update_spurt_conncomps(
             pass
         new_conncomp_paths.append(new_name)
     return new_conncomp_paths
+
+
+def _regrow(args: tuple[int, Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
+    scratch_idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
+    new_path = grow_conncomp_snaphu(
+        unw_filename=unw_f,
+        corr_filename=cor_f,
+        nlooks=nlooks,
+        mask_filename=mask_filename,
+        cost=unwrap_options.snaphu_options.cost,
+        scratchdir=unwrap_options._directory / f"scratch{scratch_idx}",
+    )
+    return new_path
 
 
 def _create_correlation_images(
@@ -140,16 +153,3 @@ def _create_correlation_images(
     )
 
     return output_paths
-
-
-def _regrow(args: tuple[Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
-    unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
-    new_path = grow_conncomp_snaphu(
-        unw_filename=unw_f,
-        corr_filename=cor_f,
-        nlooks=nlooks,
-        mask_filename=mask_filename,
-        cost=unwrap_options.snaphu_options.cost,
-        scratchdir=unwrap_options._directory / "scratch2",
-    )
-    return new_path

@@ -105,9 +105,9 @@ def setup_test_files(tmp_path):
         "20170709_20171130",
     ]
     ts_paths = []
+    # Create empty test files for timeseries outputs
     for date in ts_dates:
         path = ts_dir / f"{date}.tif"
-        # Create empty test files
         np.zeros((1, 1)).tofile(path)
         ts_paths.append(path)
 
@@ -124,10 +124,10 @@ def setup_test_files(tmp_path):
         "20170615_20170721",
         "20170627_20170709",
     ]
+    # Create empty test files for conncomps created during unwrapping
     cc_paths = []
     for date in cc_dates:
         path = unwrap_dir / f"{date}.unw.conncomp.tif"
-        # Create empty test files
         np.zeros((1, 1)).tofile(path)
         cc_paths.append(path)
 
@@ -135,13 +135,10 @@ def setup_test_files(tmp_path):
 
 
 def test_update_spurt_conncomps(setup_test_files):
-    """Test the _update_spurt_conncomps function."""
     ts_paths, cc_paths = setup_test_files
 
-    # Run the function
     updated_paths = _update_spurt_conncomps(ts_paths, cc_paths[0])
 
-    # Test 1: Check that output length matches input timeseries length
     assert len(updated_paths) == len(
         ts_paths
     ), "Output length should match timeseries length"
@@ -152,11 +149,8 @@ def test_update_spurt_conncomps(setup_test_files):
         exist_status
     ), f"Missing files at indices: {[i for i, x in enumerate(exist_status) if not x]}"
 
-    # Test 3: Check that output paths match timeseries date patterns
+    # Check that output paths match timeseries date patterns
     for ts_p, cc_p in zip(ts_paths, updated_paths):
         ts_stem = ts_p.stem  # e.g. "20160708_20170603"
         assert cc_p.stem.startswith(ts_stem)
-
-    # Test 4: Check correct extensions on output files
-    for p in updated_paths:
-        assert p.name.endswith(".unw.conncomp.tif"), f"Wrong extension for {p}"
+        assert cc_p.name.endswith(".unw.conncomp.tif"), f"Wrong extension for {cc_p}"

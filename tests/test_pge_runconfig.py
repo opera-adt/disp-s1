@@ -345,7 +345,7 @@ def test_repeated_compressed_dates():
 def overrides_file():
     return (
         Path(__file__).parent
-        / "data/opera-disp-s1-algorithm-parameters-overrides-2024-11-26.json"
+        / "data/opera-disp-s1-algorithm-parameters-overrides-2024-12-23.json"
     )
 
 

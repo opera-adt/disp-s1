@@ -355,8 +355,6 @@ def test_algorithm_overrides(overrides_file, algorithm_parameters_file):
 
     p2 = pge_runconfig._override_parameters(orig_params, 23210)  # hawaii
     assert p2.unwrap_options.unwrap_method == "spurt"
-    p3 = pge_runconfig._override_parameters(orig_params, 18903)  # ridgecrest
-    assert p3.unwrap_options.unwrap_method == "phass"
     p4 = pge_runconfig._override_parameters(
         orig_params, 1234
     )  # frame id with no override

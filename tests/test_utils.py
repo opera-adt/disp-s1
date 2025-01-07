@@ -7,7 +7,11 @@ from dolphin import io
 from dolphin.constants import SENTINEL_1_WAVELENGTH
 from dolphin.workflows import UnwrapOptions
 
-from disp_s1._utils import _create_correlation_images, _update_snaphu_conncomps
+from disp_s1._utils import (
+    _create_correlation_images,
+    _update_snaphu_conncomps,
+    _update_spurt_conncomps,
+)
 
 DATA_DIR = Path(__file__).parent / "data"
 UNW_FILE = DATA_DIR / "20160716_20160809.unw.tif"
@@ -71,3 +75,82 @@ def test_update_snaphu_conncomps(ts_filenames):
         unwrap_options=UnwrapOptions(),
         nlooks=50,
     )
+
+
+@pytest.fixture
+def setup_test_files(tmp_path):
+    """Create temporary test files mimicking the timeseries and conncomp structure."""
+    # Create directories
+    unwrap_dir = tmp_path / "unwrapped"
+    ts_dir = tmp_path / "timeseries"
+    unwrap_dir.mkdir()
+    ts_dir.mkdir()
+
+    # Create timeseries paths (these are the target names we want)
+    ts_dates = [
+        "20160708_20170603",
+        "20160708_20170615",
+        "20160708_20170627",
+        "20160708_20170709",
+        "20170709_20170721",
+        "20170709_20170814",
+        "20170709_20170826",
+        "20170709_20170907",
+        "20170709_20170919",
+        "20170709_20171001",
+        "20170709_20171013",
+        "20170709_20171025",
+        "20170709_20171106",
+        "20170709_20171118",
+        "20170709_20171130",
+    ]
+    ts_paths = []
+    # Create empty test files for timeseries outputs
+    for date in ts_dates:
+        path = ts_dir / f"{date}.tif"
+        np.zeros((1, 1)).tofile(path)
+        ts_paths.append(path)
+
+    # Create some conncomp files (including the ones that caused issues)
+    cc_dates = [
+        "20160708_20170603",
+        "20160708_20170615",
+        "20160708_20170627",
+        "20170603_20170615",
+        "20170603_20170627",
+        "20170603_20170709",
+        "20170615_20170627",
+        "20170615_20170709",
+        "20170615_20170721",
+        "20170627_20170709",
+    ]
+    # Create empty test files for conncomps created during unwrapping
+    cc_paths = []
+    for date in cc_dates:
+        path = unwrap_dir / f"{date}.unw.conncomp.tif"
+        np.zeros((1, 1)).tofile(path)
+        cc_paths.append(path)
+
+    return ts_paths, cc_paths
+
+
+def test_update_spurt_conncomps(setup_test_files):
+    ts_paths, cc_paths = setup_test_files
+
+    updated_paths = _update_spurt_conncomps(ts_paths, cc_paths[0])
+
+    assert len(updated_paths) == len(
+        ts_paths
+    ), "Output length should match timeseries length"
+
+    # Test 2: Verify all output paths exist
+    exist_status = [p.exists() for p in updated_paths]
+    assert all(
+        exist_status
+    ), f"Missing files at indices: {[i for i, x in enumerate(exist_status) if not x]}"
+
+    # Check that output paths match timeseries date patterns
+    for ts_p, cc_p in zip(ts_paths, updated_paths):
+        ts_stem = ts_p.stem  # e.g. "20160708_20170603"
+        assert cc_p.stem.startswith(ts_stem)
+        assert cc_p.name.endswith(".unw.conncomp.tif"), f"Wrong extension for {cc_p}"

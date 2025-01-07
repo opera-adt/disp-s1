@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from collections.abc import Sequence
 from math import pi
 from multiprocessing import get_context
@@ -52,8 +53,8 @@ def _update_snaphu_conncomps(
 
     """
     args_list = [
-        (unw_f, cor_f, nlooks, mask_filename, unwrap_options)
-        for unw_f, cor_f in zip(timeseries_paths, stitched_cor_paths)
+        (idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options)
+        for idx, (unw_f, cor_f) in enumerate(zip(timeseries_paths, stitched_cor_paths))
     ]
 
     mp_context = get_context("spawn")
@@ -63,7 +64,7 @@ def _update_snaphu_conncomps(
 
 def _update_spurt_conncomps(
     timeseries_paths: Sequence[Path],
-    conncomp_paths: Sequence[Path],
+    template_conncomp_path: Path,
 ) -> list[Path]:
     """Recompute connected components from spurt after a timeseries inversion.
 
@@ -74,8 +75,9 @@ def _update_spurt_conncomps(
     ----------
     timeseries_paths : list[Path]
         list of paths to the timeseries files.
-    conncomp_paths : list[Path]
-        list of connected component paths from the spurt unwrapping
+    template_conncomp_path : Path
+        One connected component paths from the spurt unwrapping.
+        Only one is needed while spurt uses only a single mask for pixel selection.
 
     Returns
     -------
@@ -84,12 +86,29 @@ def _update_spurt_conncomps(
 
     """
     new_conncomp_paths: list[Path] = []
-    for cc_p, ts_p in zip(conncomp_paths, timeseries_paths, strict=False):
-        new_name = cc_p.parent / str(ts_p.name).replace(
-            full_suffix(ts_p), full_suffix(cc_p)
+    for ts_p in timeseries_paths:
+        new_name = template_conncomp_path.parent / str(ts_p.name).replace(
+            full_suffix(ts_p), full_suffix(template_conncomp_path)
         )
-        new_conncomp_paths.append(cc_p.rename(new_name))
+        try:
+            shutil.copy(template_conncomp_path, new_name)
+        except shutil.SameFileError:
+            pass
+        new_conncomp_paths.append(new_name)
     return new_conncomp_paths
+
+
+def _regrow(args: tuple[int, Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
+    scratch_idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
+    new_path = grow_conncomp_snaphu(
+        unw_filename=unw_f,
+        corr_filename=cor_f,
+        nlooks=nlooks,
+        mask_filename=mask_filename,
+        cost=unwrap_options.snaphu_options.cost,
+        scratchdir=unwrap_options._directory / f"scratch{scratch_idx}",
+    )
+    return new_path
 
 
 def _create_correlation_images(
@@ -134,16 +153,3 @@ def _create_correlation_images(
     )
 
     return output_paths
-
-
-def _regrow(args: tuple[Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
-    unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
-    new_path = grow_conncomp_snaphu(
-        unw_filename=unw_f,
-        corr_filename=cor_f,
-        nlooks=nlooks,
-        mask_filename=mask_filename,
-        cost=unwrap_options.snaphu_options.cost,
-        scratchdir=unwrap_options._directory / "scratch2",
-    )
-    return new_path

@@ -163,12 +163,6 @@ class ProductPathGroup(YamlModel):
             " the standard product output."
         ),
     )
-    static_layers_data_access: str = Field(
-        "(Not provided)",
-        description=(
-            "Location of the static layers product associated with this product"
-        ),
-    )
     model_config = ConfigDict(extra="forbid")
 
 

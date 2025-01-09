@@ -480,6 +480,9 @@ def create_displacement_products(
     iono_files = out_paths.ionospheric_corrections or [None] * len(
         out_paths.timeseries_paths
     )
+    residual_files = out_paths.timeseries_paths or [None] * len(
+        out_paths.timeseries_paths
+    )
 
     files = [
         ProductFiles(
@@ -498,7 +501,7 @@ def create_displacement_products(
             out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
-            out_paths.timeseries_residual_paths,
+            residual_files,
             iono_files,
         )
     ]

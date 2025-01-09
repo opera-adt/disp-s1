@@ -51,7 +51,7 @@ GLOBAL_ATTRS = {
     "contact": "opera-sds-ops@jpl.nasa.gov",
     "institution": "NASA JPL",
     "mission_name": "OPERA",
-    "reference_document": "JPL D–108765",
+    "reference_document": "JPL D-108765",
     "title": "OPERA_L3_DISP-S1 Product",
 }
 
@@ -572,11 +572,11 @@ def _create_identification_group(
             group=identification_group,
             name="static_layers_data_access",
             dimensions=(),
-            data=pge_runconfig.product_path_group.static_layers_data_access,
+            data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1-STATIC",
             fillvalue=None,
             description=(
-                "Location of the static layers product associated with this product"
-                " (URL or DOI)"
+                "URL of the static layers product associated with this Displacement"
+                " product"
             ),
         )
         _create_dataset(

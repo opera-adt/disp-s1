@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import click
-import opera_utils.geometry
 from opera_utils import get_burst_ids_for_frame
 
 from disp_s1.ionosphere import (
@@ -90,7 +89,7 @@ def ionosphere(
     "-b",
     type=str,
     multiple=True,
-    help=(  # noqa: E501
+    help=(
         "Optional specific burst IDs to download. If not provided, gets all bursts for"
         " frame."
     ),
@@ -107,6 +106,8 @@ def static_layers(
     in the frame. The output directory must exist.
 
     """
+    import opera_utils.geometry
+
     # Use provided burst IDs or get all bursts for frame
     bursts_to_download = (
         list(burst_ids) if burst_ids else get_burst_ids_for_frame(frame_id)

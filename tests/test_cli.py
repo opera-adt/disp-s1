@@ -22,17 +22,31 @@ def test_cli_debug():
     assert result.output.endswith("\n")
 
 
-# Check run, validate, download-ionosphere, make-browse
+# Check run, validate, download, make-browse
 @pytest.mark.parametrize(
     "command",
     [
         "run",
+        "download",
         "validate",
-        "download-ionosphere",
         "make-browse",
     ],
 )
 def test_cli_subcommands_smoke_test(command):
     runner = CliRunner()
     result = runner.invoke(cli_app, [command, "--help"])
+    assert result.exit_code == 0
+
+
+# Check run, validate, download, make-browse
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ionosphere",
+        "static-layers",
+    ],
+)
+def test_cli_download_subcommands_smoke_test(command):
+    runner = CliRunner()
+    result = runner.invoke(cli_app, ["download", command, "--help"])
     assert result.exit_code == 0

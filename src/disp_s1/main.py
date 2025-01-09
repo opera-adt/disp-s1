@@ -334,6 +334,7 @@ class ProductFiles(NamedTuple):
     ps_mask: Path
     ionosphere: Path | None
     similarity: Path
+    residual: Path
     water_mask: Path | None
 
 
@@ -412,6 +413,7 @@ def process_product(
         ps_mask_filename=files.ps_mask,
         shp_count_filename=files.shp_counts,
         similarity_filename=files.similarity,
+        timeseries_residual_filename=files.residual,
         water_mask_filename=files.water_mask,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
@@ -489,12 +491,14 @@ def create_displacement_products(
             shp_counts=out_paths.stitched_shp_count_file,
             ionosphere=iono,
             similarity=out_paths.stitched_similarity_file,
+            residual=resid,
             water_mask=water_mask,
         )
-        for unw, cc, cor, iono in zip(
+        for unw, cc, cor, resid, iono in zip(
             out_paths.timeseries_paths,
             out_paths.conncomp_paths,
             out_paths.stitched_cor_paths,
+            out_paths.timeseries_residual_paths,
             iono_files,
         )
     ]

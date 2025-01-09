@@ -86,6 +86,7 @@ def create_output_product(
     ps_mask_filename: Filename,
     shp_count_filename: Filename,
     similarity_filename: Filename,
+    timeseries_residual_filename: Filename,
     water_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
@@ -117,6 +118,8 @@ def create_output_product(
         The path to statistically homogeneous pixels (SHP) counts.
     similarity_filename : Filename
         The path to the cosine similarity image.
+    timeseries_residual_filename : Filename
+        The path to the timeseries inversion residual sum image.
     water_mask_filename : Filename, optional
         Path to the binary water mask to use in creating a recommended mask.
     pge_runconfig : Optional[RunConfig], optional
@@ -345,6 +348,7 @@ def create_output_product(
             shp_count_filename,
             water_mask_filename,
             similarity_filename,
+            timeseries_residual_filename,
         ]
 
         for info, filename in zip(product_infos[3:], data_files, strict=True):

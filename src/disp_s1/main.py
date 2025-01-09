@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import repeat
 from multiprocessing import get_context
 from pathlib import Path
@@ -56,6 +56,8 @@ def run(
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
     setup_logging(logger_name="dolphin", filename=cfg.log_file)
     cfg.work_directory.mkdir(exist_ok=True, parents=True)
+    # Save the start for a metadata field
+    processing_start_datetime = datetime.now(timezone.utc)
 
     # Add a check to fail if passed duplicate dates area passed
     _assert_no_duplicate_dates(cfg.cslc_file_list)
@@ -95,7 +97,12 @@ def run(
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
-    create_products(out_paths=out_paths, cfg=cfg, pge_runconfig=pge_runconfig)
+    create_products(
+        out_paths=out_paths,
+        cfg=cfg,
+        pge_runconfig=pge_runconfig,
+        processing_start_datetime=processing_start_datetime,
+    )
 
     logger.info(f"Product type: {pge_runconfig.primary_executable.product_type}")
     logger.info(f"Product version: {pge_runconfig.product_path_group.product_version}")
@@ -109,6 +116,7 @@ def create_products(
     out_paths: OutputPaths,
     cfg: DisplacementWorkflow,
     pge_runconfig: RunConfig,
+    processing_start_datetime: datetime | None = None,
 ):
     """Create NetCDF products from the outputs of dolphin's displacement workflow.
 

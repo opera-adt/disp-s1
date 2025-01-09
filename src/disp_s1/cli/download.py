@@ -35,7 +35,6 @@ from disp_s1.ionosphere import (
     default=DEFAULT_DOWNLOAD_ENDPOINT,
     help="CDDIS download endpoint",
 )
-@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 def download_ionosphere(
     input_files: Sequence[Path],
     output_dir: Path,
@@ -59,15 +58,5 @@ def download_ionosphere(
     )
     downloaded_files = download_ionosphere_files(config)
 
-    config = DownloadConfig(
-        input_files=list(input_files),
-        output_dir=output_dir,
-        ionosphere_type=ionosphere_type,
-        username=username,
-        password=password,
-        download_endpoint=download_endpoint,
-    )
-
-    downloaded_files = download_ionosphere_files(config)
     for file in downloaded_files:
         click.echo(f"Downloaded: {file}")

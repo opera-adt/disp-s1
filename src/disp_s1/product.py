@@ -568,9 +568,7 @@ def _create_identification_group(
             group=identification_group,
             name="static_layers_data_access",
             dimensions=(),
-            data=(
-                "https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1"
-            ),
+            data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1-STATIC",
             fillvalue=None,
             description=(
                 "URL of the static layers product associated with this Displacement"

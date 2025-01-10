@@ -321,3 +321,6 @@ spatial_wavelength_cutoff: 25000.0
 browse_image_vmin_vmax:
   - -0.1
   - 0.1
+# Number of output products to create in parallel.
+#   Type: integer.
+algorithm_parameters.num_parallel_products: 3

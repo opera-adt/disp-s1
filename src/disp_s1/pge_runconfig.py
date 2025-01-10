@@ -207,6 +207,9 @@ class AlgorithmParameters(YamlModel):
             " creator."
         ),
     )
+    num_parallel_products: int = Field(
+        3, description="Number of output products to create in parallel."
+    )
 
     model_config = ConfigDict(extra="forbid")
 

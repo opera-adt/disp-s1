@@ -97,6 +97,37 @@ def runconfig_minimum(
     return c
 
 
+def test_algorithm_parameters_defaults():
+    """Test that AlgorithmParameters has the expected default values."""
+    from dolphin.workflows import (
+        InterferogramNetwork,
+        OutputOptions,
+        PhaseLinkingOptions,
+        PsOptions,
+        TimeseriesOptions,
+        UnwrapOptions,
+    )
+
+    params = AlgorithmParameters()
+
+    # Check direct attributes
+    assert params.algorithm_parameters_overrides_json is None
+    assert params.subdataset == "/data/VV"
+    assert params.recommended_temporal_coherence_threshold == 0.6
+    assert params.recommended_similarity_threshold == 0.5
+    assert params.spatial_wavelength_cutoff == 25_000
+    assert params.browse_image_vmin_vmax == (-0.10, 0.10)
+    assert params.num_parallel_products == 3
+
+    # Check that nested objects are created with their default factories
+    assert isinstance(params.ps_options, PsOptions)
+    assert isinstance(params.phase_linking, PhaseLinkingOptions)
+    assert isinstance(params.interferogram_network, InterferogramNetwork)
+    assert isinstance(params.unwrap_options, UnwrapOptions)
+    assert isinstance(params.timeseries_options, TimeseriesOptions)
+    assert isinstance(params.output_options, OutputOptions)
+
+
 def test_runconfig_to_yaml(runconfig_minimum):
     print(runconfig_minimum.to_yaml(sys.stdout))
 

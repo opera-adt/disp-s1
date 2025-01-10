@@ -22,7 +22,7 @@ from opera_utils.geometry import get_incidence_angles
 from disp_s1 import __version__, product
 from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
 from disp_s1._ps import precompute_ps
-from disp_s1.pge_runconfig import RunConfig
+from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
 from ._utils import (
@@ -236,6 +236,10 @@ def create_products(
         logger.warning("Using approximate incidence angles")
         near_far_incidence_angles = 30.0, 45.0
 
+    algorithm_parameters = AlgorithmParameters.from_yaml(
+        pge_runconfig.dynamic_ancillary_file_group.algorithm_parameters_file
+    )
+
     logger.info(f"Creating {len(out_paths.timeseries_paths)} outputs in {out_dir}")
     # Group all the CSLCs by date to pick out ref/secondaries
     date_to_cslc_files = group_by_date(cfg.cslc_file_list, date_idx=0)
@@ -251,7 +255,7 @@ def create_products(
         los_north_file=los_north_file,
         near_far_incidence_angles=near_far_incidence_angles,
         water_mask=matching_water_binary_mask,
-        max_workers=3,
+        max_workers=algorithm_parameters.num_parallel_products,
     )
     logger.info("Finished creating output products.")
 
@@ -478,10 +482,8 @@ def create_displacement_products(
     processing_start_datetime : datetime.datetime
         The processing start datetime.
     reference_point : ReferencePoint, optional
-        Named tuple with (row, col, lat, lon) of selected reference pixel.
-        If None, will record empty in the dataset's attributes
-    reference_point : ReferencePoint, optional
-        Reference point recorded from dolphin after unwrapping.
+        Named tuple with (row, col, lat, lon) of selected reference pixel
+        recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
     los_east_file : Path, optional
         Path to the east component of line of sight unit vector
@@ -540,11 +542,11 @@ def create_displacement_products(
                 repeat(date_to_cslc_files),
                 repeat(pge_runconfig),
                 repeat(dolphin_config),
+                repeat(processing_start_datetime),
                 repeat(reference_point),
                 repeat(los_east_file),
                 repeat(los_north_file),
                 repeat(near_far_incidence_angles),
-                repeat(processing_start_datetime),
             )
         )
 

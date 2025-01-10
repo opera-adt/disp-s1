@@ -262,8 +262,11 @@ def create_output_product(
 
     # Mark pixels that are bad
     is_zero_conncomp = conncomps == 0
-    bad_temporal_coherence = temporal_coherence < 0.6
-    bad_similarity = similarity < 0.5
+    bad_temporal_coherence = (
+        temporal_coherence
+        < algorithm_parameters.recommended_temporal_coherence_threshold
+    )
+    bad_similarity = similarity < algorithm_parameters.recommended_similarity_threshold
     is_low_quality = bad_temporal_coherence & bad_similarity
 
     # If a pixel has any of the reasons to be bad, recommend masking
@@ -356,7 +359,8 @@ def create_output_product(
 
         for info, filename in zip(product_infos[3:], data_files, strict=True):
             if filename is not None and Path(filename).exists():
-                data = io.load_gdal(filename).astype(info.dtype)
+                data = io.load_gdal(filename, masked=True).filled(info.fillvalue)
+                data = data.astype(info.dtype)
             else:
                 data = np.full(shape=shape, fill_value=info.fillvalue, dtype=info.dtype)
 

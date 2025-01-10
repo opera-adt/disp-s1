@@ -192,6 +192,22 @@ class AlgorithmParameters(YamlModel):
         description="Name of the subdataset to use in the input NetCDF files.",
     )
 
+    recommended_temporal_coherence_threshold: float = Field(
+        0.6,
+        description=(
+            "When creating `recommended_mask`, pixels with temporal coherence below"
+            " this threshold and with similarity below"
+            " `recommended_similarity_threshold` are masked."
+        ),
+    )
+    recommended_similarity_threshold: float = Field(
+        0.5,
+        description=(
+            "When creating `recommended_mask`, pixels with similarity below this"
+            " threshold and with temporal coherence below"
+            " `recommended_temporal_coherence_threshold` are masked."
+        ),
+    )
     # Extra product creation options
     spatial_wavelength_cutoff: float = Field(
         25_000,
@@ -206,6 +222,9 @@ class AlgorithmParameters(YamlModel):
             "`vmin, vmax` matplotlib arguments (in meters) passed to browse image"
             " creator."
         ),
+    )
+    num_parallel_products: int = Field(
+        3, description="Number of output products to create in parallel."
     )
 
     model_config = ConfigDict(extra="forbid")

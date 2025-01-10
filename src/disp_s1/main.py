@@ -128,8 +128,13 @@ def create_products(
         `DisplacementWorkflow` object for controlling the workflow.
     pge_runconfig : disp_s1.pge_config.RunConfig
         PGE-specific metadata for the output product.
+    processing_start_datetime : datetime.datetime, optional
+        The processing start datetime. If not provided, datetime.now() is used.
+
 
     """
+    if processing_start_datetime is None:
+        processing_start_datetime = datetime.now(timezone.utc)
     # Read the reference point
     assert out_paths.timeseries_paths is not None
     ref_point = read_reference_point(out_paths.timeseries_paths[0].parent)
@@ -240,6 +245,7 @@ def create_products(
         date_to_cslc_files=date_to_cslc_files,
         pge_runconfig=pge_runconfig,
         dolphin_config=cfg,
+        processing_start_datetime=processing_start_datetime,
         reference_point=ref_point,
         los_east_file=los_east_file,
         los_north_file=los_north_file,
@@ -351,6 +357,7 @@ def process_product(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
+    processing_start_datetime: datetime,
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
@@ -370,6 +377,8 @@ def process_product(
         Configuration object for the PGE run.
     dolphin_config : dolphin.workflows.DisplacementWorkflow
         Configuration object run by `dolphin`.
+    processing_start_datetime : datetime.datetime
+        The processing start datetime.
     reference_point : ReferencePoint, optional
         Reference point recorded from dolphin after unwrapping.
         If None, leaves product attributes empty.
@@ -430,6 +439,7 @@ def process_product(
         secondary_cslc_files=secondary_slc_files,
         corrections=corrections,
         reference_point=reference_point,
+        processing_start_datetime=processing_start_datetime,
     )
 
     return output_path
@@ -441,6 +451,7 @@ def create_displacement_products(
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
+    processing_start_datetime: datetime,
     reference_point: ReferencePoint | None = None,
     los_east_file: Path | None = None,
     los_north_file: Path | None = None,
@@ -462,6 +473,8 @@ def create_displacement_products(
         Configuration object for the PGE run.
     dolphin_config : dolphin.workflows.DisplacementWorkflow
         Configuration object run by `dolphin`.
+    processing_start_datetime : datetime.datetime
+        The processing start datetime.
     reference_point : ReferencePoint, optional
         Named tuple with (row, col, lat, lon) of selected reference pixel.
         If None, will record empty in the dataset's attributes
@@ -524,6 +537,7 @@ def create_displacement_products(
                 repeat(los_east_file),
                 repeat(los_north_file),
                 repeat(near_far_incidence_angles),
+                repeat(processing_start_datetime),
             )
         )
 

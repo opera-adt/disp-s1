@@ -480,10 +480,8 @@ def create_displacement_products(
     processing_start_datetime : datetime.datetime
         The processing start datetime.
     reference_point : ReferencePoint, optional
-        Named tuple with (row, col, lat, lon) of selected reference pixel.
-        If None, will record empty in the dataset's attributes
-    reference_point : ReferencePoint, optional
-        Reference point recorded from dolphin after unwrapping.
+        Named tuple with (row, col, lat, lon) of selected reference pixel
+        recorded from dolphin after unwrapping.
         If none, leaves product attributes empty.
     los_east_file : Path, optional
         Path to the east component of line of sight unit vector
@@ -537,11 +535,11 @@ def create_displacement_products(
                 repeat(date_to_cslc_files),
                 repeat(pge_runconfig),
                 repeat(dolphin_config),
+                repeat(processing_start_datetime),
                 repeat(reference_point),
                 repeat(los_east_file),
                 repeat(los_north_file),
                 repeat(near_far_incidence_angles),
-                repeat(processing_start_datetime),
             )
         )
 

@@ -91,6 +91,7 @@ def create_output_product(
     dolphin_config: DisplacementWorkflow,
     reference_cslc_files: Sequence[Filename],
     secondary_cslc_files: Sequence[Filename],
+    processing_start_datetime: datetime.datetime,
     los_east_file: Filename | None = None,
     los_north_file: Filename | None = None,
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
@@ -130,6 +131,8 @@ def create_output_product(
     secondary_cslc_files : Sequence[Filename]
         Input CSLC products corresponding to the secondary date.
         Used for metadata generation.
+    processing_start_datetime : datetime.datetime
+        The processing start datetime.
     los_east_file : Path, optional
         Path to the east component of line of sight unit vector
     los_north_file : Path, optional
@@ -409,6 +412,7 @@ def create_output_product(
         product_bounds=tuple(bounds),
         average_temporal_coherence=average_temporal_coherence,
         near_far_incidence_angles=near_far_incidence_angles,
+        processing_start_datetime=processing_start_datetime,
     )
 
     _create_metadata_group(
@@ -535,6 +539,7 @@ def _create_identification_group(
     footprint_wkt: str,
     product_bounds: tuple[float, float, float, float],
     average_temporal_coherence: float,
+    processing_start_datetime: datetime.datetime,
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
 ) -> None:
     """Create the identification group in the output file."""
@@ -563,6 +568,14 @@ def _create_identification_group(
             data=pge_runconfig.product_path_group.product_version,
             fillvalue=None,
             description="Version of the product",
+        )
+        _create_dataset(
+            group=identification_group,
+            name="processing_start_datetime",
+            dimensions=(),
+            data=processing_start_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+            fillvalue=None,
+            description="UTC datetime of the start of processing for this product",
         )
         _create_dataset(
             group=identification_group,

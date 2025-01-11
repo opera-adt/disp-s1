@@ -86,6 +86,7 @@ def create_output_product(
     ps_mask_filename: Filename,
     shp_count_filename: Filename,
     similarity_filename: Filename,
+    timeseries_residual_filename: Filename,
     water_mask_filename: Filename | None,
     pge_runconfig: RunConfig,
     dolphin_config: DisplacementWorkflow,
@@ -118,6 +119,8 @@ def create_output_product(
         The path to statistically homogeneous pixels (SHP) counts.
     similarity_filename : Filename
         The path to the cosine similarity image.
+    timeseries_residual_filename : Filename
+        The path to the timeseries inversion residual sum image.
     water_mask_filename : Filename, optional
         Path to the binary water mask to use in creating a recommended mask.
     pge_runconfig : Optional[RunConfig], optional
@@ -351,6 +354,7 @@ def create_output_product(
             shp_count_filename,
             water_mask_filename,
             similarity_filename,
+            timeseries_residual_filename,
         ]
 
         for info, filename in zip(product_infos[3:], data_files, strict=True):
@@ -402,12 +406,14 @@ def create_output_product(
         reference_point=reference_point,
     )
 
-    orbit_type = _get_orbit_type(reference_cslc_files[0])
+    reference_orbit_type = _get_orbit_type(reference_cslc_files[0])
+    secondary_orbit_type = _get_orbit_type(secondary_cslc_files[0])
     _create_identification_group(
         output_name=output_name,
         pge_runconfig=pge_runconfig,
         radar_wavelength=radar_wavelength,
-        orbit_type=orbit_type,
+        reference_orbit_type=reference_orbit_type,
+        secondary_orbit_type=secondary_orbit_type,
         reference_start_time=reference_start_time,
         reference_end_time=reference_end_time,
         secondary_start_time=secondary_start_time,
@@ -535,7 +541,8 @@ def _create_identification_group(
     output_name: Filename,
     pge_runconfig: RunConfig,
     radar_wavelength: float,
-    orbit_type: str,
+    reference_orbit_type: str,
+    secondary_orbit_type: str,
     reference_start_time: datetime.datetime,
     reference_end_time: datetime.datetime,
     secondary_start_time: datetime.datetime,
@@ -547,6 +554,7 @@ def _create_identification_group(
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
 ) -> None:
     """Create the identification group in the output file."""
+    logger.info("Creating /identification group in %s", output_name)
     with h5netcdf.File(output_name, "a") as f:
         identification_group = f.create_group(IDENTIFICATION_GROUP_NAME)
         _create_dataset(
@@ -793,12 +801,25 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
-            name="source_data_orbit_type",
+            name="source_data_reference_orbit_type",
             dimensions=(),
-            data=orbit_type,
+            data=reference_orbit_type,
             fillvalue=None,
             description=(
                 "Type of orbit (precise, restituted) used during input data processing"
+                " for the reference acquisition"
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_secondary_orbit_type",
+            dimensions=(),
+            data=secondary_orbit_type,
+            fillvalue=None,
+            description=(
+                "Type of orbit (precise, restituted) used during input data processing"
+                " for the secondary acquisition"
             ),
             attrs={"units": "unitless"},
         )
@@ -997,6 +1018,7 @@ def _create_metadata_group(
     dolphin_config: DisplacementWorkflow,
 ) -> None:
     """Create the metadata group in the output file."""
+    logger.info("Creating /metadata group in %s", output_name)
     with h5netcdf.File(output_name, "a") as f:
         metadata_group = f.create_group(METADATA_GROUP_NAME)
         _create_dataset(
@@ -1416,12 +1438,13 @@ def process_compressed_slc(info: CompressedSLCInfo) -> Path:
 def _copy_hdf5_dsets(
     source_file: Filename,
     dest_file: Filename,
-    dsets_to_copy: Iterable[str],
+    dsets_to_copy: Iterable[tuple[str, str | None]],
     prepend_str: str = "",
     error_on_missing: bool = False,
+    delete_if_exists: bool = True,
 ) -> None:
     with h5py.File(source_file, "r") as src, h5py.File(dest_file, "a") as dst:
-        for dset_path in dsets_to_copy:
+        for dset_path, new_path in dsets_to_copy:
             if dset_path not in src:
                 msg = f"Dataset or group {dset_path} not found in {source_file}"
                 if error_on_missing:
@@ -1431,16 +1454,25 @@ def _copy_hdf5_dsets(
                     continue
 
             # Create parent group if it doesn't exist
-            out_group = str(Path(dset_path).parent)
+            if new_path is not None:
+                out_group = str(Path(new_path).parent)
+            else:
+                out_group = str(Path(dset_path).parent)
             dst.require_group(out_group)
 
-            # Remove existing dataset/group if it exists
-            if dset_path in dst:
-                del dst[dset_path]
-
             # Copy the dataset or group
-            new_name = f"{prepend_str}{Path(dset_path).name}"
-            src.copy(src[dset_path], dst[str(Path(dset_path).parent)], name=new_name)
+            if new_path is not None:
+                # If provided, use the new full path
+                # Remove existing dataset/group if it exists
+                if delete_if_exists and new_path in dst:
+                    del dst[new_path]
+                src.copy(src[dset_path], dst[out_group], name=str(Path(new_path).name))
+            else:
+                # Otherwise, form the name, store in same group as src
+                new_name = f"{prepend_str}{Path(dset_path).name}"
+                if delete_if_exists and new_name in dst[out_group]:
+                    del dst[new_path]
+                src.copy(src[dset_path], dst[out_group], name=new_name)
 
 
 def copy_cslc_metadata_to_compressed(
@@ -1457,23 +1489,27 @@ def copy_cslc_metadata_to_compressed(
 
     """
     dsets_to_copy = [
-        "/metadata/orbit",  #          Group
-        "/metadata/processing_information/input_burst_metadata/wavelength",
-        "/metadata/processing_information/input_burst_metadata/platform_id",
-        "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
-        "/metadata/processing_information/input_burst_metadata/ipf_version",
-        "/metadata/processing_information/algorithms/COMPASS_version",
-        "/metadata/processing_information/algorithms/ISCE3_version",
-        "/metadata/processing_information/algorithms/s1_reader_version",
-        "/identification/zero_doppler_end_time",
-        "/identification/zero_doppler_start_time",
-        "/identification/bounding_polygon",
-        "/identification/mission_id",
-        "/identification/instrument_name",
-        "/identification/look_direction",
-        "/identification/track_number",
-        "/identification/orbit_pass_direction",
-        "/identification/absolute_orbit_number",
+        ("/metadata/orbit", None),
+        ("/metadata/processing_information/input_burst_metadata/wavelength", None),
+        ("/metadata/processing_information/input_burst_metadata/platform_id", None),
+        (
+            "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
+            None,
+        ),
+        ("/metadata/processing_information/input_burst_metadata/ipf_version", None),
+        ("/metadata/processing_information/algorithms/COMPASS_version", None),
+        ("/metadata/processing_information/algorithms/ISCE3_version", None),
+        ("/metadata/processing_information/algorithms/s1_reader_version", None),
+        ("/identification/zero_doppler_end_time", None),
+        ("/identification/zero_doppler_start_time", None),
+        ("/identification/bounding_polygon", None),
+        ("/identification/mission_id", None),
+        ("/identification/instrument_name", None),
+        ("/identification/look_direction", None),
+        ("/identification/track_number", None),
+        ("/identification/orbit_pass_direction", None),
+        ("/identification/absolute_orbit_number", None),
+        ("/quality_assurance/orbit_information/orbit_type", None),
     ]
     _copy_hdf5_dsets(
         source_file=opera_cslc_file,
@@ -1489,9 +1525,7 @@ def copy_cslc_metadata_to_displacement(
     output_disp_file: Filename,
 ) -> None:
     """Copy metadata from input reference/secondary CSLC files to DISP output."""
-    dsets_to_copy = [
-        "/metadata/orbit",  #          Group
-    ]
+    dsets_to_copy = [("/metadata/orbit", None)]  #          Group
     for cslc_file, prepend_str in zip(
         [reference_cslc_file, secondary_cslc_file], ["reference_", "secondary_"]
     ):
@@ -1504,18 +1538,30 @@ def copy_cslc_metadata_to_displacement(
 
     # Add ones which should be same for both ref/sec
     common_dsets = [
-        "/identification/mission_id",
-        "/identification/instrument_name",
-        "/identification/look_direction",
-        "/identification/track_number",
-        "/identification/orbit_pass_direction",
-        "/identification/absolute_orbit_number",
-        "/metadata/processing_information/input_burst_metadata/platform_id",
-        "/metadata/processing_information/input_burst_metadata/wavelength",
-        "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
-        "/metadata/processing_information/algorithms/COMPASS_version",
-        "/metadata/processing_information/algorithms/ISCE3_version",
-        "/metadata/processing_information/algorithms/s1_reader_version",
+        ("/identification/mission_id", None),
+        ("/identification/instrument_name", None),
+        ("/identification/look_direction", None),
+        ("/identification/track_number", None),
+        ("/identification/orbit_pass_direction", None),
+        ("/identification/absolute_orbit_number", None),
+        # Move this nested attribute into the `metadata/` group
+        (
+            "/metadata/processing_information/input_burst_metadata/platform_id",
+            "metadata/platform_id",
+        ),
+        # Be more explicit about what these attributes mean
+        (
+            "/metadata/processing_information/algorithms/COMPASS_version",
+            "metadata/source_data_software_COMPASS_version",
+        ),
+        (
+            "/metadata/processing_information/algorithms/ISCE3_version",
+            "metadata/source_data_software_ISCE3_version",
+        ),
+        (
+            "/metadata/processing_information/algorithms/s1_reader_version",
+            "metadata/source_data_software_s1_reader_version",
+        ),
     ]
     _copy_hdf5_dsets(
         source_file=reference_cslc_file,

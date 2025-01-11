@@ -154,6 +154,20 @@ class DisplacementProducts:
             dtype=np.float32,
         )
     )
+    timeseries_inversion_residuals: ProductInfo = field(
+        default_factory=lambda: ProductInfo(
+            name="timeseries_inversion_residuals",
+            long_name="Timeseries inversion residuals",
+            description=(
+                "Sum of residuals of the timeseries inversion for this secondary date."
+            ),
+            fillvalue=np.nan,
+            attrs={"units": "radians"},
+            # 8 bits (between 0 and 1) is around .001 precision
+            keep_bits=7,
+            dtype=np.float32,
+        )
+    )
 
     def __iter__(self):
         """Return all displacement dataset info as an iterable."""

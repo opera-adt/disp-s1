@@ -25,7 +25,7 @@ dependencies:
   - cxx-compiler # for whirlwind
   # # Spurt is not yet on pip/conda, but only has one extra (...which also is badly supported on conda-forge)
   # - ortools==9.8.3296
-  - dolphin>=0.30.0
+  - dolphin>=0.35.0
   - pip
     # - dolphin==0.31.1
     # - git+https://github.com/isce-framework/spurt@30562d4e883e93d11e5d3fb4fcdf953214875591

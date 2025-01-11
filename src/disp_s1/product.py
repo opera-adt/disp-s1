@@ -554,6 +554,7 @@ def _create_identification_group(
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
 ) -> None:
     """Create the identification group in the output file."""
+    logger.info("Creating /identification group in %s", output_name)
     with h5netcdf.File(output_name, "a") as f:
         identification_group = f.create_group(IDENTIFICATION_GROUP_NAME)
         _create_dataset(
@@ -1017,6 +1018,7 @@ def _create_metadata_group(
     dolphin_config: DisplacementWorkflow,
 ) -> None:
     """Create the metadata group in the output file."""
+    logger.info("Creating /metadata group in %s", output_name)
     with h5netcdf.File(output_name, "a") as f:
         metadata_group = f.create_group(METADATA_GROUP_NAME)
         _create_dataset(
@@ -1439,6 +1441,7 @@ def _copy_hdf5_dsets(
     dsets_to_copy: Iterable[tuple[str, str | None]],
     prepend_str: str = "",
     error_on_missing: bool = False,
+    delete_if_exists: bool = True,
 ) -> None:
     with h5py.File(source_file, "r") as src, h5py.File(dest_file, "a") as dst:
         for dset_path, new_path in dsets_to_copy:
@@ -1451,23 +1454,25 @@ def _copy_hdf5_dsets(
                     continue
 
             # Create parent group if it doesn't exist
-            out_group = str(Path(dset_path).parent)
+            if new_path is not None:
+                out_group = str(Path(new_path).parent)
+            else:
+                out_group = str(Path(dset_path).parent)
             dst.require_group(out_group)
-
-            # Remove existing dataset/group if it exists
-            if dset_path in dst:
-                del dst[dset_path]
 
             # Copy the dataset or group
             if new_path is not None:
                 # If provided, use the new full path
-                src.copy(src[dset_path], new_path)
+                # Remove existing dataset/group if it exists
+                if delete_if_exists and new_path in dst:
+                    del dst[new_path]
+                src.copy(src[dset_path], dst[out_group], name=str(Path(new_path).name))
             else:
                 # Otherwise, form the name, store in same group as src
                 new_name = f"{prepend_str}{Path(dset_path).name}"
-                src.copy(
-                    src[dset_path], dst[str(Path(dset_path).parent)], name=new_name
-                )
+                if delete_if_exists and new_name in dst[out_group]:
+                    del dst[new_path]
+                src.copy(src[dset_path], dst[out_group], name=new_name)
 
 
 def copy_cslc_metadata_to_compressed(

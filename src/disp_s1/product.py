@@ -589,11 +589,14 @@ def _create_identification_group(
             fillvalue=None,
             description="UTC datetime of the start of processing for this product",
         )
+
+        frame_id = pge_runconfig.input_file_group.frame_id
+        url = f"https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1-STATIC&frame={frame_id}"
         _create_dataset(
             group=identification_group,
             name="static_layers_data_access",
             dimensions=(),
-            data="https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1-STATIC",
+            data=url,
             fillvalue=None,
             description=(
                 "URL of the static layers product associated with this Displacement"

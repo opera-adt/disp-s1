@@ -372,6 +372,11 @@ def test_repeated_compressed_dates():
     assert extra_reference_date is None
 
 
+def test_reference_date_last_per_ministack():
+    # TODO
+    assert False
+
+
 @pytest.fixture
 def overrides_file():
     return (

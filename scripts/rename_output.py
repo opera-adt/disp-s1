@@ -209,9 +209,10 @@ def rename_disp_s1_file(
 
     # Rename (move) the file
     if dry_run:
-        print(f"Renaming {input_file} to {new_file_path}")
+        click.echo(f"DRY RUN: {input_file} to {new_file_path}")
     else:
         input_file.rename(new_file_path)
+        click.echo(f"Renamed {input_file} to {new_file_path}")
 
     return new_file_path
 
@@ -230,13 +231,12 @@ def rename_disp_s1_file(
 def main(input_files, output_dir, version, dry_run):
     """Rename a DISP-S1 NetCDF file to an official OPERA name."""
     for input_file in input_files:
-        renamed_file = rename_disp_s1_file(
+        rename_disp_s1_file(
             input_file=input_file,
             output_dir=output_dir,
             version=version,
             dry_run=dry_run,
         )
-        print(f"File renamed to: {renamed_file}")
 
 
 if __name__ == "__main__":

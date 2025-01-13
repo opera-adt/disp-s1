@@ -39,13 +39,10 @@ def _read_disp_s1_metadata(nc_file: Path) -> dict:
 
     """
     with h5py.File(nc_file, mode="r") as ds:
-        # Extract the necessary fields. Adjust indexing or decoding if needed.
         frame_id = ds["/identification/frame_id"][()]
         polarization = ds["/identification/source_data_polarization"][()].decode(
             "utf-8"
         )
-
-        # The script assumes these date/time fields are ASCII/UTF-8 strings
         generation_str = ds["/identification/processing_start_datetime"][()].decode(
             "utf-8"
         )
@@ -56,7 +53,6 @@ def _read_disp_s1_metadata(nc_file: Path) -> dict:
             ()
         ].decode("utf-8")
 
-    # Convert the string times to datetime objects using dateutil
     generation_dt = datetime.datetime.fromisoformat(generation_str)
     reference_dt = datetime.datetime.fromisoformat(reference_str)
     secondary_dt = datetime.datetime.fromisoformat(secondary_str)
@@ -84,7 +80,7 @@ def _format_dt(dt_obj: datetime.datetime) -> str:
         Datetime in format 'YYYYMMDDTHHMMSSZ'
 
     """
-    # If no timezone info, assume UTC
+    # Assume UTC always
     if dt_obj.tzinfo is None:
         dt_obj = dt_obj.replace(tzinfo=datetime.timezone.utc)
     return dt_obj.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -139,7 +135,6 @@ def create_filename(
     # Format the product version with 'v' prefix, e.g. 'v0.10'
     product_version = f"v{version}"
 
-    # Format each datetime field
     ref_str = _format_dt(reference_dt)
     sec_str = _format_dt(secondary_dt)
     gen_str = _format_dt(generation_dt)
@@ -179,16 +174,14 @@ def rename_disp_s1_file(
         The path to the newly renamed file.
 
     """
-    # Read the metadata from the NetCDF file
     meta = _read_disp_s1_metadata(input_file)
 
     frame_id = meta["frame_id"]
     polarization = meta["polarization"]
     reference_dt = meta["reference_dt"]
     secondary_dt = meta["secondary_dt"]
-    generation_dt = meta["generation_dt"]  # or datetime.datetime.utcnow() if you prefer
+    generation_dt = meta["generation_dt"]
 
-    # Construct the new name using the helper function
     core_name = create_filename(
         frame_id=frame_id,
         polarization=polarization,
@@ -198,7 +191,6 @@ def rename_disp_s1_file(
         version=version,
     )
 
-    # Append the file extension '.nc'
     new_filename = f"{core_name}.nc"
 
     # If no output directory was provided, use the same directory as the input file
@@ -207,7 +199,6 @@ def rename_disp_s1_file(
 
     new_file_path = output_dir.joinpath(new_filename)
 
-    # Rename (move) the file
     if dry_run:
         click.echo(f"DRY RUN: {input_file} to {new_file_path}")
     else:

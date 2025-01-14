@@ -6,6 +6,7 @@ from pathlib import Path
 
 import opera_utils
 import pytest
+from dolphin.stack import CompressedSlcPlan
 
 from disp_s1 import pge_runconfig
 from disp_s1.pge_runconfig import (
@@ -245,6 +246,23 @@ def test_reference_changeover(
     assert cfg.output_options.extra_reference_date == datetime.datetime(2018, 7, 22)
 
 
+def _make_frame_files(
+    sensing_time_list: list[datetime.datetime], num_compressed: int
+) -> list[str]:
+    comp_slcs = [
+        # Note the fake (start, end) datetimes since we dont use those for these testes
+        f"COMPRESSED_OPERA_T042-088905-{swath}_{d.strftime('%Y%m%dT%H%M%S')}_20200101_20210101.h5"
+        for d in sensing_time_list[:num_compressed]
+        for swath in ["IW1", "IW2", "IW3"]
+    ]
+    real_slcs = [
+        f"OPERA_T042-088905-{swath}_{d.strftime('%Y%m%dT%H%M%S')}.h5"
+        for d in sensing_time_list[num_compressed:]
+        for swath in ["IW1", "IW2", "IW3"]
+    ]
+    return comp_slcs + real_slcs
+
+
 def test_reference_date_computation():
     # Test from a sample alaska frame after dropping winter
     # it spans multiple years
@@ -265,12 +283,7 @@ def test_reference_date_computation():
         datetime.datetime(2020, 8, 21, 16, 13, 4),
         datetime.datetime(2020, 9, 2, 16, 13, 5),
     ]
-    # Doesn't have to be the real name
-    cslc_file_list = [
-        f"OPERA_T042-088905-{swath}_{d.strftime('%Y%m%dT%H%M%S')}.h5"
-        for d in sensing_time_list
-        for swath in ["IW1", "IW2", "IW3"]
-    ]
+    cslc_file_list = _make_frame_files(sensing_time_list, 0)
     random.shuffle(cslc_file_list)
 
     # Assume we nominally will reset the reference each august
@@ -281,7 +294,9 @@ def test_reference_date_computation():
     # - the "extra reference date" will be the *latest* one from the reference list
     # this is be 2020-08-09
     output_reference_idx, extra_reference_date = pge_runconfig._compute_reference_dates(
-        reference_datetimes, cslc_file_list
+        reference_datetimes,
+        cslc_file_list,
+        compressed_slc_plan=CompressedSlcPlan.ALWAYS_FIRST,
     )
     assert output_reference_idx == 0
     assert extra_reference_date == datetime.date(2020, 8, 9)
@@ -305,11 +320,7 @@ def test_reference_first_in_stack():
         datetime.datetime(2017, 3, 26, 0, 0),
         datetime.datetime(2017, 4, 7, 0, 0),
     ]
-    cslc_file_list = [
-        f"OPERA_T042-088905-{swath}_{d.strftime('%Y%m%dT%H%M%S')}.h5"
-        for d in sensing_time_list
-        for swath in ["IW1", "IW2", "IW3"]
-    ]
+    cslc_file_list = _make_frame_files(sensing_time_list, 0)
     random.shuffle(cslc_file_list)
 
     # Assume we nominally will reset the reference each august
@@ -334,7 +345,9 @@ def test_reference_first_in_stack():
     # - The "output index" should be 0: this is the first ministack
     # - the "extra reference date" will be the None
     output_reference_idx, extra_reference_date = pge_runconfig._compute_reference_dates(
-        reference_datetimes, cslc_file_list
+        reference_datetimes,
+        cslc_file_list,
+        compressed_slc_plan=CompressedSlcPlan.ALWAYS_FIRST,
     )
     assert output_reference_idx == 0
     assert extra_reference_date is None
@@ -365,11 +378,66 @@ def test_repeated_compressed_dates():
     ]
 
     output_reference_idx, extra_reference_date = pge_runconfig._compute_reference_dates(
-        reference_datetimes, cslc_file_list
+        reference_datetimes,
+        cslc_file_list,
+        compressed_slc_plan=CompressedSlcPlan.ALWAYS_FIRST,
     )
     # Should be the latest one: the compressed slc with 20200717
     assert output_reference_idx == 4
     assert extra_reference_date is None
+
+
+def test_reference_date_last_per_ministack():
+    compressed_slc_plan = CompressedSlcPlan.LAST_PER_MINISTACK
+    sensing_time_list = [
+        datetime.datetime(2016, 8, 10, 0, 0),
+        datetime.datetime(2016, 9, 3, 0, 0),
+        datetime.datetime(2016, 9, 27, 0, 0),
+        datetime.datetime(2016, 10, 21, 0, 0),
+        datetime.datetime(2016, 11, 14, 0, 0),
+        datetime.datetime(2016, 12, 8, 0, 0),
+        datetime.datetime(2017, 1, 1, 0, 0),
+        datetime.datetime(2017, 1, 13, 0, 0),
+        datetime.datetime(2017, 1, 19, 0, 0),
+        datetime.datetime(2017, 1, 25, 0, 0),
+        datetime.datetime(2017, 2, 18, 0, 0),
+        datetime.datetime(2017, 3, 2, 0, 0),
+        datetime.datetime(2017, 3, 14, 0, 0),
+        datetime.datetime(2017, 3, 26, 0, 0),
+        datetime.datetime(2017, 4, 7, 0, 0),
+    ]
+    cslc_file_list = _make_frame_files(
+        sensing_time_list=sensing_time_list, num_compressed=0
+    )
+    random.shuffle(cslc_file_list)
+
+    # Assume we nominally will reset the reference each august
+    reference_datetimes = []
+    # We expect that
+    # - The "output index" should be 0: this is the first ministack
+    # - the "extra reference date" will be the None
+    output_reference_idx, extra_reference_date = pge_runconfig._compute_reference_dates(
+        reference_datetimes, cslc_file_list, compressed_slc_plan=compressed_slc_plan
+    )
+    assert output_reference_idx == 0
+    assert extra_reference_date is None
+
+    # Now add compressed, and not that output reference index should be the latest one
+    for num_compressed in range(1, 6):
+        cslc_file_list = _make_frame_files(
+            sensing_time_list=sensing_time_list, num_compressed=num_compressed
+        )
+        random.shuffle(cslc_file_list)
+        output_reference_idx, extra_reference_date = (
+            pge_runconfig._compute_reference_dates(
+                reference_datetimes,
+                cslc_file_list,
+                compressed_slc_plan=compressed_slc_plan,
+            )
+        )
+        assert output_reference_idx == num_compressed - 1
+
+        assert extra_reference_date is None
 
 
 @pytest.fixture

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import datetime
 import json
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
+from dolphin.stack import CompressedSlcPlan
 from dolphin.workflows.config import (
     CorrectionOptions,
     DisplacementWorkflow,
@@ -18,11 +19,12 @@ from dolphin.workflows.config import (
     TimeseriesOptions,
     UnwrapOptions,
     WorkerSettings,
+    YamlModel,
 )
 from dolphin.workflows.config._common import _read_file_list_or_glob
-from dolphin.workflows.config._yaml_model import YamlModel
 from opera_utils import (
     OPERA_DATASET_NAME,
+    PathOrStr,
     get_burst_ids_for_frame,
     get_dates,
     get_frame_bbox,
@@ -296,7 +298,8 @@ class RunConfig(YamlModel):
         )
         new_parameters = _override_parameters(algorithm_parameters, frame_id=frame_id)
         # regenerate to ensure all defaults remained in updated version
-        param_dict = AlgorithmParameters(**new_parameters.model_dump()).model_dump()
+        algo_params = AlgorithmParameters(**new_parameters.model_dump())
+        param_dict = algo_params.model_dump()
 
         # Convert the frame_id into an output bounding box
         frame_to_burst_file = self.static_ancillary_file_group.frame_to_burst_json
@@ -330,7 +333,9 @@ class RunConfig(YamlModel):
         )
         # Compute the requested output indexes
         output_reference_idx, extra_reference_date = _compute_reference_dates(
-            reference_datetimes, cslc_file_list
+            reference_datetimes,
+            cslc_file_list,
+            algo_params.phase_linking.compressed_slc_plan,
         )
         param_dict["phase_linking"]["output_reference_idx"] = output_reference_idx
         param_dict["output_options"]["extra_reference_date"] = extra_reference_date
@@ -435,8 +440,8 @@ def _override_parameters(
 
 
 def _get_first_after_selected(
-    input_dates: Sequence[datetime.datetime],
-    selected_date: datetime.datetime,
+    input_dates: Sequence[datetime.datetime | datetime.date],
+    selected_date: datetime.datetime | datetime.date,
 ) -> int:
     """Find the first index of `input_dates` which falls after `selected_date`."""
     for idx, d in enumerate(input_dates):
@@ -447,16 +452,20 @@ def _get_first_after_selected(
 
 
 def _compute_reference_dates(
-    reference_datetimes, cslc_file_list
+    reference_datetimes: Iterable[datetime.datetime],
+    cslc_file_list: Iterable[PathOrStr],
+    compressed_slc_plan: CompressedSlcPlan,
 ) -> tuple[int, datetime.datetime | None]:
     # Get the dates of the base phase (works for either compressed, or regular cslc)
     # Use one burst ID as the template.
     burst_to_file_list = group_by_burst(cslc_file_list)
     burst_id = list(burst_to_file_list.keys())[0]
+    # Extract this burst id's files
     cur_files = sort_files_by_date(burst_to_file_list[burst_id])[0]
     # Mark any files beginning with "compressed" as compressed
     is_compressed = ["compressed" in str(Path(f).stem).lower() for f in cur_files]
     input_dates = [get_dates(f)[0].date() for f in cur_files]
+    num_ccslc = sum(is_compressed)
 
     output_reference_idx: int = 0
     extra_reference_date: datetime.datetime | None = None
@@ -477,6 +486,7 @@ def _compute_reference_dates(
             # Update the output_reference_idx for compressed SLCs
             output_reference_idx = nearest_idx
             # But if it's a compressed SLC, it's not an "extra" reference date
+            # This will move forward in time as we iterate over the reference dates
         else:
             # Set extra_reference_date for non-compressed SLCs
             inp_date = input_dates[nearest_idx]
@@ -484,6 +494,12 @@ def _compute_reference_dates(
             if inp_date >= ref_date:
                 extra_reference_date = inp_date
 
+    # If we have set the compressed_slc_plan to be the last per ministack,
+    # we want to make the shortest baseline interferograms.
+    # So we should make the output index relative to the most recent compressed SLC
+    # https://github.com/isce-framework/dolphin/blob/14ac66e49a8e8e66e9b74fc9eb4f0d232ab0924c/src/dolphin/stack.py#L488
+    if compressed_slc_plan == CompressedSlcPlan.LAST_PER_MINISTACK:
+        output_reference_idx = max(0, num_ccslc - 1)
     return output_reference_idx, extra_reference_date
 
 

@@ -499,8 +499,7 @@ def _compute_reference_dates(
     # So we should make the output index relative to the most recent compressed SLC
     # https://github.com/isce-framework/dolphin/blob/14ac66e49a8e8e66e9b74fc9eb4f0d232ab0924c/src/dolphin/stack.py#L488
     if compressed_slc_plan == CompressedSlcPlan.LAST_PER_MINISTACK:
-        output_reference_idx = num_ccslc - 1
-
+        output_reference_idx = max(0, num_ccslc - 1)
     return output_reference_idx, extra_reference_date
 
 

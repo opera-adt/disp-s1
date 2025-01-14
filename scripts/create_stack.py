@@ -235,15 +235,6 @@ def translate(output_dir: Path, nc_files: list[Path | str], dataset):
         out_tif = output_dir / f"{dataset}_{date_str}.tif"
 
         #  Use GDAL Translate to copy the recommended_mask dataset to GeoTIFF
-        opts = gdal.TranslateOptions(outputType=numpy_to_gdal_type(p.dtype))
-        gdal.Translate(
-            str(out_tif),
-            io.format_nc_filename(nc_path, dataset),
-            opts,
-            *io.DEFAULT_TIFF_OPTIONS,
-        )
-
-        click.echo(f"Created {out_tif}")
         gdal.Translate(
             str(out_tif),
             io.format_nc_filename(nc_path, dataset),

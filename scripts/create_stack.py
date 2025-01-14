@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Convert a series of OPERA DISP-S1 products to a signle-reference stack.
+"""Convert a series of OPERA DISP-S1 products to a single-reference stack.
 
 The OPERA L3 InSAR displacement netCDF files have reference dates which
 move forward in time. Each displacement is relative between two SAR acquisition dates.
 
 This script converts these files into a single continuous displacement time series.
-The current format is a Zarr stack.
+The current format is a stack of geotiff rasters.
 
 Usage:
-    python to_zarr.py out_disp_stack.zarr OPERA_L3_DISP-S1_*.nc
+    python create_stack.py out_disp_stack.zarr OPERA_L3_DISP-S1_*.nc
 """
 
 from __future__ import annotations

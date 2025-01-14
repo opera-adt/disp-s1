@@ -1541,7 +1541,6 @@ def copy_cslc_metadata_to_displacement(
 
     # Add ones which should be same for both ref/sec
     common_dsets = [
-        ("/identification/mission_id", None),
         ("/identification/instrument_name", None),
         ("/identification/look_direction", None),
         ("/identification/track_number", None),

@@ -223,17 +223,6 @@ def download_dem(config: DEMConfig, polygons: list[Polygon]) -> None:
         Path(file).unlink()
 
 
-def verify_s3_access(bucket: str, key: str) -> None:
-    """Verify access to S3 bucket and key."""
-    import boto3
-
-    s3_client = boto3.client("s3")
-    try:
-        s3_client.head_object(Bucket=bucket, Key=key)
-    except Exception as e:
-        raise RuntimeError(f"Cannot access s3://{bucket}/{key}: {str(e)}")
-
-
 def stage_dem(
     output: Path,
     bbox: Bbox,
@@ -260,10 +249,6 @@ def stage_dem(
     # Create polygon and check dateline crossing
     poly = polygon_from_bounding_box(config.bbox, config.margin_km)
     polygons = check_dateline(poly)
-
-    # Verify S3 access
-    test_key = f"{s3_key}/EPSG4326/EPSG4326.vrt" if s3_key else "EPSG4326/EPSG4326.vrt"
-    verify_s3_access(config.s3_bucket, test_key)
 
     # Download and process DEM
     download_dem(config, polygons)

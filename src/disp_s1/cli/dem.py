@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import click
+import opera_utils
 from dolphin import Bbox
 
 from disp_s1._dem import S3_DEM_BUCKET
@@ -15,6 +16,7 @@ from disp_s1._dem import stage_dem as run_stage_dem
     default="dem.vrt",
     help="Output DEM filepath (VRT format)",
 )
+@click.option("--frame-id", type=int, help="Sentinel-1 OPERA Frame ID")
 @click.option(
     "-b", "--bbox", type=float, nargs=4, help="Bounding box (WSEN, decimal degrees)"
 )
@@ -28,6 +30,7 @@ from disp_s1._dem import stage_dem as run_stage_dem
 @click.option("--debug/--no-debug", default=False, help="Enable debug logging")
 def stage_dem(
     output: Path,
+    frame_id: int | None,
     bbox: Bbox | None,
     margin: int,
     s3_bucket: str,
@@ -35,6 +38,17 @@ def stage_dem(
     debug: bool,
 ) -> None:
     """Stage a DEM for local processing."""
+    if frame_id is None and bbox is None:
+        raise ValueError("Must provide --frame-id or --bbox")
+    if frame_id is not None:
+        if bbox is not None:
+            raise ValueError("Only may provide --frame-id or --bbox")
+        # bbox = opera_utils.get_frame_bbox(frame_id=frame_id)
+        utm_epsg, utm_bounds = opera_utils.get_frame_bbox(frame_id=frame_id)
+        bbox = opera_utils.reproject_bounds(
+            utm_bounds, src_epsg=utm_epsg, dst_epsg=4326
+        )
+
     return run_stage_dem(
         output=output,
         bbox=bbox,

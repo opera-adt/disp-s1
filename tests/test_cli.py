@@ -25,7 +25,7 @@ def test_cli_debug():
 # Check run, validate, download, make-browse
 @pytest.mark.parametrize(
     "command",
-    ["run", "download", "validate", "make-browse", "stage-dem"],
+    ["run", "download", "validate", "make-browse"],
 )
 def test_cli_subcommands_smoke_test(command):
     runner = CliRunner()
@@ -36,10 +36,7 @@ def test_cli_subcommands_smoke_test(command):
 # Check run, validate, download, make-browse
 @pytest.mark.parametrize(
     "command",
-    [
-        "ionosphere",
-        "static-layers",
-    ],
+    ["ionosphere", "static-layers", "dem"],
 )
 def test_cli_download_subcommands_smoke_test(command):
     runner = CliRunner()

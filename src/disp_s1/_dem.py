@@ -151,17 +151,35 @@ def translate_dem(vrt_path: str, output_path: str, bounds: Bbox) -> None:
     logger.info(f"Translating DEM from {vrt_path} to {output_path} over {bounds}")
 
     ds = gdal.Open(vrt_path, gdal.GA_ReadOnly)
+    length = ds.GetRasterBand(1).YSize
+    width = ds.GetRasterBand(1).XSize
+
     input_x_min, xres, _, input_y_max, _, yres = ds.GetGeoTransform()
 
     # Snap coordinates to DEM grid
     def snap(val, res, offset, round_func):
         return round_func(float(val - offset) / res) * res + offset
 
-    snapped_bounds = (
-        snap(x_min, xres, input_x_min, np.floor),
-        snap(x_max, xres, input_x_min, np.ceil),
-        snap(y_min, yres, input_y_max, np.floor),
-        snap(y_max, yres, input_y_max, np.ceil),
+    # Snap edge coordinates using the DEM pixel spacing
+    # (xres and yres) and starting coordinates (input_x_min and
+    # input_x_max). Maximum values are rounded using np.ceil
+    # and minimum values are rounded using np.floor
+    snapped_x_min = snap(x_min, xres, input_x_min, np.floor)
+    snapped_x_max = snap(x_max, xres, input_x_min, np.ceil)
+    snapped_y_min = snap(y_min, yres, input_y_max, np.floor)
+    snapped_y_max = snap(y_max, yres, input_y_max, np.ceil)
+
+    input_y_min = input_y_max + length * yres
+    input_x_max = input_x_min + width * xres
+
+    adjusted_x_min = max(snapped_x_min, input_x_min)
+    adjusted_x_max = min(snapped_x_max, input_x_max)
+    adjusted_y_min = max(snapped_y_min, input_y_min)
+    adjusted_y_max = min(snapped_y_max, input_y_max)
+
+    logger.info(
+        "Adjusted projection window"
+        f" {str([adjusted_x_min, adjusted_y_max, adjusted_x_max, adjusted_y_min])}"
     )
 
     try:
@@ -169,16 +187,14 @@ def translate_dem(vrt_path: str, output_path: str, bounds: Bbox) -> None:
             output_path,
             ds,
             format="GTiff",
-            projWin=[
-                snapped_bounds[0],
-                snapped_bounds[3],
-                snapped_bounds[2],
-                snapped_bounds[1],
-            ],
+            projWin=[adjusted_x_min, adjusted_y_max, adjusted_x_max, adjusted_y_min],
         )
     except RuntimeError as err:
         if "negative width and/or height" in str(err):
-            logger.warning("Using original bounds due to negative dimensions")
+            logger.warning(
+                "Adjusted window translation failed due to negative width and/or "
+                "height, defaulting to original projection window"
+            )
             gdal.Translate(
                 output_path, ds, format="GTiff", projWin=[x_min, y_max, x_max, y_min]
             )

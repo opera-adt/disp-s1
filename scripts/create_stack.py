@@ -8,7 +8,7 @@ This script converts these files into a single continuous displacement time seri
 The current format is a stack of geotiff rasters.
 
 Usage:
-    python create_stack.py out_disp_stack.zarr OPERA_L3_DISP-S1_*.nc
+    python create_stack.py single-reference-out/ OPERA_L3_DISP-S1_*.nc
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ from pathlib import Path
 
 import click
 import numpy as np
-import zarr
 from dolphin import io
 from dolphin.timeseries import get_incidence_matrix
 from dolphin.utils import flatten, format_dates, numpy_to_gdal_type
@@ -67,26 +66,6 @@ class OperaDispFile(BaseModel):
         return cls(**data)
 
 
-def _make_zarr_writer(out_path, times, nrows, ncols):
-    store = zarr.DirectoryStore(out_path)
-    root_group = zarr.group(store=store, overwrite=True)
-    ntimes = len(times)
-
-    # Create the main displacement dataset.
-    disp_zarr = root_group.create(
-        name="displacement",
-        shape=(ntimes, nrows, ncols),
-        dtype=np.float32,
-        chunks=(min(ntimes, 10), 256, 256),
-        compressor=zarr.Blosc(cname="zstd", clevel=3, shuffle=2),
-    )
-    disp_zarr.attrs["description"] = "Displacement referenced to earliest date"
-    arr_times = np.array(times, dtype="datetime64")
-    disp_zarr.attrs["dates"] = arr_times
-    disp_zarr.attrs["reference_date"] = arr_times[0]
-    return disp_zarr
-
-
 def _make_gtiff_writer(output_dir, all_dates, like_filename):
     ref_date = all_dates[0]
     suffix = ".tif"
@@ -122,12 +101,12 @@ def rereference(
     block_shape: tuple[int, int] = (256, 256),
     nodata: float = np.nan,
 ):
-    """Create a Zarr stack from a list of OPERA displacement files.
+    """Create a single-reference stack from a list of OPERA displacement files.
 
     Parameters
     ----------
     output_dir : str
-        File path to the output Zarr directory.
+        File path to the output directory.
     nc_files : list[str]
         One or more netCDF files, each containing a 'displacement' dataset
         for a reference_date -> secondary_date interferogram.
@@ -161,18 +140,8 @@ def rereference(
     gdal_str = io.format_nc_filename(nc_files[0], dataset)
     ncols, nrows = io.get_raster_xysize(gdal_str)
 
-    # We'll store displacement for each date index (excluding the earliest reference),
-    # so the shape is [len(all_dates)-1, nrows, ncols].
-
     # Create the main displacement dataset.
-    if str(output_dir).endswith(".zarr"):
-        writer = _make_zarr_writer(
-            output_dir, times=all_dates, nrows=nrows, ncols=ncols
-        )
-    else:
-        writer = _make_gtiff_writer(
-            output_dir, all_dates=all_dates, like_filename=gdal_str
-        )
+    writer = _make_gtiff_writer(output_dir, all_dates=all_dates, like_filename=gdal_str)
 
     # Blockwise reading of each interferogram and accumulation into output
     # We'll define a block manager for reading data in 256x256 chunks

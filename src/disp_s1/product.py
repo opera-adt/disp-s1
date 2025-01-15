@@ -211,7 +211,9 @@ def create_output_product(
             exc_info=True,
         )
         baseline_arr = np.zeros((100, 100))
-    corrections["baseline"] = _interpolate_data(baseline_arr, shape=shape)
+    corrections["baseline"] = _interpolate_data(baseline_arr, shape=shape).astype(
+        "float32"
+    )
 
     logger.info("Extracting data footprint")
     try:

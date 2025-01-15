@@ -1,3 +1,4 @@
+import functools
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -6,7 +7,7 @@ import opera_utils
 from dolphin import Bbox
 from opera_utils import get_burst_ids_for_frame
 
-from disp_s1._dem import S3_DEM_BUCKET
+from disp_s1._dem import S3_DEM_BUCKET, S3_LONLAT_VRT_KEY
 from disp_s1._dem import stage_dem as stage_dem
 from disp_s1.ionosphere import (
     DEFAULT_DOWNLOAD_ENDPOINT,
@@ -15,10 +16,15 @@ from disp_s1.ionosphere import (
     download_ionosphere_files,
 )
 
+click.option = functools.partial(click.option, show_default=True)
+
 
 @click.group(name="download")
 def download_group():
     """Sub-commands for downloading prerequisite data."""
+    from dolphin._log import setup_logging
+
+    setup_logging(logger_name="disp_s1")
 
 
 @download_group.command()
@@ -147,7 +153,9 @@ def static_layers(
 @click.option(
     "-s", "--s3-bucket", default=S3_DEM_BUCKET, help="S3 bucket containing global DEM"
 )
-@click.option("-k", "--s3-key", default="", help="S3 key path within bucket")
+@click.option(
+    "-k", "--s3-key", default=S3_LONLAT_VRT_KEY, help="S3 key path within bucket"
+)
 @click.option("--debug/--no-debug", default=False, help="Enable debug logging")
 def dem(
     output: Path,

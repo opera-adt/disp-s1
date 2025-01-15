@@ -148,7 +148,7 @@ def translate_dem(vrt_path: str, output_path: str, bounds: Bbox) -> None:
 
     """
     x_min, x_max, y_min, y_max = bounds
-    logger.info(f"Translating DEM for window {bounds} to {output_path}")
+    logger.info(f"Translating DEM from {vrt_path} to {output_path} over {bounds}")
 
     ds = gdal.Open(vrt_path, gdal.GA_ReadOnly)
     input_x_min, xres, _, input_y_max, _, yres = ds.GetGeoTransform()
@@ -172,8 +172,8 @@ def translate_dem(vrt_path: str, output_path: str, bounds: Bbox) -> None:
             projWin=[
                 snapped_bounds[0],
                 snapped_bounds[3],
-                snapped_bounds[1],
                 snapped_bounds[2],
+                snapped_bounds[1],
             ],
         )
     except RuntimeError as err:
@@ -209,7 +209,7 @@ def download_dem(config: DEMConfig, polygons: list[Polygon]) -> None:
     dem_files = []
 
     for idx, poly in enumerate(polygons):
-        vrt_path = f"/vsis3/{config.s3_bucket}/{config.s3_key}/EPSG4326/EPSG4326.vrt"
+        vrt_path = f"/vsis3/{config.s3_bucket}/{config.s3_key}"
         output_path = f"{file_prefix}_{idx}.tif"
         dem_files.append(output_path)
 

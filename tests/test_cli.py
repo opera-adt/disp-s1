@@ -25,12 +25,7 @@ def test_cli_debug():
 # Check run, validate, download, make-browse
 @pytest.mark.parametrize(
     "command",
-    [
-        "run",
-        "download",
-        "validate",
-        "make-browse",
-    ],
+    ["run", "download", "validate", "make-browse", "stage-dem"],
 )
 def test_cli_subcommands_smoke_test(command):
     runner = CliRunner()

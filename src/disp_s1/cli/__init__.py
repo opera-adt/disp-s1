@@ -1,6 +1,5 @@
 import click
 
-from .dem import stage_dem
 from .download import download_group
 from .make_browse import make_browse
 from .run import run_cli
@@ -22,7 +21,6 @@ cli_app.add_command(run_cli)
 cli_app.add_command(validate)
 cli_app.add_command(make_browse)
 cli_app.add_command(download_group)
-cli_app.add_command(stage_dem)
 
 if __name__ == "__main__":
     cli_app()

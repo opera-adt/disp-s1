@@ -1,6 +1,9 @@
 """Staging utility for downloading the OPERA/NISAR DEM.
 
 Handles coordinate transformation, dateline crossing, and AWS S3 integration.
+
+Based on:
+https://github.com/nasa/opera-sds-pcm/blob/3450916980f584de63b4823018dcdcb62238624c/tools/stage_dem.py
 """
 
 import logging
@@ -18,6 +21,7 @@ from shapely.wkt import loads
 # Enable GDAL exceptions
 gdal.UseExceptions()
 
+logging.getLogger("backoff").addHandler(logging.StreamHandler())
 logger = logging.getLogger(__name__)
 
 S3_DEM_BUCKET = "opera-dem"
@@ -144,10 +148,10 @@ def translate_dem(vrt_path: str, output_path: str, bounds: Bbox) -> None:
     output_path : str
         Path for output GeoTIFF
     bounds : Tuple[float, float, float, float]
-        Boundary coordinates (x_min, x_max, y_min, y_max)
+        Boundary coordinates (x_min, y_min, x_max, y_max)
 
     """
-    x_min, x_max, y_min, y_max = bounds
+    x_min, y_min, x_max, y_max = bounds
     logger.info(f"Translating DEM from {vrt_path} to {output_path} over {bounds}")
 
     ds = gdal.Open(vrt_path, gdal.GA_ReadOnly)

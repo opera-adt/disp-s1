@@ -1040,7 +1040,7 @@ def _create_metadata_group(
             group=metadata_group,
             name="product_specification_document_id",
             dimensions=(),
-            data="JPL D-108772",
+            data="JPL D-108278",
             fillvalue=None,
             description="Document identifier for Product Specification",
         )

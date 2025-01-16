@@ -1117,7 +1117,7 @@ def _create_metadata_group(
         )
         _create_dataset(
             group=metadata_group,
-            name="product_persistent_scatterer_selection_criteria",
+            name="ceos_persistent_scatterer_selection_criteria",
             dimensions=(),
             data="Amplitude Dispersion",
             fillvalue=None,
@@ -1126,7 +1126,16 @@ def _create_metadata_group(
         )
         _create_dataset(
             group=metadata_group,
-            name="product_persistent_scatterer_selection_criteria_doi",
+            name="ceos_persistent_scatterer_amplitude_dispersion_threshold",
+            dimensions=(),
+            data=dolphin_config.ps_options.amp_dispersion_threshold,
+            fillvalue=None,
+            description="Name of persistent scatterer selection criteria",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_persistent_scatterer_selection_criteria_doi",
             dimensions=(),
             data="https://doi.org/10.1109/36.898661",
             fillvalue=None,
@@ -1137,7 +1146,16 @@ def _create_metadata_group(
         )
         _create_dataset(
             group=metadata_group,
-            name="phase_unwrapping_method",
+            name="ceos_phase_similarity_metric_doi",
+            dimensions=(),
+            data="https://doi.org/10.1109/TGRS.2022.3210868",
+            fillvalue=None,
+            description="DOI of reference describing phase cosine similarity metric",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_phase_unwrapping_method",
             dimensions=(),
             data=str(dolphin_config.unwrap_options.unwrap_method),
             fillvalue=None,
@@ -1146,20 +1164,29 @@ def _create_metadata_group(
         )
         _create_dataset(
             group=metadata_group,
-            name="atmospheric_phase_correction",
+            name="ceos_phase_unwrapping_snaphu_doi",
             dimensions=(),
-            data="None",
+            data="https://doi.org/10.1364/JOSAA.18.000338",
             fillvalue=None,
-            description="Method used to correct for atmosphere phase noise.",
+            description="DOI to reference describing SNAPHU phase unwrapping algorithm",
             attrs={"units": "unitless"},
         )
         _create_dataset(
             group=metadata_group,
-            name="ionospheric_phase_correction",
+            name="ceos_atmospheric_phase_correction",
             dimensions=(),
             data="None",
             fillvalue=None,
-            description="Method used to correct for ionospheric phase noise.",
+            description="Method used to correct for atmosphere phase noise",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_ionospheric_phase_correction",
+            dimensions=(),
+            data="None",
+            fillvalue=None,
+            description="Method used to correct for ionospheric phase noise",
             attrs={"units": "unitless"},
         )
         _create_dataset(

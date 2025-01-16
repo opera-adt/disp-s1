@@ -1028,6 +1028,24 @@ def _create_metadata_group(
         metadata_group = f.create_group(METADATA_GROUP_NAME)
         _create_dataset(
             group=metadata_group,
+            name="algorithm_theoretical_basis_document_id",
+            dimensions=(),
+            data="JPL D-108765",
+            fillvalue=None,
+            description=(
+                "Document identifier for Algorithm Theoretical Basis Document (ATBD)"
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="product_specification_document_id",
+            dimensions=(),
+            data="JPL D-108772",
+            fillvalue=None,
+            description="Document identifier for Product Specification",
+        )
+        _create_dataset(
+            group=metadata_group,
             name="disp_s1_software_version",
             dimensions=(),
             data=disp_s1_version,

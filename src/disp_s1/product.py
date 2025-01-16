@@ -1553,6 +1553,10 @@ def copy_cslc_metadata_to_displacement(
             "/metadata/processing_information/input_burst_metadata/platform_id",
             "metadata/platform_id",
         ),
+        (
+            "/metadata/processing_information/input_burst_metadata/iw2_mid_range",
+            "metadata/slant_range_mid_swath",
+        ),
         # Be more explicit about what these attributes mean
         (
             "/metadata/processing_information/algorithms/COMPASS_version",

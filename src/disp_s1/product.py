@@ -1105,6 +1105,16 @@ def _create_metadata_group(
             ),
             attrs={"units": "unitless"},
         )
+        # CEOS 1.7.16
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_insar_pair_baseline_criteria_information",
+            dimensions=(),
+            data="All",
+            fillvalue=None,
+            description="InSAR pair baseline selection criteria",
+            attrs={"units": "unitless"},
+        )
         _create_dataset(
             group=metadata_group,
             name="product_persistent_scatterer_selection_criteria",

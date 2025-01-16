@@ -68,12 +68,10 @@ RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt 
 # Activate, otherwise python will not be found
 # https://github.com/mamba-org/micromamba-docker#running-commands-in-dockerfile-within-the-conda-environment
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
-# Install whirlwind from source
-RUN pip install git+https://github.com/isce-framework/whirlwind@40defb38d2d6deca2819934788ebbc57e418e32d
-RUN pip install git+https://github.com/isce-framework/spurt@22b971e0937d379be24c615d7b3931f3a7802a93 # 2024-11-25
+RUN pip install git+https://github.com/isce-framework/spurt@v0.1.0
 # --no-deps because they are installed with conda
-RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.14.0
-RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.34.2
+RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.15.0
+RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.35.1
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .

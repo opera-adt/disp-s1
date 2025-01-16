@@ -1092,6 +1092,19 @@ def _create_metadata_group(
             description="x/y coordinate convention referring to pixel center or corner",
             attrs={"units": "unitless"},
         )
+        # CEOS 4.5
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_gridding_convention",
+            dimensions=(),
+            data="Yes",
+            fillvalue=None,
+            description=(
+                "Whether a consistent gridding/sampling frame is used for"
+                " ascending/descending frames."
+            ),
+            attrs={"units": "unitless"},
+        )
         _create_dataset(
             group=metadata_group,
             name="product_persistent_scatterer_selection_criteria",

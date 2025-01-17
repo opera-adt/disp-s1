@@ -8,7 +8,7 @@ This script converts these files into a single continuous displacement time seri
 The current format is a stack of geotiff rasters.
 
 Usage:
-    python create_stack.py single-reference-out/ OPERA_L3_DISP-S1_*.nc
+    python align_to_common_reference_date.py single-reference-out/ OPERA_L3_DISP-S1_*.nc
 """
 
 from __future__ import annotations
@@ -66,12 +66,12 @@ class OperaDispFile(BaseModel):
         return cls(**data)
 
 
-def _make_gtiff_writer(output_dir, all_dates, like_filename):
+def _make_gtiff_writer(output_dir, all_dates, like_filename, dataset: str):
     ref_date = all_dates[0]
     suffix = ".tif"
 
     out_paths = [
-        Path(output_dir) / (f"{format_dates(ref_date, d)}{suffix}")
+        Path(output_dir) / (f"{dataset}_{format_dates(ref_date, d)}{suffix}")
         for d in all_dates[1:]
     ]
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -141,7 +141,9 @@ def rereference(
     ncols, nrows = io.get_raster_xysize(gdal_str)
 
     # Create the main displacement dataset.
-    writer = _make_gtiff_writer(output_dir, all_dates=all_dates, like_filename=gdal_str)
+    writer = _make_gtiff_writer(
+        output_dir, all_dates=all_dates, like_filename=gdal_str, dataset=dataset
+    )
 
     # Blockwise reading of each interferogram and accumulation into output
     # We'll define a block manager for reading data in 256x256 chunks
@@ -193,7 +195,7 @@ QUALITY_LAYERS.pop(QUALITY_LAYERS.index("short_wavelength_displacement"))
 @click.argument("nc_files", nargs=-1, type=click.Path(exists=True))
 @click.option("--dataset", type=click.Choice(QUALITY_LAYERS))
 def translate(output_dir: Path, nc_files: list[Path | str], dataset):
-    """Read the input dataset, translate to output Geotiff with the date-pair string."""
+    """Convert an auxiliary layer to the correct single-reference name."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

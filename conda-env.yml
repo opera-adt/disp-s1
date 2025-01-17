@@ -9,6 +9,8 @@ dependencies:
   - click>=7.0
   - cmap
   - gdal>=3.8  # For Footprint
+  - libgdal-netcdf
+  - libgdal-hdf5
   - h5netcdf>=1.0
   - matplotlib-base
   - pydantic>=2.1
@@ -20,12 +22,9 @@ dependencies:
   # - xarray
   # Unwrappers:
   - snaphu>=0.4.1
-  - isce3-cpu>=0.16.0
+  - isce3-cpu>=0.16.0 # For baseline
   - tophu
   # - cxx-compiler # for whirlwind
-  # # Spurt is not yet on pip/conda, but only has one extra (...which also is badly supported on conda-forge)
-  # - ortools==9.8.3296
   - dolphin>=0.35.0
   - pip
-    # - dolphin==0.31.1
-    # - git+https://github.com/isce-framework/spurt@30562d4e883e93d11e5d3fb4fcdf953214875591
+    - spurt=0.1.0

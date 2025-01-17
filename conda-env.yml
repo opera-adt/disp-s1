@@ -27,4 +27,4 @@ dependencies:
   # - cxx-compiler # for whirlwind
   - dolphin>=0.35.0
   - pip:
-    - spurt=0.1.0
+    - spurt>=0.1.0

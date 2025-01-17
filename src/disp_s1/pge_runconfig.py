@@ -509,7 +509,11 @@ def _parse_reference_date_json(
     reference_datetimes: list[datetime.datetime] = []
     if reference_date_json is not None:
         with open(reference_date_json) as f:
-            reference_date_strs = json.load(f)[str(frame_id)]
+            reference_data = json.load(f)
+            if "data" in reference_data:
+                reference_date_strs = reference_data["data"].get(str(frame_id), [])
+            else:
+                reference_date_strs = reference_data.get(str(frame_id), [])
             reference_datetimes = [
                 datetime.datetime.fromisoformat(s) for s in reference_date_strs
             ]

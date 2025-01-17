@@ -14,9 +14,11 @@ logger = logging.getLogger(__name__)
 DSET_DEFAULT = "displacement"
 
 WARN_ONLY_DSETS = [
-    "version",  # /metadata/disp_s1_software_version and dolphin_software_version
+    # /identification_product_version, /metadata/[disp_s1][dolphin]_software_version
+    "version",
     "dolphin_workflow_config",
     "pge_runconfig",
+    "processing_start_datetime",
 ]
 
 

@@ -130,6 +130,7 @@ def rereference(
 
     # Build incidence matrix A and its pseudo-inverse
     A = get_incidence_matrix(ifg_date_pairs, all_dates)
+    assert _is_full_column_rank(A)
     A_pinv = np.linalg.pinv(A)
     # Normally we have M interferograms, N = (len(all_dates) - 1) unknowns
     # Here the "inversion" is actually a trivial inversion, essentially a running sum,
@@ -178,6 +179,10 @@ def rereference(
     writer.notify_finished()
 
     print(f"Saved displacement stack to {output_dir}")
+
+
+def _is_full_column_rank(A):
+    return np.linalg.matrix_rank(A) == A.shape[1]
 
 
 QUALITY_LAYERS = [p.name for p in DISPLACEMENT_PRODUCTS]

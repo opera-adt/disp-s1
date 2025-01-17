@@ -26,5 +26,5 @@ dependencies:
   - tophu
   # - cxx-compiler # for whirlwind
   - dolphin>=0.35.0
-  - pip
+  - pip:
     - spurt=0.1.0

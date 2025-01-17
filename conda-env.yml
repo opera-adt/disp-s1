@@ -19,7 +19,7 @@ dependencies:
   # Corrections
   - pysolid  # For solid earth tide corrections
   # - pyaps3
-  # - xarray
+  - xarray
   # Unwrappers:
   - snaphu>=0.4.1
   - isce3-cpu>=0.16.0 # For baseline

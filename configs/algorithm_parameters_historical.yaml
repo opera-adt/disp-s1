@@ -5,7 +5,7 @@ algorithm_parameters_overrides_json: opera-disp-s1-algorithm-parameters-override
 ps_options:
   # Amplitude dispersion threshold to consider a pixel a PS.
   #   Type: number.
-  amp_dispersion_threshold: 0.20
+  amp_dispersion_threshold: 0.2
 phase_linking:
   # Size of the ministack for sequential estimator.
   #   Type: integer.
@@ -84,7 +84,7 @@ unwrap_options:
   unwrap_method: snaphu
   # Number of interferograms to unwrap in parallel.
   #   Type: integer.
-  n_parallel_jobs: 2
+  n_parallel_jobs: 4
   # Set wrapped phase/correlation to 0 where mask is 0 before unwrapping. .
   #   Type: boolean.
   zero_where_masked: false
@@ -116,7 +116,7 @@ unwrap_options:
       - 400
     # Number of tiles to unwrap in parallel for each interferogram.
     #   Type: integer.
-    n_parallel_tiles: 5
+    n_parallel_tiles: 7
     # Initialization method for SNAPHU.
     #   Type: string.
     #   Options: ['mcf', 'mst'].
@@ -156,6 +156,10 @@ unwrap_options:
     #   `similarity_threshold` *or* above the temporal coherence threshold is chosen.
     #   Type: number.
     similarity_threshold: 0.5
+    # After running spurt, interpolate the values that were masked during unwrapping (which are
+    #   otherwise left as nan).
+    #   Type: boolean.
+    run_ambiguity_interpolation: true
     general_settings:
       # Tile up data spatially.
       #   Type: boolean.
@@ -210,7 +214,6 @@ unwrap_options:
       min_overlap_points: 25
       # Currently, only 'dirichlet' is supported.
       #   Type: dirichlet.
-      #   Options: ['dirichlet'].
       method: dirichlet
       # Method used to estimate bulk offset between tiles.
       #   Type: string.

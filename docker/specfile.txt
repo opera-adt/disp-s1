@@ -238,6 +238,7 @@ https://conda.anaconda.org/conda-forge/noarch/tzdata-2025a-h78e105d_0.conda#dbca
 https://conda.anaconda.org/conda-forge/noarch/urllib3-2.3.0-pyhd8ed1ab_0.conda#32674f8dbfb7b26410ed580dd3c10a29
 https://conda.anaconda.org/conda-forge/noarch/wheel-0.45.1-pyhd8ed1ab_1.conda#75cb7132eb58d97896e173ef12ac9986
 https://conda.anaconda.org/conda-forge/noarch/xyzservices-2024.9.0-pyhd8ed1ab_1.conda#c79cea50b258f652010cb6c8d81591b5
+https://conda.anaconda.org/conda-forge/noarch/xarray-2024.10.0-pyhd8ed1ab_0.conda#53e365732dfa053c4d19fc6b927392c4
 https://conda.anaconda.org/conda-forge/noarch/yamale-5.3.0-pyhd8ed1ab_0.conda#d4b5f3a50decd28cd747f4b5f7aea33f
 https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda#e52c2ef711ccf31bb7f70ca87d144b9e
 https://conda.anaconda.org/conda-forge/noarch/zipp-3.21.0-pyhd8ed1ab_1.conda#0c3cc595284c5e8f0f9900a9b228a332

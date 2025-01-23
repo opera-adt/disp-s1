@@ -1087,7 +1087,8 @@ def _create_metadata_group(
             data=param_str,
             fillvalue=None,
             description=(
-                "The full PGE runconfig YAML file used to generate the product."
+                "The algorithm parameters used in the runconfig YAML file used to"
+                " generate the product."
             ),
         )
         _create_dataset(
@@ -1148,7 +1149,7 @@ def _create_metadata_group(
             dimensions=(),
             data=dolphin_config.ps_options.amp_dispersion_threshold,
             fillvalue=None,
-            description="Name of persistent scatterer selection criteria",
+            description="Threshold for persistent scatterer selection",
             attrs={"units": "unitless"},
         )
         _create_dataset(

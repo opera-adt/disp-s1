@@ -1013,7 +1013,7 @@ def _create_identification_group(
             dimensions=(),
             data=num_nodata_pixels,
             fillvalue=None,
-            description=("Number of nodata pixel"),
+            description="Number of nodata pixel",
             attrs={"units": "meters"},
         )
         # CEOS: 1.7.7
@@ -1160,6 +1160,42 @@ def _create_metadata_group(
             data="All",
             fillvalue=None,
             description="InSAR pair baseline selection criteria",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_insar_azimuth_common_band_filtering",
+            dimensions=(),
+            data="False",
+            fillvalue=None,
+            description=(
+                "Flag to indicate if azimuth filtering applied during interferogram"
+                " formation"
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_insar_range_spectral_shift_filtering",
+            dimensions=(),
+            data="False",
+            fillvalue=None,
+            description=(
+                "Flag to indicate if range spectral shift filtering applied during"
+                " interferogram formation"
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_insar_orbital_baseline_refinement",
+            dimensions=(),
+            data="False",
+            fillvalue=None,
+            description=(
+                "Flag to indicate if baseline refinement applied during interferogram"
+                " formation"
+            ),
             attrs={"units": "unitless"},
         )
         _create_dataset(

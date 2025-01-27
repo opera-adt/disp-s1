@@ -289,6 +289,7 @@ def create_output_product(
     }
 
     disp_arr[mask] = np.nan
+    num_nodata_pixels = np.sum(mask)
     # Be more aggressive with the short wavelength displacement mask:
     filtered_disp_arr[bad_pixel_mask] = np.nan
 
@@ -421,6 +422,7 @@ def create_output_product(
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
+        num_nodata_pixels=num_nodata_pixels,
         product_bounds=tuple(bounds),
         average_temporal_coherence=average_temporal_coherence,
         near_far_incidence_angles=near_far_incidence_angles,
@@ -551,6 +553,7 @@ def _create_identification_group(
     secondary_end_time: datetime.datetime,
     footprint_wkt: str,
     product_bounds: tuple[float, float, float, float],
+    num_nodata_pixels: int,
     average_temporal_coherence: float,
     processing_start_datetime: datetime.datetime,
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
@@ -746,6 +749,22 @@ def _create_identification_group(
         input_sensors = {p.get("sensor") for p in parsed_files if p.get("sensor")}
 
         # CEOS: Section 1.5
+        _create_dataset(
+            group=identification_group,
+            name="source_data_processing_facility",
+            dimensions=(),
+            data="NASA Jet Propulsion Laboratory on AWS",
+            fillvalue=None,
+            description="Product processing facility",
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_imaging_geometry",
+            dimensions=(),
+            data="Geocoded",
+            fillvalue=None,
+            description="Imaging geometry of input coregistered SLCs",
+        )
         _create_dataset(
             group=identification_group,
             name="source_data_satellite_names",
@@ -986,6 +1005,15 @@ def _create_identification_group(
                 "Spacing between adjacent X/Y samples of displacement product in UTM"
                 " coordinates"
             ),
+            attrs={"units": "meters"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="nodata_pixel_count",
+            dimensions=(),
+            data=num_nodata_pixels,
+            fillvalue=None,
+            description=("Number of nodata pixel"),
             attrs={"units": "meters"},
         )
         # CEOS: 1.7.7

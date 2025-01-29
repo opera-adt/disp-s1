@@ -289,6 +289,7 @@ def create_output_product(
     }
 
     disp_arr[mask] = np.nan
+    num_nodata_pixels = np.sum(mask)
     # Be more aggressive with the short wavelength displacement mask:
     filtered_disp_arr[bad_pixel_mask] = np.nan
 
@@ -421,6 +422,7 @@ def create_output_product(
         secondary_start_time=secondary_start_time,
         secondary_end_time=secondary_end_time,
         footprint_wkt=footprint_wkt,
+        num_nodata_pixels=num_nodata_pixels,
         product_bounds=tuple(bounds),
         average_temporal_coherence=average_temporal_coherence,
         near_far_incidence_angles=near_far_incidence_angles,
@@ -551,6 +553,7 @@ def _create_identification_group(
     secondary_end_time: datetime.datetime,
     footprint_wkt: str,
     product_bounds: tuple[float, float, float, float],
+    num_nodata_pixels: int,
     average_temporal_coherence: float,
     processing_start_datetime: datetime.datetime,
     near_far_incidence_angles: tuple[float, float] = (30.0, 45.0),
@@ -748,12 +751,27 @@ def _create_identification_group(
         # CEOS: Section 1.5
         _create_dataset(
             group=identification_group,
+            name="source_data_processing_facility",
+            dimensions=(),
+            data="NASA Jet Propulsion Laboratory on AWS",
+            fillvalue=None,
+            description="Product processing facility",
+        )
+        _create_dataset(
+            group=identification_group,
+            name="source_data_imaging_geometry",
+            dimensions=(),
+            data="Geocoded",
+            fillvalue=None,
+            description="Imaging geometry of input coregistered SLCs",
+        )
+        _create_dataset(
+            group=identification_group,
             name="source_data_satellite_names",
             dimensions=(),
             data=",".join(input_sensors),
             fillvalue=None,
             description="Names of satellites included in input granules",
-            attrs={"units": "unitless"},
         )
         starting_date_str = input_dts[0].isoformat()
         _create_dataset(
@@ -814,7 +832,6 @@ def _create_identification_group(
                 "Type of orbit (precise, restituted) used during input data processing"
                 " for the reference acquisition"
             ),
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=identification_group,
@@ -826,7 +843,6 @@ def _create_identification_group(
                 "Type of orbit (precise, restituted) used during input data processing"
                 " for the secondary acquisition"
             ),
-            attrs={"units": "unitless"},
         )
 
         # CEOS: Section 1.6.4 source acquisition parameters
@@ -837,7 +853,6 @@ def _create_identification_group(
             data="IW",
             fillvalue=None,
             description="Radar acquisition mode for input products",
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=identification_group,
@@ -850,11 +865,19 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
+            name="source_data_acquisition_polarization",
+            dimensions=(),
+            data="VV/VH",
+            fillvalue=None,
+            description="Polarization type of source radar acquisition ",
+        )
+        _create_dataset(
+            group=identification_group,
             name="source_data_polarization",
             dimensions=(),
             data="VV",
             fillvalue=None,
-            description="Radar polarization of input products",
+            description="Radar polarization of input products used",
             attrs={"units": "unitless"},
         )
         # CEOS: Section 1.6.7 source data attributes
@@ -862,10 +885,9 @@ def _create_identification_group(
             group=identification_group,
             name="source_data_original_institution",
             dimensions=(),
-            data="European Space Agency",
+            data="European Space Agency Copernicus Program",
             fillvalue=None,
             description="Original processing institution of Sentinel-1 SLC data",
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=identification_group,
@@ -877,7 +899,6 @@ def _create_identification_group(
                 "The metadata identifies the location from where the source data can be"
                 " retrieved, expressed as a URL or DOI."
             ),
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=identification_group,
@@ -891,7 +912,6 @@ def _create_identification_group(
                 "List of input coregistered SLC granules used to create displacement"
                 " frame"
             ),
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=identification_group,
@@ -955,7 +975,6 @@ def _create_identification_group(
             description=(
                 "Name of Digital Elevation Model used during input data processing."
             ),
-            attrs={"units": "dB"},
         )
         _create_dataset(
             group=identification_group,
@@ -975,6 +994,14 @@ def _create_identification_group(
             description="Incidence angle at the far range of the displacement frame",
             attrs={"units": "degrees"},
         )
+        _create_dataset(
+            group=identification_group,
+            name="product_data_polarization",
+            dimensions=(),
+            data="VV",
+            fillvalue=None,
+            description="Radar polarization of displacement products",
+        )
         # CEOS: 1.7.3
         _create_dataset(
             group=identification_group,
@@ -987,6 +1014,15 @@ def _create_identification_group(
                 " coordinates"
             ),
             attrs={"units": "meters"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="nodata_pixel_count",
+            dimensions=(),
+            data=num_nodata_pixels,
+            fillvalue=None,
+            description="Number of nodata pixels",
+            attrs={"units": "unitless"},
         )
         # CEOS: 1.7.7
         _create_dataset(
@@ -1013,7 +1049,6 @@ def _create_identification_group(
                 "The metadata identifies the location from where the source data can be"
                 " retrieved, expressed as a URL or DOI."
             ),
-            attrs={"units": "unitless"},
         )
 
 
@@ -1109,20 +1144,18 @@ def _create_metadata_group(
             data="center",
             fillvalue=None,
             description="x/y coordinate convention referring to pixel center or corner",
-            attrs={"units": "unitless"},
         )
         # CEOS 4.5
         _create_dataset(
             group=metadata_group,
             name="ceos_gridding_convention",
             dimensions=(),
-            data="Yes",
+            data="Snap to grid",
             fillvalue=None,
             description=(
                 "Whether a consistent gridding/sampling frame is used for"
                 " ascending/descending frames."
             ),
-            attrs={"units": "unitless"},
         )
         # CEOS 1.7.16
         _create_dataset(
@@ -1132,6 +1165,67 @@ def _create_metadata_group(
             data="All",
             fillvalue=None,
             description="InSAR pair baseline selection criteria",
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_insar_azimuth_common_band_filtering",
+            dimensions=(),
+            data="False",
+            fillvalue=None,
+            description=(
+                "Flag to indicate if azimuth filtering applied during interferogram"
+                " formation"
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_insar_range_spectral_shift_filtering",
+            dimensions=(),
+            data="False",
+            fillvalue=None,
+            description=(
+                "Flag to indicate if range spectral shift filtering applied during"
+                " interferogram formation"
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_insar_orbital_baseline_refinement",
+            dimensions=(),
+            data="False",
+            fillvalue=None,
+            description=(
+                "Flag to indicate if baseline refinement applied during interferogram"
+                " formation"
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_shp_selection_selection_criteria",
+            dimensions=(),
+            data=str(dolphin_config.phase_linking.shp_method.value),
+            fillvalue=None,
+            description="Name of statistically homogeneous pixel selection criteria",
+        )
+        row_size, col_size = dolphin_config.phase_linking.half_window.to_looks()
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_shp_selection_window_size",
+            dimensions=(),
+            data=f"{row_size}x{col_size}",
+            fillvalue=None,
+            description=(
+                "Size of window as (rows x columns) in pixels to search for SHPs"
+            ),
+            attrs={"units": "pixels"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_shp_selection_selection_threshold",
+            dimensions=(),
+            data=dolphin_config.phase_linking.shp_alpha,
+            fillvalue=None,
+            description="Threshold for selecting statistically homogeneous pixels",
             attrs={"units": "unitless"},
         )
         _create_dataset(
@@ -1141,7 +1235,6 @@ def _create_metadata_group(
             data="Amplitude Dispersion",
             fillvalue=None,
             description="Name of persistent scatterer selection criteria",
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=metadata_group,
@@ -1161,7 +1254,6 @@ def _create_metadata_group(
             description=(
                 "DOI of reference describing persistent scatterer selection criteria"
             ),
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=metadata_group,
@@ -1170,16 +1262,14 @@ def _create_metadata_group(
             data="https://doi.org/10.1109/TGRS.2022.3210868",
             fillvalue=None,
             description="DOI of reference describing phase cosine similarity metric",
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=metadata_group,
             name="ceos_phase_unwrapping_method",
             dimensions=(),
-            data=str(dolphin_config.unwrap_options.unwrap_method),
+            data=str(dolphin_config.unwrap_options.unwrap_method.value),
             fillvalue=None,
             description="Name of phase unwrapping method",
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=metadata_group,
@@ -1188,7 +1278,25 @@ def _create_metadata_group(
             data="https://doi.org/10.1364/JOSAA.18.000338",
             fillvalue=None,
             description="DOI to reference describing SNAPHU phase unwrapping algorithm",
-            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_phase_unwrapping_spurt_doi",
+            dimensions=(),
+            data="https://doi.org/10.1016/j.rse.2023.113456",
+            fillvalue=None,
+            description="DOI to reference describing spurt phase unwrapping algorithm",
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_phase_unwrapping_similarity_threshold",
+            dimensions=(),
+            data=dolphin_config.unwrap_options.preprocess_options.interpolation_similarity_threshold,
+            fillvalue=None,
+            description=(
+                "Threshold on phase similarity used to mask and interpolate"
+                " interferogram before unwrapping"
+            ),
         )
         _create_dataset(
             group=metadata_group,
@@ -1197,7 +1305,6 @@ def _create_metadata_group(
             data="None",
             fillvalue=None,
             description="Method used to correct for atmosphere phase noise",
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=metadata_group,
@@ -1206,7 +1313,6 @@ def _create_metadata_group(
             data="None",
             fillvalue=None,
             description="Method used to correct for ionospheric phase noise",
-            attrs={"units": "unitless"},
         )
         _create_dataset(
             group=metadata_group,
@@ -1219,7 +1325,6 @@ def _create_metadata_group(
                 " the noise removal algorithm and reference to the algorithm as URL or"
                 " DOI."
             ),
-            attrs={"units": "unitless"},
         )
 
 

@@ -1032,7 +1032,7 @@ def _create_identification_group(
             data=num_nodata_pixels,
             fillvalue=None,
             description="Number of nodata pixel",
-            attrs={"units": "meters"},
+            attrs={"units": "unitless"},
         )
         # CEOS: 1.7.7
         _create_dataset(

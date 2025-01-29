@@ -869,11 +869,20 @@ def _create_identification_group(
         )
         _create_dataset(
             group=identification_group,
+            name="source_data_acquisition_polarization",
+            dimensions=(),
+            data="VV/VH",
+            fillvalue=None,
+            description="Polarization type of source radar acquisition ",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=identification_group,
             name="source_data_polarization",
             dimensions=(),
             data="VV",
             fillvalue=None,
-            description="Radar polarization of input products",
+            description="Radar polarization of input products used",
             attrs={"units": "unitless"},
         )
         # CEOS: Section 1.6.7 source data attributes
@@ -993,6 +1002,15 @@ def _create_identification_group(
             fillvalue=None,
             description="Incidence angle at the far range of the displacement frame",
             attrs={"units": "degrees"},
+        )
+        _create_dataset(
+            group=identification_group,
+            name="product_data_polarization",
+            dimensions=(),
+            data="VV",
+            fillvalue=None,
+            description="Radar polarization of displacement products",
+            attrs={"units": "unitless"},
         )
         # CEOS: 1.7.3
         _create_dataset(
@@ -1144,7 +1162,7 @@ def _create_metadata_group(
             group=metadata_group,
             name="ceos_gridding_convention",
             dimensions=(),
-            data="Yes",
+            data="Snap to grid",
             fillvalue=None,
             description=(
                 "Whether a consistent gridding/sampling frame is used for"
@@ -1200,6 +1218,36 @@ def _create_metadata_group(
         )
         _create_dataset(
             group=metadata_group,
+            name="ceos_shp_selection_selection_criteria",
+            dimensions=(),
+            data=str(dolphin_config.phase_linking.shp_method.value),
+            fillvalue=None,
+            description="Name of statistically homogeneous pixel selection criteria",
+            attrs={"units": "unitless"},
+        )
+        row_size, col_size = dolphin_config.phase_linking.half_window.to_looks()
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_shp_selection_window_size",
+            dimensions=(),
+            data=f"{row_size}x{col_size}",
+            fillvalue=None,
+            description=(
+                "Size of window as (rows x columns) in pixels to search for SHPs"
+            ),
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_shp_selection_selection_threshold",
+            dimensions=(),
+            data=dolphin_config.phase_linking.shp_alpha,
+            fillvalue=None,
+            description="Threshold for selecting statistically homogeneous pixels",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
             name="ceos_persistent_scatterer_selection_criteria",
             dimensions=(),
             data="Amplitude Dispersion",
@@ -1240,7 +1288,7 @@ def _create_metadata_group(
             group=metadata_group,
             name="ceos_phase_unwrapping_method",
             dimensions=(),
-            data=str(dolphin_config.unwrap_options.unwrap_method),
+            data=str(dolphin_config.unwrap_options.unwrap_method.value),
             fillvalue=None,
             description="Name of phase unwrapping method",
             attrs={"units": "unitless"},
@@ -1252,6 +1300,27 @@ def _create_metadata_group(
             data="https://doi.org/10.1364/JOSAA.18.000338",
             fillvalue=None,
             description="DOI to reference describing SNAPHU phase unwrapping algorithm",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_phase_unwrapping_spurt_doi",
+            dimensions=(),
+            data="https://doi.org/10.1016/j.rse.2023.113456",
+            fillvalue=None,
+            description="DOI to reference describing spurt phase unwrapping algorithm",
+            attrs={"units": "unitless"},
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_phase_unwrapping_similarity_threshold",
+            dimensions=(),
+            data=dolphin_config.unwrap_options.preprocess_options.interpolation_similarity_threshold,
+            fillvalue=None,
+            description=(
+                "Threshold on phase similarity used to mask and interpolate"
+                " intererogram before unwrapping"
+            ),
             attrs={"units": "unitless"},
         )
         _create_dataset(

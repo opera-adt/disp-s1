@@ -1031,7 +1031,7 @@ def _create_identification_group(
             dimensions=(),
             data=num_nodata_pixels,
             fillvalue=None,
-            description="Number of nodata pixel",
+            description="Number of nodata pixels",
             attrs={"units": "unitless"},
         )
         # CEOS: 1.7.7
@@ -1319,7 +1319,7 @@ def _create_metadata_group(
             fillvalue=None,
             description=(
                 "Threshold on phase similarity used to mask and interpolate"
-                " intererogram before unwrapping"
+                " interferogram before unwrapping"
             ),
             attrs={"units": "unitless"},
         )

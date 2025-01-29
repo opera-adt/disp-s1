@@ -1699,6 +1699,7 @@ def copy_cslc_metadata_to_compressed(
         ("/metadata/orbit", None),
         ("/metadata/processing_information/input_burst_metadata/wavelength", None),
         ("/metadata/processing_information/input_burst_metadata/platform_id", None),
+        ("/metadata/processing_information/input_burst_metadata/iw2_mid_range", None),
         (
             "/metadata/processing_information/input_burst_metadata/radar_center_frequency",
             None,

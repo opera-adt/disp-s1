@@ -1326,6 +1326,57 @@ def _create_metadata_group(
                 " DOI."
             ),
         )
+        # CEOS 4.3
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_absolute_geolocation_ground_range_bias",
+            dimensions=(),
+            data=-0.06,
+            fillvalue=None,
+            attrs={"units": "meters"},
+            description=(
+                "Estimated mean absolute geolocation error for input geocoded SLCs, as"
+                " assessed via corner reflector analysis, in the ground range direction"
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_absolute_geolocation_ground_range_stddev",
+            dimensions=(),
+            data=0.38,
+            fillvalue=None,
+            attrs={"units": "meters"},
+            description=(
+                "Estimated standard deviation of absolute geolocation error for input"
+                " geocoded SLCs, as assessed via corner reflector analysis, in the"
+                " ground range direction"
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_absolute_geolocation_azimuth_bias",
+            dimensions=(),
+            data=-0.04,
+            fillvalue=None,
+            attrs={"units": "meters"},
+            description=(
+                "Estimated mean absolute geolocation error for input geocoded SLCs, as"
+                " assessed via corner reflector analysis, in the azimuth direction"
+            ),
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_absolute_geolocation_azimuth_stddev",
+            dimensions=(),
+            data=0.46,
+            fillvalue=None,
+            attrs={"units": "meters"},
+            description=(
+                "Estimated standard deviation of absolute geolocation error for input"
+                " geocoded SLCs, as assessed via corner reflector analysis, in the"
+                " azimuth direction"
+            ),
+        )
 
 
 def _get_orbit_direction(cslc_filename: Filename) -> Literal["ascending", "descending"]:

@@ -1269,7 +1269,10 @@ def _create_metadata_group(
             dimensions=(),
             data="Gaussian filtering",
             fillvalue=None,
-            description="Algorithm used on wrapped phase to create estimated phase quality metric",
+            description=(
+                "Algorithm used on wrapped phase to create estimated phase"
+                " quality metric"
+            ),
         )
         _create_dataset(
             group=metadata_group,

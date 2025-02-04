@@ -1265,6 +1265,14 @@ def _create_metadata_group(
         )
         _create_dataset(
             group=metadata_group,
+            name="ceos_estimated_phase_quality_metric_algorithm",
+            dimensions=(),
+            data="Gaussian filtering",
+            fillvalue=None,
+            description="Algorithm used on wrapped phase to create estimated phase quality metric",
+        )
+        _create_dataset(
+            group=metadata_group,
             name="ceos_phase_unwrapping_method",
             dimensions=(),
             data=str(dolphin_config.unwrap_options.unwrap_method.value),

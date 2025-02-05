@@ -151,7 +151,7 @@ unwrap_options:
   spurt_options:
     # Temporal coherence to pick pixels used on an irregular grid.
     #   Type: number.
-    temporal_coherence_threshold: 0.75
+    temporal_coherence_threshold: 0.6
     # Similarity to pick pixels used on an irregular grid. Any pixel with similarity above
     #   `similarity_threshold` *or* above the temporal coherence threshold is chosen.
     #   Type: number.
@@ -177,7 +177,7 @@ unwrap_options:
       # Dilation factor of non-overlapping tiles. 0.05 would lead to 5 percent dilation of the
       #   tile.
       #   Type: number.
-      dilation_factor: 0.03
+      dilation_factor: 0.04
     solver_settings:
       # Number of workers for temporal unwrapping in parallel. Set value to <=0 to let workflow
       #   use default workers (ncpus - 1).

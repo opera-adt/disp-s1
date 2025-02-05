@@ -92,12 +92,18 @@ def _make_gtiff_writer(output_dir, all_dates, like_filename, dataset: str):
     type=click.Choice(["displacement", "short_wavelength_displacement"]),
     default="displacement",
 )
+@click.option(
+    "--mask-dataset",
+    "-m",
+    default="recommended_mask",
+)
 @click.option("--block-shape", type=tuple[int, int], default=(256, 256))
 @click.option("--nodata", type=float, default=np.nan)
 def rereference(
     output_dir: Path,
     nc_files: list[str],
     dataset: str = "displacement",
+    mask_dataset: str | None = "recommended_mask",
     block_shape: tuple[int, int] = (256, 256),
     nodata: float = np.nan,
 ):
@@ -112,6 +118,9 @@ def rereference(
         for a reference_date -> secondary_date interferogram.
     dataset : str
         Name of HDF5 dataset within product to convert.
+    mask_dataset : str, optional
+        Name of HDF5 dataset within product to use for masking the product.
+        If None, no masking is applied.
     block_shape : tuple[int, int]
         Size of chunks of data to load at once.
         Default is (256, 256)
@@ -153,13 +162,28 @@ def rereference(
     reader = io.HDF5StackReader.from_file_list(
         nc_files, dset_names=dataset, nodata=nodata
     )
+    if mask_dataset is not None:
+        mask_reader = io.HDF5StackReader.from_file_list(
+            nc_files, dset_names=dataset, nodata=nodata
+        )
+    else:
+        mask_reader = None
 
-    for row_slice, col_slice in tqdm(block_iter):
+    # For the no mask case, we'll use a block of all True (1 is good data)
+    no_mask = np.ones((reader.shape[0], *block_shape), dtype=bool)
+    for row_slice, col_slice in tqdm(list(block_iter)):
         # Read all 3D array of shape (M, block_rows, block_cols)
         block_ifg_data = reader[:, row_slice, col_slice]
         if isinstance(block_ifg_data, np.ma.MaskedArray):
             block_ifg_data = block_ifg_data.filled(0)
         M, cur_nrows, cur_ncols = block_ifg_data.shape
+
+        if mask_reader is not None:
+            block_mask = mask_reader[:, row_slice, col_slice].astype(bool).filled(True)
+        else:
+            block_mask = no_mask[:cur_nrows, :cur_ncols]
+        # TODO: add an option for propagating nans? using 0s instead?
+        block_ifg_data[~block_mask] = 0
 
         # Now we combine them into date-wise displacement using the pseudo-inverse.
         # A_pinv has shape (N_out_dates, M_ifgs).
@@ -170,8 +194,10 @@ def rereference(
         block_ifg_2d = block_ifg_data.reshape(M, npixels)  # (M, npixels)
         # (N, M) dot (M, npixels) -> (N, npixels)
         block_disp_2d = A_pinv @ block_ifg_2d
+        # Fill in the old values at the masked areas
         # Reshape back to (n_out_dates, block_rows, block_cols)
         block_disp_3d = block_disp_2d.reshape(writer.shape[0], cur_nrows, cur_ncols)
+        block_disp_3d[~block_mask] = block_ifg_data[~block_mask]
 
         # Write block of data to output
         writer[:, row_slice, col_slice] = block_disp_3d
@@ -189,10 +215,6 @@ QUALITY_LAYERS = [p.name for p in DISPLACEMENT_PRODUCTS]
 # Remove the two that need to be inverted
 QUALITY_LAYERS.pop(QUALITY_LAYERS.index("displacement"))
 QUALITY_LAYERS.pop(QUALITY_LAYERS.index("short_wavelength_displacement"))
-# For use in newer pythons, if we want to type the dataset arg:
-# QUALITY_CHOICES = StrEnum(
-#     "QualityLayer", [(value, auto()) for value in list(QUALITY_LAYERS)]
-# )
 
 
 @app.command()

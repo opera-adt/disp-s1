@@ -53,6 +53,13 @@ def run(
         Default is False.
 
     """
+    if pge_runconfig.primary_executable.product_type == "DISP_S1_STATIC":
+        from . import main_static_layers
+
+        return main_static_layers.run_static_layers(
+            cfg=cfg, pge_runconfig=pge_runconfig
+        )
+
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
     setup_logging(logger_name="dolphin", filename=cfg.log_file)
     cfg.work_directory.mkdir(exist_ok=True, parents=True)

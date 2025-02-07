@@ -165,9 +165,9 @@ def rereference(
     out_ref_dir.mkdir(exist_ok=True)
     if get_single_reference_point:
         first_per_ms = _get_first_file_per_ministack(nc_files)
-        temp_coh_files = io.format_nc_filename(
-            first_per_ms, ds_name="temporal_coherence"
-        )
+        temp_coh_files = [
+            io.format_nc_filename(f, ds_name="temporal_coherence") for f in first_per_ms
+        ]
         ref_point = _pick_reference_point(
             output_dir=out_ref_dir, temp_coh_files=temp_coh_files
         )
@@ -312,9 +312,10 @@ def _pick_reference_point(
     temp_coh_files: list[Path],
     ccl_file_list: list[Path] | None = None,
 ) -> ReferencePoint:
-    quality_file = create_temporal_average(
+    quality_file = output_dir / "minimum_temporal_coherence.tif"
+    create_temporal_average(
         temp_coh_files,
-        output_file=output_dir / "minimum_temporal_coherence.tif",
+        output_file=quality_file,
         num_threads=1,
         average_func=np.nanmin,
         # read_masked=True

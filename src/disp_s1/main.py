@@ -53,9 +53,8 @@ def run(
         Default is False.
 
     """
-    setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
-    setup_logging(logger_name="dolphin", filename=cfg.log_file)
     cfg.work_directory.mkdir(exist_ok=True, parents=True)
+    setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
     # Save the start for a metadata field
     processing_start_datetime = datetime.now(timezone.utc)
 

@@ -13,14 +13,20 @@ Usage:
 
 from __future__ import annotations
 
+import itertools
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import Sequence
 
 import click
 import numpy as np
-from dolphin import io
-from dolphin.timeseries import get_incidence_matrix
+from dolphin import ReferencePoint, io
+from dolphin.timeseries import (
+    create_temporal_average,
+    get_incidence_matrix,
+    select_reference_point,
+)
 from dolphin.utils import flatten, format_dates, numpy_to_gdal_type
 from osgeo import gdal
 from pydantic import BaseModel
@@ -105,6 +111,7 @@ def rereference(
     dataset: str = "displacement",
     mask_dataset: str | None = "recommended_mask",
     block_shape: tuple[int, int] = (256, 256),
+    get_single_reference_point: bool = True,
     nodata: float = np.nan,
 ):
     """Create a single-reference stack from a list of OPERA displacement files.
@@ -124,6 +131,10 @@ def rereference(
     block_shape : tuple[int, int]
         Size of chunks of data to load at once.
         Default is (256, 256)
+    get_single_reference_point : bool
+        Pick one reference point with the highest minimum temporal coherence.
+        Default is True.
+        If False, no subtracting is done.
     nodata : float
         Value to use in translated rasters as nodata value.
         Default is np.nan
@@ -150,6 +161,19 @@ def rereference(
     gdal_str = io.format_nc_filename(nc_files[0], dataset)
     ncols, nrows = io.get_raster_xysize(gdal_str)
 
+    out_ref_dir = output_dir / "ref_point"
+    out_ref_dir.mkdir(exist_ok=True)
+    if get_single_reference_point:
+        first_per_ms = _get_first_file_per_ministack(nc_files)
+        temp_coh_files = io.format_nc_filename(
+            first_per_ms, ds_name="temporal_coherence"
+        )
+        ref_point = _pick_reference_point(
+            output_dir=out_ref_dir, temp_coh_files=temp_coh_files
+        )
+    else:
+        ref_point = None
+
     # Create the main displacement dataset.
     writer = _make_gtiff_writer(
         output_dir, all_dates=all_dates, like_filename=gdal_str, dataset=dataset
@@ -169,6 +193,15 @@ def rereference(
     else:
         mask_reader = None
 
+    if ref_point is not None:
+        ref_row, ref_col = ref_point
+        ref_ts = reader[:, ref_row, ref_col].ravel()
+        if isinstance(ref_ts, np.ma.MaskedArray):
+            ref_ts = ref_ts.filled(0)
+    else:
+        ref_ts = np.zeros(reader.shape[0])
+    ref_ts = ref_ts[:, np.newaxis, np.newaxis]
+
     # For the no mask case, we'll use a block of all True (1 is good data)
     no_mask = np.ones((reader.shape[0], *block_shape), dtype=bool)
     for row_slice, col_slice in tqdm(list(block_iter)):
@@ -184,6 +217,9 @@ def rereference(
             block_mask = no_mask[:cur_nrows, :cur_ncols]
         # TODO: add an option for propagating nans? using 0s instead?
         block_ifg_data[~block_mask] = 0
+
+        # zero-reference the data
+        block_ifg_data = block_ifg_data - ref_ts
 
         # Now we combine them into date-wise displacement using the pseudo-inverse.
         # A_pinv has shape (N_out_dates, M_ifgs).
@@ -241,6 +277,54 @@ def translate(output_dir: Path, nc_files: list[Path | str], dataset):
         )
 
         tqdm.write(f"Created {out_tif}")
+
+
+def _get_first_file_per_ministack(
+    opera_file_list: Sequence[Path | str],
+) -> list[Path | str]:
+    def _get_generation_time(fname):
+        return _parse_datetimes([fname])[2][0]
+
+    first_per_ministack = []
+    for d, cur_groupby in itertools.groupby(
+        sorted(opera_file_list), key=_get_generation_time
+    ):
+        # cur_groupby is an iterable of all matching
+        # Get the first one
+        first_per_ministack.append(next(cur_groupby))
+    return first_per_ministack
+
+
+def _parse_datetimes(
+    opera_disp_file_list: Sequence[Path | str],
+) -> tuple[list[datetime], list[datetime], list[datetime]]:
+    """Parse the datetimes from OPERA DISP-S1 filenames."""
+    from opera_utils import get_dates
+
+    reference_times, secondary_times, generation_times = zip(
+        *[get_dates(f, fmt="%Y%m%dT%H%M%SZ") for f in opera_disp_file_list]
+    )
+    return reference_times, secondary_times, generation_times
+
+
+def _pick_reference_point(
+    output_dir: Path,
+    temp_coh_files: list[Path],
+    ccl_file_list: list[Path] | None = None,
+) -> ReferencePoint:
+    quality_file = create_temporal_average(
+        temp_coh_files,
+        output_file=output_dir / "minimum_temporal_coherence.tif",
+        num_threads=1,
+        average_func=np.nanmin,
+        # read_masked=True
+    )
+    return select_reference_point(
+        quality_file=quality_file,
+        output_dir=Path(output_dir),
+        candidate_threshold=0.95,
+        ccl_file_list=ccl_file_list,
+    )
 
 
 if __name__ == "__main__":

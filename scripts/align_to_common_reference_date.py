@@ -163,7 +163,7 @@ def rereference(
     ncols, nrows = io.get_raster_xysize(gdal_str)
 
     out_ref_dir = output_dir / "ref_point"
-    out_ref_dir.mkdir(exist_ok=True)
+    out_ref_dir.mkdir(exist_ok=True, parents=True)
     if get_single_reference_point:
         first_per_ms = _get_first_file_per_ministack(nc_files)
         temp_coh_files = [

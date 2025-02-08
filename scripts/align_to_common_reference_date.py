@@ -13,6 +13,7 @@ Usage:
 
 from __future__ import annotations
 
+import functools
 import itertools
 import re
 from datetime import datetime
@@ -39,6 +40,9 @@ from disp_s1.product_info import DISPLACEMENT_PRODUCTS, ProductInfo
 def app():
     """Command line tool for running both conversion scripts."""
     pass
+
+
+click.option = functools.partial(click.option, show_default=True)
 
 
 class OperaDispFile(BaseModel):
@@ -98,12 +102,9 @@ def _make_gtiff_writer(output_dir, all_dates, like_filename, dataset: str):
     type=click.Choice(["displacement", "short_wavelength_displacement"]),
     default="displacement",
 )
-@click.option(
-    "--mask-dataset",
-    "-m",
-    default="recommended_mask",
-)
+@click.option("--mask-dataset", "-m", default="recommended_mask")
 @click.option("--block-shape", type=tuple[int, int], default=(256, 256))
+@click.option("--get-single-reference-point", is_flag=True, default=True)
 @click.option("--nodata", type=float, default=np.nan)
 def rereference(
     output_dir: Path,

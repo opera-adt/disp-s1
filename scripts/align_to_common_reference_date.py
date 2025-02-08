@@ -188,7 +188,7 @@ def rereference(
     )
     if mask_dataset is not None:
         mask_reader = io.HDF5StackReader.from_file_list(
-            nc_files, dset_names=dataset, nodata=nodata
+            nc_files, dset_names=mask_dataset, nodata=nodata
         )
     else:
         mask_reader = None
@@ -297,13 +297,16 @@ def _get_first_file_per_ministack(
 
 def _parse_datetimes(
     opera_disp_file_list: Sequence[Path | str],
-) -> tuple[list[datetime], list[datetime], list[datetime]]:
+) -> tuple[tuple[datetime], tuple[datetime], tuple[datetime]]:
     """Parse the datetimes from OPERA DISP-S1 filenames."""
     from opera_utils import get_dates
 
-    reference_times, secondary_times, generation_times = zip(
-        *[get_dates(f, fmt="%Y%m%dT%H%M%SZ") for f in opera_disp_file_list]
-    )
+    dts = [get_dates(f, fmt="%Y%m%dT%H%M%SZ") for f in opera_disp_file_list]
+
+    reference_times: tuple[datetime]
+    secondary_times: tuple[datetime]
+    generation_times: tuple[datetime]
+    reference_times, secondary_times, generation_times = zip(*dts)
     return reference_times, secondary_times, generation_times
 
 

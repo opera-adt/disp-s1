@@ -104,7 +104,7 @@ def _make_gtiff_writer(output_dir, all_dates, like_filename, dataset: str):
 )
 @click.option("--mask-dataset", "-m", default="recommended_mask")
 @click.option("--block-shape", type=tuple[int, int], default=(256, 256))
-@click.option("--get-single-reference-point", is_flag=True, default=True)
+@click.option("--get-single-reference-point", is_flag=True, default=False)
 @click.option("--nodata", type=float, default=np.nan)
 def rereference(
     output_dir: Path,
@@ -112,7 +112,7 @@ def rereference(
     dataset: str = "displacement",
     mask_dataset: str | None = "recommended_mask",
     block_shape: tuple[int, int] = (256, 256),
-    get_single_reference_point: bool = True,
+    get_single_reference_point: bool = False,
     nodata: float = np.nan,
 ):
     """Create a single-reference stack from a list of OPERA displacement files.

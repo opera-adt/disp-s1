@@ -467,7 +467,18 @@ def _compute_reference_dates(
     input_dates = [get_dates(f)[0].date() for f in cur_files]
     num_ccslc = sum(is_compressed)
 
-    output_reference_idx: int = 0
+    # If we have set the compressed_slc_plan to be the last per ministack,
+    # we want to make the shortest baseline interferograms.
+    # So we should make the output index relative to the most recent compressed SLC
+    # https://github.com/isce-framework/dolphin/blob/14ac66e49a8e8e66e9b74fc9eb4f0d232ab0924c/src/dolphin/stack.py#L488
+    if compressed_slc_plan == CompressedSlcPlan.LAST_PER_MINISTACK:
+        output_reference_idx = max(0, num_ccslc - 1)
+        # No extra reference date: this would need dolphin , as currently (2026-02-10)
+        # the `sequential` workflow uses the extra date to decide what
+        # `new_compressed_slc_reference_idx` should be.
+        return output_reference_idx, None
+
+    output_reference_idx = 0
     extra_reference_date: datetime.datetime | None = None
     reference_dates = sorted({d.date() for d in reference_datetimes})
 
@@ -494,12 +505,6 @@ def _compute_reference_dates(
             if inp_date >= ref_date:
                 extra_reference_date = inp_date
 
-    # If we have set the compressed_slc_plan to be the last per ministack,
-    # we want to make the shortest baseline interferograms.
-    # So we should make the output index relative to the most recent compressed SLC
-    # https://github.com/isce-framework/dolphin/blob/14ac66e49a8e8e66e9b74fc9eb4f0d232ab0924c/src/dolphin/stack.py#L488
-    if compressed_slc_plan == CompressedSlcPlan.LAST_PER_MINISTACK:
-        output_reference_idx = max(0, num_ccslc - 1)
     return output_reference_idx, extra_reference_date
 
 

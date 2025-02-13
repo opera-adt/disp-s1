@@ -54,7 +54,7 @@ phase_linking:
   # Plan for creating Compressed SLCs during phase linking.
   #   Type: string.
   #   Options: ['always_first', 'first_per_ministack', 'last_per_ministack'].
-  compressed_slc_plan: always_first
+  compressed_slc_plan: last_per_ministack
 interferogram_network:
   # For single-reference network: Index of the reference image in the network.
   #   Type: integer | null.

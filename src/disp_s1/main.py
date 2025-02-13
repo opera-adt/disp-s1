@@ -404,6 +404,7 @@ def process_product(
     # Extra logging for product creation
     product_filename = files.unwrapped.parent / f"log_{output_name}.log"
     setup_logging(logger_name="disp_s1", debug=True, filename=product_filename)
+    setup_logging(logger_name="disp_s1", debug=True, filename=pge_runconfig.log_file)
 
     corrections = {}
 

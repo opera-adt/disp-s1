@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import subprocess
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ProcessPoolExecutor
 from io import StringIO
@@ -58,8 +59,8 @@ GLOBAL_ATTRS = {
 # Use the "paging file space strategy"
 # https://docs.h5py.org/en/stable/high/file.html#h5py.File
 # Page size should be larger than the largest chunk in the file
-FILE_OPTS = {"fs_strategy": "page", "fs_page_size": 2**22}
-CHUNK_SHAPE = (128, 128)
+FILE_OPTS = {"fs_strategy": "page", "fs_page_size": 4 * 1024 * 1024}
+CHUNK_SHAPE = (256, 256)
 
 # Convert chunks to a tuple or h5py errors
 HDF5_OPTS = io.DEFAULT_HDF5_OPTIONS.copy()
@@ -439,6 +440,13 @@ def create_output_product(
         secondary_cslc_file=secondary_start,
         output_disp_file=output_name,
     )
+    # Final repack to remove "Unaccounted space"
+    logger.info(f"Repacking {output_name} with h5repack")
+    tmpfile = Path(output_name).with_suffix(".tmp.h5")
+    # h5repack with no options keeps all fs_page strategy/chunks the same
+    subprocess.run(["h5repack", output_name, tmpfile])
+    Path(output_name).unlink()
+    tmpfile.rename(output_name)
 
 
 def _create_corrections_group(

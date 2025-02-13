@@ -728,7 +728,7 @@ def _create_identification_group(
             group=identification_group,
             name="ceos_analysis_ready_data_document_identifier",
             dimensions=(),
-            data="https://github.com/ceos-org/",
+            data="https://ceos.org/ard/files/PFS/SAR/v1.1/CEOS-ARD_PFS_Synthetic_Aperture_Radar_v1.2.pdf",
             fillvalue=None,
             description="CEOS Analysis Ready Data (CARD) document identifier",
             attrs={"units": "unitless"},

@@ -605,7 +605,7 @@ def _create_identification_group(
             fillvalue=None,
             description=(
                 "URL of the static layers product associated with this Displacement"
-                " product"
+                " product. This includes the radar unit look vector for each pixel."
             ),
         )
         _create_dataset(

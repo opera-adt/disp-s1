@@ -222,7 +222,7 @@ unwrap_options:
       # Number of interferograms to merge in one batch. Use zero to merge all interferograms in a
       #   single batch.
       #   Type: integer.
-      num_parallel_ifgs: 39
+      num_parallel_ifgs: 42
 timeseries_options:
   # Whether to run the inversion step after unwrapping, if more than  a single-reference
   #   network is used.

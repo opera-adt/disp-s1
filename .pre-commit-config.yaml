@@ -40,4 +40,4 @@ repos:
     rev: "25.1.0"
     hooks:
       - id: black
-        args: [--preview]
+        args: [--preview, --enable-unstable-feature, string_processing]

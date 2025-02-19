@@ -75,7 +75,7 @@ def main():
     parser.add_argument(
         "--reference_date_database_json",
         type=Path,
-        help=("JSON file containing list of reference date changes for each frame."),
+        help="JSON file containing list of reference date changes for each frame.",
     )
     parser.add_argument(
         "-a",

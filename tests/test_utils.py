@@ -6,11 +6,13 @@ import pytest
 from dolphin import io
 from dolphin.constants import SENTINEL_1_WAVELENGTH
 from dolphin.workflows import UnwrapOptions
+from shapely import from_wkt
 
 from disp_s1._utils import (
     _create_correlation_images,
     _update_snaphu_conncomps,
     _update_spurt_conncomps,
+    check_dateline,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -154,3 +156,40 @@ def test_update_spurt_conncomps(setup_test_files):
         ts_stem = ts_p.stem  # e.g. "20160708_20170603"
         assert cc_p.stem.startswith(ts_stem)
         assert cc_p.name.endswith(".unw.conncomp.tif"), f"Wrong extension for {cc_p}"
+
+
+def test_check_dateline():
+    from_wkt(
+        "POLYGON ((-111.343848786559 33.167961010325, -111.418794476835"
+        " 32.8232467872268, -110.528205605868 32.6834192684192, -110.510122005303"
+        " 32.8302954024662, -110.475359683262 32.9094439302636, -110.455061760006"
+        " 33.0281538694422, -111.343848786559 33.167961010325))"
+    )
+
+
+def test_dateline_crossing():
+    # Polygon on Ross Ice Shelf (Antarctica)
+    # crossing the dateline
+    polygon_wkt = (
+        "POLYGON((-160.9795 -76.9215,163.3981 -77.0962,"
+        "152.885 -81.8908,-149.3722 -81.6129,-160.9795 -76.9215))"
+    )
+    polygon = from_wkt(polygon_wkt)
+
+    # Check if crossing dateline
+    multipoly = check_dateline(polygon)
+
+    assert len(multipoly.geoms) == 2
+
+    # Test failing frame over alaska
+    polygon = from_wkt(
+        "POLYGON ((-179.695183609472 52.2562453232354,"
+        " 179.99794861982 52.2563010695419,"
+        " 179.158193448683 52.173216336064, 179.172068656626 52.1157703763663,"
+        " 177.933195522318 51.9815738118871, 177.848811722813 52.2543703653295,"
+        " 176.622541622451 52.1084712235005, 176.744861163101 51.7385106813533,"
+        " -179.99953210322 51.7384557700677, -179.57485943579 51.7791857416867,"
+        " -179.695183609472 52.2562453232354))"
+    )
+    multipoly = check_dateline(polygon)
+    assert len(multipoly.geoms) == 2

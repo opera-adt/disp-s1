@@ -208,32 +208,33 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.01) 
     return check_dateline(footprint).wkt
 
 
-def check_dateline(poly: Polygon) -> MultiPolygon:
-    """Split `poly` if it crosses the dateline.
+def check_dateline(polygon: Polygon) -> MultiPolygon:
+    """Split `polygon` if it crosses the dateline.
 
     Source:
     https://github.com/nasa/opera-sds-pcm/blob/a5a3db25be462e7955e5de06d6f9d1d8236a1ef2/util/geo_util.py#L265
 
     Parameters
     ----------
-    poly : shapely.geometry.Polygon
+    polygon : shapely.geometry.Polygon
         Input polygon.
 
     Returns
     -------
-    polys : list of shapely.geometry.Polygon
-        A list containing: the input polygon if it didn't cross the dateline, or
+    MultiPolygon
+        A MultiPolygon containing 1 or 2 `.geoms`:
+        The input polygon if it didn't cross the dateline, or
         two polygons otherwise (one on either side of the dateline).
 
     """
-    x_min, _, x_max, _ = poly.bounds
+    x_min, _, x_max, _ = polygon.bounds
 
     # Check dateline crossing
     if (x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max):
         dateline = shapely.wkt.loads("LINESTRING( 180.0 -90.0, 180.0 90.0)")
 
         # build new polygon with all longitudes between 0 and 360
-        x, y = poly.exterior.coords.xy
+        x, y = polygon.exterior.coords.xy
         new_x = (k + (k <= 0.0) * 360 for k in x)
         new_ring = LinearRing(zip(new_x, y))
 
@@ -256,7 +257,7 @@ def check_dateline(poly: Polygon) -> MultiPolygon:
             polys[polygon_count] = Polygon(zip(x_wrapped_minus_360, y))
 
     else:
-        # If dateline is not crossed, treat input poly as list
-        polys = [poly]
+        # If dateline is not crossed, treat input polygon as list
+        polys = [polygon]
 
     return MultiPolygon(polys)

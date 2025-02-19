@@ -13,14 +13,21 @@ Usage:
 
 from __future__ import annotations
 
+import functools
+import itertools
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import Sequence
 
 import click
 import numpy as np
-from dolphin import io
-from dolphin.timeseries import get_incidence_matrix
+from dolphin import ReferencePoint, io
+from dolphin.timeseries import (
+    create_temporal_average,
+    get_incidence_matrix,
+    select_reference_point,
+)
 from dolphin.utils import flatten, format_dates, numpy_to_gdal_type
 from osgeo import gdal
 from pydantic import BaseModel
@@ -33,6 +40,9 @@ from disp_s1.product_info import DISPLACEMENT_PRODUCTS, ProductInfo
 def app():
     """Command line tool for running both conversion scripts."""
     pass
+
+
+click.option = functools.partial(click.option, show_default=True)
 
 
 class OperaDispFile(BaseModel):
@@ -92,13 +102,17 @@ def _make_gtiff_writer(output_dir, all_dates, like_filename, dataset: str):
     type=click.Choice(["displacement", "short_wavelength_displacement"]),
     default="displacement",
 )
+@click.option("--mask-dataset", "-m", default="recommended_mask")
 @click.option("--block-shape", type=tuple[int, int], default=(256, 256))
+@click.option("--get-single-reference-point", is_flag=True, default=False)
 @click.option("--nodata", type=float, default=np.nan)
 def rereference(
     output_dir: Path,
     nc_files: list[str],
     dataset: str = "displacement",
+    mask_dataset: str | None = "recommended_mask",
     block_shape: tuple[int, int] = (256, 256),
+    get_single_reference_point: bool = False,
     nodata: float = np.nan,
 ):
     """Create a single-reference stack from a list of OPERA displacement files.
@@ -112,9 +126,16 @@ def rereference(
         for a reference_date -> secondary_date interferogram.
     dataset : str
         Name of HDF5 dataset within product to convert.
+    mask_dataset : str, optional
+        Name of HDF5 dataset within product to use for masking the product.
+        If None, no masking is applied.
     block_shape : tuple[int, int]
         Size of chunks of data to load at once.
         Default is (256, 256)
+    get_single_reference_point : bool
+        Pick one reference point with the highest minimum temporal coherence.
+        Default is True.
+        If False, no subtracting is done.
     nodata : float
         Value to use in translated rasters as nodata value.
         Default is np.nan
@@ -141,6 +162,19 @@ def rereference(
     gdal_str = io.format_nc_filename(nc_files[0], dataset)
     ncols, nrows = io.get_raster_xysize(gdal_str)
 
+    out_ref_dir = output_dir / "ref_point"
+    out_ref_dir.mkdir(exist_ok=True, parents=True)
+    if get_single_reference_point:
+        first_per_ms = _get_first_file_per_ministack(nc_files)
+        temp_coh_files = [
+            io.format_nc_filename(f, ds_name="temporal_coherence") for f in first_per_ms
+        ]
+        ref_point = _pick_reference_point(
+            output_dir=out_ref_dir, temp_coh_files=temp_coh_files
+        )
+    else:
+        ref_point = None
+
     # Create the main displacement dataset.
     writer = _make_gtiff_writer(
         output_dir, all_dates=all_dates, like_filename=gdal_str, dataset=dataset
@@ -153,13 +187,40 @@ def rereference(
     reader = io.HDF5StackReader.from_file_list(
         nc_files, dset_names=dataset, nodata=nodata
     )
+    if mask_dataset is not None:
+        mask_reader = io.HDF5StackReader.from_file_list(
+            nc_files, dset_names=mask_dataset, nodata=nodata
+        )
+    else:
+        mask_reader = None
 
-    for row_slice, col_slice in tqdm(block_iter):
+    if ref_point is not None:
+        ref_row, ref_col = ref_point
+        ref_ts = reader[:, ref_row, ref_col].ravel()
+        if isinstance(ref_ts, np.ma.MaskedArray):
+            ref_ts = ref_ts.filled(0)
+    else:
+        ref_ts = np.zeros(reader.shape[0])
+    ref_ts = ref_ts[:, np.newaxis, np.newaxis]
+
+    # For the no mask case, we'll use a block of all True (1 is good data)
+    no_mask = np.ones((reader.shape[0], *block_shape), dtype=bool)
+    for row_slice, col_slice in tqdm(list(block_iter)):
         # Read all 3D array of shape (M, block_rows, block_cols)
         block_ifg_data = reader[:, row_slice, col_slice]
         if isinstance(block_ifg_data, np.ma.MaskedArray):
             block_ifg_data = block_ifg_data.filled(0)
         M, cur_nrows, cur_ncols = block_ifg_data.shape
+
+        if mask_reader is not None:
+            block_mask = mask_reader[:, row_slice, col_slice].astype(bool).filled(True)
+        else:
+            block_mask = no_mask[:cur_nrows, :cur_ncols]
+        # TODO: add an option for propagating nans? using 0s instead?
+        block_ifg_data[~block_mask] = 0
+
+        # zero-reference the data
+        block_ifg_data = block_ifg_data - ref_ts
 
         # Now we combine them into date-wise displacement using the pseudo-inverse.
         # A_pinv has shape (N_out_dates, M_ifgs).
@@ -170,8 +231,10 @@ def rereference(
         block_ifg_2d = block_ifg_data.reshape(M, npixels)  # (M, npixels)
         # (N, M) dot (M, npixels) -> (N, npixels)
         block_disp_2d = A_pinv @ block_ifg_2d
+        # Fill in the old values at the masked areas
         # Reshape back to (n_out_dates, block_rows, block_cols)
         block_disp_3d = block_disp_2d.reshape(writer.shape[0], cur_nrows, cur_ncols)
+        block_disp_3d[~block_mask] = block_ifg_data[~block_mask]
 
         # Write block of data to output
         writer[:, row_slice, col_slice] = block_disp_3d
@@ -189,10 +252,6 @@ QUALITY_LAYERS = [p.name for p in DISPLACEMENT_PRODUCTS]
 # Remove the two that need to be inverted
 QUALITY_LAYERS.pop(QUALITY_LAYERS.index("displacement"))
 QUALITY_LAYERS.pop(QUALITY_LAYERS.index("short_wavelength_displacement"))
-# For use in newer pythons, if we want to type the dataset arg:
-# QUALITY_CHOICES = StrEnum(
-#     "QualityLayer", [(value, auto()) for value in list(QUALITY_LAYERS)]
-# )
 
 
 @app.command()
@@ -219,6 +278,58 @@ def translate(output_dir: Path, nc_files: list[Path | str], dataset):
         )
 
         tqdm.write(f"Created {out_tif}")
+
+
+def _get_first_file_per_ministack(
+    opera_file_list: Sequence[Path | str],
+) -> list[Path | str]:
+    def _get_generation_time(fname):
+        return _parse_datetimes([fname])[2][0]
+
+    first_per_ministack = []
+    for d, cur_groupby in itertools.groupby(
+        sorted(opera_file_list), key=_get_generation_time
+    ):
+        # cur_groupby is an iterable of all matching
+        # Get the first one
+        first_per_ministack.append(next(cur_groupby))
+    return first_per_ministack
+
+
+def _parse_datetimes(
+    opera_disp_file_list: Sequence[Path | str],
+) -> tuple[tuple[datetime], tuple[datetime], tuple[datetime]]:
+    """Parse the datetimes from OPERA DISP-S1 filenames."""
+    from opera_utils import get_dates
+
+    dts = [get_dates(f, fmt="%Y%m%dT%H%M%SZ") for f in opera_disp_file_list]
+
+    reference_times: tuple[datetime]
+    secondary_times: tuple[datetime]
+    generation_times: tuple[datetime]
+    reference_times, secondary_times, generation_times = zip(*dts)
+    return reference_times, secondary_times, generation_times
+
+
+def _pick_reference_point(
+    output_dir: Path,
+    temp_coh_files: list[Path],
+    ccl_file_list: list[Path] | None = None,
+) -> ReferencePoint:
+    quality_file = output_dir / "minimum_temporal_coherence.tif"
+    create_temporal_average(
+        temp_coh_files,
+        output_file=quality_file,
+        num_threads=1,
+        average_func=np.nanmin,
+        # read_masked=True
+    )
+    return select_reference_point(
+        quality_file=quality_file,
+        output_dir=Path(output_dir),
+        candidate_threshold=0.95,
+        ccl_file_list=ccl_file_list,
+    )
 
 
 if __name__ == "__main__":

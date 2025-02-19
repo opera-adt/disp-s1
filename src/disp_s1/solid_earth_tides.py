@@ -220,4 +220,4 @@ def calculate_solid_earth_tides_correction(
         ref_row, ref_col = reference_point
         set_los -= set_los[ref_row, ref_col]
 
-    return set_los.filled(np.nan)
+    return set_los.filled(np.nan).astype("float32")

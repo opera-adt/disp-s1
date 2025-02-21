@@ -71,7 +71,7 @@ def _make_gtiff_writer(output_dir, all_dates, like_filename, dataset: str):
     suffix = ".tif"
 
     out_paths = [
-        Path(output_dir) / (f"{dataset}_{format_dates(ref_date, d)}{suffix}")
+        Path(output_dir) / f"{dataset}_{format_dates(ref_date, d)}{suffix}"
         for d in all_dates[1:]
     ]
     output_dir.mkdir(exist_ok=True, parents=True)

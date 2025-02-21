@@ -170,6 +170,7 @@ def test_check_dateline():
 
     assert len(multipoly.geoms) == 1
     assert multipoly.geoms[0] == polygon
+    assert multipoly.area == polygon.area
 
 
 def test_dateline_crossing():
@@ -199,3 +200,6 @@ def test_dateline_crossing():
     )
     multipoly = split_on_antimeridian(polygon)
     assert len(multipoly.geoms) == 2
+    assert (
+        multipoly.area < 0.1 * polygon.area
+    )  # Original failing case had area of hundreds

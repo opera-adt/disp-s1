@@ -205,14 +205,15 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.01) 
     # Largest polygon should be first in MultiPolygon returned by GDAL
     footprint = shapely.Polygon(in_multi.geoms[0].exterior)
     # Split on antimeridian and return the WKT string
-    return check_dateline(footprint).wkt
+    return split_on_antimeridian(footprint).wkt
 
 
-def check_dateline(polygon: Polygon) -> MultiPolygon:
-    """Split `polygon` if it crosses the dateline.
+def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
+    """Split `polygon` if it crosses the antimeridian (180°).
 
     Source:
     https://github.com/nasa/opera-sds-pcm/blob/a5a3db25be462e7955e5de06d6f9d1d8236a1ef2/util/geo_util.py#L265
+    (where it is `check_dateline`, as it is in isce3)
 
     Parameters
     ----------
@@ -223,15 +224,15 @@ def check_dateline(polygon: Polygon) -> MultiPolygon:
     -------
     MultiPolygon
         A MultiPolygon containing 1 or 2 `.geoms`:
-        The input polygon if it didn't cross the dateline, or
-        two polygons otherwise (one on either side of the dateline).
+        The input polygon if it didn't cross the antimeridian, or
+        two polygons otherwise (one on either side of the antimeridian).
 
     """
     x_min, _, x_max, _ = polygon.bounds
 
-    # Check dateline crossing
+    # Check antimeridian crossing
     if (x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max):
-        dateline = shapely.wkt.loads("LINESTRING( 180.0 -90.0, 180.0 90.0)")
+        antimeridian = shapely.wkt.loads("LINESTRING( 180.0 -90.0, 180.0 90.0)")
 
         # build new polygon with all longitudes between 0 and 360
         x, y = polygon.exterior.coords.xy
@@ -240,7 +241,7 @@ def check_dateline(polygon: Polygon) -> MultiPolygon:
 
         # Split input polygon
         # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
-        merged_lines = shapely.ops.linemerge([dateline, new_ring])
+        merged_lines = shapely.ops.linemerge([antimeridian, new_ring])
         border_lines = shapely.ops.unary_union(merged_lines)
         decomp = shapely.ops.polygonize(border_lines)
 
@@ -257,7 +258,7 @@ def check_dateline(polygon: Polygon) -> MultiPolygon:
             polys[polygon_count] = Polygon(zip(x_wrapped_minus_360, y))
 
     else:
-        # If dateline is not crossed, treat input polygon as list
+        # If antimeridian is not crossed, treat input polygon as list
         polys = [polygon]
 
     return MultiPolygon(polys)

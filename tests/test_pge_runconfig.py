@@ -444,7 +444,7 @@ def test_reference_date_last_per_ministack():
 def overrides_file():
     return (
         Path(__file__).parent
-        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-01-09.json"
+        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-02-21.json"
     )
 
 
@@ -454,7 +454,6 @@ def test_algorithm_overrides_hawaii(overrides_file, algorithm_parameters_file):
 
     p2 = pge_runconfig._override_parameters(orig_params, 23210)  # hawaii
     assert p2.unwrap_options.unwrap_method == "spurt"
-    assert p2.phase_linking.compressed_slc_plan == "last_per_ministack"
 
 
 def test_algorithm_overrides_empty_frame(overrides_file, algorithm_parameters_file):

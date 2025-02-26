@@ -287,7 +287,8 @@ def create_output_product(
         pixel_spacing=pixel_spacing,
     ).astype(np.float32)
     DISPLACEMENT_PRODUCTS.short_wavelength_displacement.attrs |= {
-        "wavelength_cutoff": str(wavelength_cutoff)
+        "wavelength_cutoff": str(wavelength_cutoff),
+        "wavelength_cutoff_units": "meters",
     }
 
     disp_arr[mask] = np.nan
@@ -1153,6 +1154,18 @@ def _create_metadata_group(
             data="center",
             fillvalue=None,
             description="x/y coordinate convention referring to pixel center or corner",
+        )
+        # CEOS 3.11
+        _create_dataset(
+            group=metadata_group,
+            name="ceos_product_measurement_projection",
+            dimensions=(),
+            data="line of sight",
+            fillvalue=None,
+            description=(
+                "Projection of the displacement image (Line of sight, Horizontal,"
+                " Vertical)"
+            ),
         )
         # CEOS 4.5
         _create_dataset(

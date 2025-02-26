@@ -15,10 +15,13 @@ from dolphin.interferogram import estimate_correlation_from_phase
 from dolphin.unwrap import grow_conncomp_snaphu
 from dolphin.utils import full_suffix
 from dolphin.workflows.config import UnwrapOptions
+from osgeo import gdal
 from shapely.geometry import LinearRing, MultiPolygon, Polygon
 from tqdm.contrib.concurrent import thread_map
 
 logger = logging.getLogger(__name__)
+
+gdal.UseExceptions()
 
 
 def _update_snaphu_conncomps(
@@ -65,6 +68,19 @@ def _update_snaphu_conncomps(
         return list(pool.map(_regrow, args_list))
 
 
+def _regrow(args: tuple[int, Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
+    scratch_idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
+    new_path = grow_conncomp_snaphu(
+        unw_filename=unw_f,
+        corr_filename=cor_f,
+        nlooks=nlooks,
+        mask_filename=mask_filename,
+        cost=unwrap_options.snaphu_options.cost,
+        scratchdir=unwrap_options._directory / f"scratch{scratch_idx}",
+    )
+    return new_path
+
+
 def _update_spurt_conncomps(
     timeseries_paths: Sequence[Path],
     template_conncomp_path: Path,
@@ -99,19 +115,6 @@ def _update_spurt_conncomps(
             pass
         new_conncomp_paths.append(new_name)
     return new_conncomp_paths
-
-
-def _regrow(args: tuple[int, Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
-    scratch_idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
-    new_path = grow_conncomp_snaphu(
-        unw_filename=unw_f,
-        corr_filename=cor_f,
-        nlooks=nlooks,
-        mask_filename=mask_filename,
-        cost=unwrap_options.snaphu_options.cost,
-        scratchdir=unwrap_options._directory / f"scratch{scratch_idx}",
-    )
-    return new_path
 
 
 def _create_correlation_images(
@@ -262,3 +265,57 @@ def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
         polys = [polygon]
 
     return MultiPolygon(polys)
+
+
+def convert_meters_to_radians_vrt(
+    timeseries_paths: Sequence[Path],
+) -> list[Path]:
+    """Convert timeseries displacement values from meters to radians using VRT files.
+
+    Parameters
+    ----------
+    timeseries_paths : Sequence[Path]
+        List of paths to the timeseries files in meters.
+
+    Returns
+    -------
+    list[Path]
+        List of paths to the generated VRT files with displacement in radians.
+
+    """
+    vrt_paths = []
+    scale_factor = (-4 * pi) / SENTINEL_1_WAVELENGTH
+
+    for meter_path in timeseries_paths:
+        # Create VRT path with same name but .rad.vrt extension
+        vrt_path = meter_path.with_suffix(".rad.vrt")
+        vrt_paths.append(vrt_path)
+
+        if vrt_path.exists():
+            logger.info(f"Skipping existing radian VRT for {meter_path}")
+            continue
+
+        # Create a VRT that applies the scale factor
+        logger.debug(f"Creating radian VRT for {meter_path} at {vrt_path}")
+
+        # Open the source dataset
+        src_ds = gdal.Open(str(meter_path))
+        if src_ds is None:
+            logger.error(f"Could not open {meter_path}")
+            continue
+
+        # Create VRT with scale factor
+        vrt_driver = gdal.GetDriverByName("VRT")
+        vrt_ds = vrt_driver.CreateCopy(str(vrt_path), src_ds)
+
+        # Apply scale factor to all raster bands
+        for i in range(1, vrt_ds.RasterCount + 1):
+            band = vrt_ds.GetRasterBand(i)
+            band.SetScale(scale_factor)
+            # We're not changing the offset, just scaling
+
+        # Close datasets
+        vrt_ds = None
+        src_ds = None
+
+    return vrt_paths

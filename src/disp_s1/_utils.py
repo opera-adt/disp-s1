@@ -268,49 +268,15 @@ def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
     return MultiPolygon(polys)
 
 
-def create_scaled_vrt(
-    file_paths: Sequence[Path],
-    scale_factor: float = METERS_TO_RADIANS,
-    suffix: str = ".scaled.vrt",
-) -> list[Path]:
-    """Create VRT files that scale the pixel values in `file_paths` by a constant.
-
-    Parameters
-    ----------
-    file_paths : Sequence[Path]
-        List of paths to the input floating point rasters.
-    scale_factor : float
-        Value to multiply pixels by.
-        Default is 4 pi / lambda, the conversion factor to go from radians to meters.
-    suffix : str
-        suffix to use for output VRTs, attached to each input name in `file_paths`.
-
-
-    Returns
-    -------
-    list[Path]
-        List of paths to the generated VRT files.
-
-    """
-    vrt_paths: list[Path] = []
-
-    for in_path in file_paths:
-        # Create VRT path with same name but .scaled.vrt extension
-        vrt_path = in_path.with_suffix(suffix)
-        vrt_paths.append(vrt_path)
-
-        if vrt_path.exists():
-            logger.info(f"Skipping existing radian VRT for {in_path}")
-            continue
-
-        # Create a VRT that applies the scale factor
-        logger.debug(f"Creating radian VRT for {in_path} at {vrt_path}")
-        translate_options = gdal.TranslateOptions(
-            # The "scaling" is sometimes used to rescale to a new (min, max)
-            # Here, we can use 0-1/0-scale_factor to multiple all pixels by scale_factor
-            format="VRT",
-            scaleParams=[[0, 1, 0, scale_factor]],
+def _convert_meters_to_radians(timeseries_paths: Sequence[Path]) -> list[Path]:
+    """Copy over .tif, rescaling units from meters to radians."""
+    output_files: list[Path] = []
+    for in_path in timeseries_paths:
+        out_path = in_path.with_suffix(".radians.tif")
+        io.write_arr(
+            arr=METERS_TO_RADIANS * io.load_gdal(in_path),
+            like_filename=in_path,
+            output_name=out_path,
         )
-        gdal.Translate(vrt_path, in_path, options=translate_options)
-
-    return vrt_paths
+        output_files.append(out_path)
+    return output_files

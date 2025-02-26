@@ -8,10 +8,10 @@ from shapely import from_wkt
 
 from disp_s1._utils import (
     METERS_TO_RADIANS,
+    _convert_meters_to_radians,
     _create_correlation_images,
     _update_snaphu_conncomps,
     _update_spurt_conncomps,
-    create_scaled_vrt,
     split_on_antimeridian,
 )
 
@@ -57,21 +57,17 @@ def test_create_correlations(ts_filenames):
         assert 0.2 < data.mean() < 0.8
 
 
-def test_convert_meters_to_radians_vrt(ts_filenames):
-    """Test that convert_meters_to_radians_vrt correctly creates scaled VRT files."""
-    # Call the function to test
-    unw_vrt_paths = create_scaled_vrt(ts_filenames)
+def test_convert_meters_to_radians(ts_filenames):
+    """Test that _convert_meters_to_radians correctly creates scaled files."""
+    unw_scaled_paths = _convert_meters_to_radians(ts_filenames)
 
-    # Verify the output path
-    assert len(unw_vrt_paths) == 3
-    assert unw_vrt_paths[0] == ts_filenames[0].with_suffix(".scaled.vrt")
-    assert unw_vrt_paths[0].exists()
-
-    # Verify the VRT content
-    expected_scale_factor = METERS_TO_RADIANS
+    assert len(unw_scaled_paths) == 3
+    assert unw_scaled_paths[0] == ts_filenames[0].with_suffix(".radians.tif")
+    assert unw_scaled_paths[0].exists()
 
     # Read the data through the VRT to verify the scaling
-    for unw_p, ts_p in zip(unw_vrt_paths, ts_filenames, strict=True):
+    expected_scale_factor = METERS_TO_RADIANS
+    for unw_p, ts_p in zip(unw_scaled_paths, ts_filenames, strict=True):
         scaled_data = io.load_gdal(unw_p)
         disp_meters = io.load_gdal(ts_p)
 

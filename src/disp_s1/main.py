@@ -26,11 +26,10 @@ from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
 from ._utils import (
-    METERS_TO_RADIANS,
+    _convert_meters_to_radians,
     _create_correlation_images,
     _update_snaphu_conncomps,
     _update_spurt_conncomps,
-    create_scaled_vrt,
 )
 
 logger = logging.getLogger(__name__)
@@ -207,9 +206,8 @@ def create_products(
     # Check and update connected components paths
     assert out_paths.conncomp_paths is not None
     if set(group_by_date(out_paths.conncomp_paths).keys()) != disp_date_keys:
-        timeseries_rad_paths = create_scaled_vrt(
-            out_paths.timeseries_paths, scale_factor=METERS_TO_RADIANS
-        )
+        logger.info("Converting timeseries rasters to radians")
+        timeseries_rad_paths = _convert_meters_to_radians(out_paths.timeseries_paths)
         method = cfg.unwrap_options.unwrap_method
         if method in ("snaphu", "phass", "whirlwind"):
             row_looks, col_looks = cfg.phase_linking.half_window.to_looks()

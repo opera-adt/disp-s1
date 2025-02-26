@@ -1,14 +1,13 @@
-from math import pi
 from pathlib import Path
 
 import numpy as np
 import pytest
 from dolphin import io
-from dolphin.constants import SENTINEL_1_WAVELENGTH
 from dolphin.workflows import UnwrapOptions
 from shapely import from_wkt
 
 from disp_s1._utils import (
+    METERS_TO_RADIANS,
     _create_correlation_images,
     _update_snaphu_conncomps,
     _update_spurt_conncomps,
@@ -29,7 +28,7 @@ def ts_filenames(tmp_path) -> list[Path]:
     ramp_rad = (np.arange(0, 512).reshape(512, 1) / 10) * np.ones((1, 512))
     ramp_rad += np.random.randn(*ramp_rad.shape)
 
-    rad_to_meters = SENTINEL_1_WAVELENGTH / (-4 * pi)
+    rad_to_meters = 1 / METERS_TO_RADIANS
     ramp_meters = ramp_rad * rad_to_meters
 
     for i in range(3):
@@ -69,7 +68,7 @@ def test_convert_meters_to_radians_vrt(ts_filenames):
     assert unw_vrt_paths[0].exists()
 
     # Verify the VRT content
-    expected_scale_factor = (-4 * pi) / SENTINEL_1_WAVELENGTH
+    expected_scale_factor = METERS_TO_RADIANS
 
     # Read the data through the VRT to verify the scaling
     for unw_p, ts_p in zip(unw_vrt_paths, ts_filenames, strict=True):

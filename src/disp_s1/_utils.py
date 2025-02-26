@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 gdal.UseExceptions()
 
+METERS_TO_RADIANS = (-4 * np.pi) / SENTINEL_1_WAVELENGTH
+
 
 def _update_snaphu_conncomps(
     timeseries_paths: Sequence[Path],
@@ -267,55 +269,49 @@ def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
     return MultiPolygon(polys)
 
 
-def convert_meters_to_radians_vrt(
-    timeseries_paths: Sequence[Path],
+def create_scaled_vrt(
+    file_paths: Sequence[Path],
+    scale_factor: float = METERS_TO_RADIANS,
+    suffix: str = ".scaled.vrt",
 ) -> list[Path]:
-    """Convert timeseries displacement values from meters to radians using VRT files.
+    """Create VRT files that scale the pixel values in `file_paths` by a constant.
 
     Parameters
     ----------
-    timeseries_paths : Sequence[Path]
-        List of paths to the timeseries files in meters.
+    file_paths : Sequence[Path]
+        List of paths to the input floating point rasters.
+    scale_factor : float
+        Value to multiply pixels by.
+        Default is 4 pi / lambda, the conversion factor to go from radians to meters.
+    suffix : str
+        suffix to use for output VRTs, attached to each input name in `file_paths`.
+
 
     Returns
     -------
     list[Path]
-        List of paths to the generated VRT files with displacement in radians.
+        List of paths to the generated VRT files.
 
     """
-    vrt_paths = []
-    scale_factor = (-4 * pi) / SENTINEL_1_WAVELENGTH
+    vrt_paths: list[Path] = []
 
-    for meter_path in timeseries_paths:
-        # Create VRT path with same name but .rad.vrt extension
-        vrt_path = meter_path.with_suffix(".rad.vrt")
+    for in_path in file_paths:
+        # Create VRT path with same name but .scaled.vrt extension
+        vrt_path = in_path.with_suffix(suffix)
         vrt_paths.append(vrt_path)
 
         if vrt_path.exists():
-            logger.info(f"Skipping existing radian VRT for {meter_path}")
+            logger.info(f"Skipping existing radian VRT for {in_path}")
             continue
 
         # Create a VRT that applies the scale factor
-        logger.debug(f"Creating radian VRT for {meter_path} at {vrt_path}")
-
-        # Open the source dataset
-        src_ds = gdal.Open(str(meter_path))
-        if src_ds is None:
-            logger.error(f"Could not open {meter_path}")
-            continue
-
-        # Create VRT with scale factor
-        vrt_driver = gdal.GetDriverByName("VRT")
-        vrt_ds = vrt_driver.CreateCopy(str(vrt_path), src_ds)
-
-        # Apply scale factor to all raster bands
-        for i in range(1, vrt_ds.RasterCount + 1):
-            band = vrt_ds.GetRasterBand(i)
-            band.SetScale(scale_factor)
-            # We're not changing the offset, just scaling
-
-        # Close datasets
-        vrt_ds = None
-        src_ds = None
+        logger.debug(f"Creating radian VRT for {in_path} at {vrt_path}")
+        translate_options = gdal.TranslateOptions(
+            # The "scaling" is sometimes used to rescale to a new (min, max)
+            # Here, we can use 0-1/0-scale_factor to multiple all pixels by scale_factor
+            format="VRT",
+            scaleParams=[[0, 1, 0, scale_factor]],
+        )
+        gdal.Translate(vrt_path, in_path, options=translate_options)
 
     return vrt_paths

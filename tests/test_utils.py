@@ -12,6 +12,7 @@ from disp_s1._utils import (
     _create_correlation_images,
     _update_snaphu_conncomps,
     _update_spurt_conncomps,
+    create_scaled_vrt,
     split_on_antimeridian,
 )
 
@@ -20,9 +21,9 @@ UNW_FILE = DATA_DIR / "20160716_20160809.unw.tif"
 
 
 @pytest.fixture
-def ts_filenames(tmp_path):
+def ts_filenames(tmp_path) -> list[Path]:
     end_date = 20160809
-    filenames = []
+    filenames: list[Path] = []
 
     # Make 2d, 512, 512 ramp for the data:
     ramp_rad = (np.arange(0, 512).reshape(512, 1) / 10) * np.ones((1, 512))
@@ -55,6 +56,31 @@ def test_create_correlations(ts_filenames):
         # Because we made a ramp with ~5 fringes, and some noise, the sliding
         # window should get mid correlation
         assert 0.2 < data.mean() < 0.8
+
+
+def test_convert_meters_to_radians_vrt(ts_filenames):
+    """Test that convert_meters_to_radians_vrt correctly creates scaled VRT files."""
+    # Call the function to test
+    unw_vrt_paths = create_scaled_vrt(ts_filenames)
+
+    # Verify the output path
+    assert len(unw_vrt_paths) == 3
+    assert unw_vrt_paths[0] == ts_filenames[0].with_suffix(".scaled.vrt")
+    assert unw_vrt_paths[0].exists()
+
+    # Verify the VRT content
+    expected_scale_factor = (-4 * pi) / SENTINEL_1_WAVELENGTH
+
+    # Read the data through the VRT to verify the scaling
+    for unw_p, ts_p in zip(unw_vrt_paths, ts_filenames, strict=True):
+        scaled_data = io.load_gdal(unw_p)
+        disp_meters = io.load_gdal(ts_p)
+
+        # Check that the data was correctly scaled
+        expected_disp_rad = disp_meters * expected_scale_factor
+        assert np.allclose(
+            scaled_data, expected_disp_rad
+        ), "Data read through VRT does not match expected scaled values"
 
 
 def test_update_snaphu_conncomps(ts_filenames):

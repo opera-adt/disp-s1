@@ -1151,7 +1151,7 @@ def _create_metadata_group(
             group=metadata_group,
             name="product_pixel_coordinate_convention",
             dimensions=(),
-            data="center",
+            data="pixel center",
             fillvalue=None,
             description="x/y coordinate convention referring to pixel center or corner",
         )

@@ -471,7 +471,7 @@ def _create_corrections_group(
         # Create the group holding phase corrections used on the unwrapped phase
         corrections_group = f.create_group(CORRECTIONS_GROUP_NAME)
         corrections_group.attrs["description"] = (
-            "Phase corrections applied to the unwrapped_phase"
+            "Phase corrections which may be used to correct the displacement image"
         )
         empty_arr = np.zeros(shape, dtype="float32")
 
@@ -490,7 +490,10 @@ def _create_corrections_group(
             name="ionospheric_delay",
             long_name="Ionospheric Delay",
             data=ionosphere,
-            description="Ionospheric phase delay used to correct the unwrapped phase",
+            description=(
+                "Ionospheric phase delay, for correcting excess path delay along the"
+                " radar line of sight"
+            ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
         )
@@ -500,7 +503,10 @@ def _create_corrections_group(
             name="solid_earth_tide",
             long_name="Solid Earth Tide",
             data=solid_earth,
-            description="Solid Earth tide used to correct the unwrapped phase",
+            description=(
+                "Solid Earth tide between the reference and secondary acquisition"
+                " times, projected onto the radar line of sight"
+            ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
         )
@@ -511,7 +517,8 @@ def _create_corrections_group(
             long_name="Perpendicular Baseline",
             data=baseline,
             description=(
-                "Perpendicular baseline between reference and secondary acquisitions"
+                "Perpendicular baseline between reference and secondary acquisitions."
+                " May be used to correct for DEM error in the displacement imagery."
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
@@ -541,8 +548,8 @@ def _create_corrections_group(
             data=0,
             fillvalue=0,
             description=(
-                "Dummy dataset containing attributes with the locations where the"
-                " reference phase was taken."
+                "Dummy dataset containing attributes recording the spatial location"
+                " where the reference phase was taken."
             ),
             dtype=int,
             # Note: the dataset contains attributes with lists, since the reference

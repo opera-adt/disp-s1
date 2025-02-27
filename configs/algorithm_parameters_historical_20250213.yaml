@@ -330,8 +330,8 @@ spatial_wavelength_cutoff: 25000.0
 # `vmin, vmax` matplotlib arguments (in meters) passed to browse image creator.
 #   Type: array.
 browse_image_vmin_vmax:
-  - -0.1
-  - 0.1
+  - -0.05
+  - 0.05
 # Number of output products to create in parallel.
 #   Type: integer.
 num_parallel_products: 3

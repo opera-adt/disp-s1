@@ -62,7 +62,11 @@ class DisplacementProducts:
             long_name="Recommended Mask",
             description=(
                 "Suggested mask to remove low quality pixels, where 0 indicates a bad"
-                " pixel, 1 is a good pixel"
+                " pixel, 1 is a good pixel. Pixels are set to 0 for three reasons: 1)"
+                " the pixel is marked as water in /water_mask, 2) the pixel is 0 in"
+                " /connected_component_labels, or 3) the pixel has low"
+                " /temporal_coherence and low /phase_similarity, where 'low' is below"
+                " the threshold listed in this dataset's attributes."
             ),
             fillvalue=255,
             attrs={"units": "unitless"},

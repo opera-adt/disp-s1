@@ -279,6 +279,15 @@ def create_output_product(
     # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
     recommended_mask = np.logical_not(bad_pixel_mask)
     del temporal_coherence, conncomps, similarity
+    # Add the current threshold to the product attributes
+    DISPLACEMENT_PRODUCTS.recommended_mask.attrs |= {
+        "similarity_threshold": str(
+            algorithm_parameters.recommended_similarity_threshold
+        ),
+        "temporal_coherence_threshold": str(
+            algorithm_parameters.recommended_temporal_coherence_threshold
+        ),
+    }
 
     filtered_disp_arr = filtering.filter_long_wavelength(
         unwrapped_phase=disp_arr,

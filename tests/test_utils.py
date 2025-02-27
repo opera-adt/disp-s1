@@ -1,14 +1,14 @@
-from math import pi
 from pathlib import Path
 
 import numpy as np
 import pytest
 from dolphin import io
-from dolphin.constants import SENTINEL_1_WAVELENGTH
 from dolphin.workflows import UnwrapOptions
 from shapely import from_wkt
 
 from disp_s1._utils import (
+    METERS_TO_RADIANS,
+    _convert_meters_to_radians,
     _create_correlation_images,
     _update_snaphu_conncomps,
     _update_spurt_conncomps,
@@ -20,15 +20,15 @@ UNW_FILE = DATA_DIR / "20160716_20160809.unw.tif"
 
 
 @pytest.fixture
-def ts_filenames(tmp_path):
+def ts_filenames(tmp_path) -> list[Path]:
     end_date = 20160809
-    filenames = []
+    filenames: list[Path] = []
 
     # Make 2d, 512, 512 ramp for the data:
     ramp_rad = (np.arange(0, 512).reshape(512, 1) / 10) * np.ones((1, 512))
     ramp_rad += np.random.randn(*ramp_rad.shape)
 
-    rad_to_meters = SENTINEL_1_WAVELENGTH / (-4 * pi)
+    rad_to_meters = 1 / METERS_TO_RADIANS
     ramp_meters = ramp_rad * rad_to_meters
 
     for i in range(3):
@@ -55,6 +55,27 @@ def test_create_correlations(ts_filenames):
         # Because we made a ramp with ~5 fringes, and some noise, the sliding
         # window should get mid correlation
         assert 0.2 < data.mean() < 0.8
+
+
+def test_convert_meters_to_radians(ts_filenames):
+    """Test that _convert_meters_to_radians correctly creates scaled files."""
+    unw_scaled_paths = _convert_meters_to_radians(ts_filenames)
+
+    assert len(unw_scaled_paths) == 3
+    assert unw_scaled_paths[0] == ts_filenames[0].with_suffix(".radians.tif")
+    assert unw_scaled_paths[0].exists()
+
+    # Read the data through the VRT to verify the scaling
+    expected_scale_factor = METERS_TO_RADIANS
+    for unw_p, ts_p in zip(unw_scaled_paths, ts_filenames, strict=True):
+        scaled_data = io.load_gdal(unw_p)
+        disp_meters = io.load_gdal(ts_p)
+
+        # Check that the data was correctly scaled
+        expected_disp_rad = disp_meters * expected_scale_factor
+        assert np.allclose(
+            scaled_data, expected_disp_rad
+        ), "Data read through VRT does not match expected scaled values"
 
 
 def test_update_snaphu_conncomps(ts_filenames):

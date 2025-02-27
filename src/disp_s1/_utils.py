@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import shutil
 from collections.abc import Sequence
-from math import pi
 from multiprocessing import get_context
 from pathlib import Path
 
@@ -15,10 +14,15 @@ from dolphin.interferogram import estimate_correlation_from_phase
 from dolphin.unwrap import grow_conncomp_snaphu
 from dolphin.utils import full_suffix
 from dolphin.workflows.config import UnwrapOptions
+from osgeo import gdal
 from shapely.geometry import LinearRing, MultiPolygon, Polygon
 from tqdm.contrib.concurrent import thread_map
 
 logger = logging.getLogger(__name__)
+
+gdal.UseExceptions()
+
+METERS_TO_RADIANS = (-4 * np.pi) / SENTINEL_1_WAVELENGTH
 
 
 def _update_snaphu_conncomps(
@@ -65,6 +69,19 @@ def _update_snaphu_conncomps(
         return list(pool.map(_regrow, args_list))
 
 
+def _regrow(args: tuple[int, Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
+    scratch_idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
+    new_path = grow_conncomp_snaphu(
+        unw_filename=unw_f,
+        corr_filename=cor_f,
+        nlooks=nlooks,
+        mask_filename=mask_filename,
+        cost=unwrap_options.snaphu_options.cost,
+        scratchdir=unwrap_options._directory / f"scratch{scratch_idx}",
+    )
+    return new_path
+
+
 def _update_spurt_conncomps(
     timeseries_paths: Sequence[Path],
     template_conncomp_path: Path,
@@ -101,19 +118,6 @@ def _update_spurt_conncomps(
     return new_conncomp_paths
 
 
-def _regrow(args: tuple[int, Path, Path, int, PathOrStr, UnwrapOptions]) -> Path:
-    scratch_idx, unw_f, cor_f, nlooks, mask_filename, unwrap_options = args
-    new_path = grow_conncomp_snaphu(
-        unw_filename=unw_f,
-        corr_filename=cor_f,
-        nlooks=nlooks,
-        mask_filename=mask_filename,
-        cost=unwrap_options.snaphu_options.cost,
-        scratchdir=unwrap_options._directory / f"scratch{scratch_idx}",
-    )
-    return new_path
-
-
 def _create_correlation_images(
     ts_filenames: Sequence[PathOrStr],
     window_size: tuple[int, int] = (11, 11),
@@ -135,7 +139,7 @@ def _create_correlation_images(
         ifg_path, cor_path = args
         logger.debug(f"Estimating correlation for {ifg_path}, writing to {cor_path}")
         disp = io.load_gdal(ifg_path)
-        disp_rad = disp * (-4 * pi) / SENTINEL_1_WAVELENGTH
+        disp_rad = disp * METERS_TO_RADIANS
 
         cor = estimate_correlation_from_phase(disp_rad, window_size=window_size)
         if keep_bits:
@@ -262,3 +266,17 @@ def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
         polys = [polygon]
 
     return MultiPolygon(polys)
+
+
+def _convert_meters_to_radians(timeseries_paths: Sequence[Path]) -> list[Path]:
+    """Copy over .tif, rescaling units from meters to radians."""
+    output_files: list[Path] = []
+    for in_path in timeseries_paths:
+        out_path = in_path.with_suffix(".radians.tif")
+        io.write_arr(
+            arr=METERS_TO_RADIANS * io.load_gdal(in_path),
+            like_filename=in_path,
+            output_name=out_path,
+        )
+        output_files.append(out_path)
+    return output_files

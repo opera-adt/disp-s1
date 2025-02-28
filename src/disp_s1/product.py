@@ -1097,7 +1097,7 @@ def _create_metadata_group(
         )
         _create_dataset(
             group=metadata_group,
-            name="algorithm_theoretical_basis_doi",
+            name="algorithm_theoretical_basis_document_doi",
             dimensions=(),
             data="https://doi.org/10.5067/SNWG/OPL3DISPS1-V1",
             fillvalue=None,

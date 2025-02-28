@@ -1089,12 +1089,21 @@ def _create_metadata_group(
         metadata_group = f.create_group(METADATA_GROUP_NAME)
         _create_dataset(
             group=metadata_group,
-            name="algorithm_theoretical_basis_document_id",
+            name="product_landing_page_doi",
             dimensions=(),
-            data="JPL D-108765",
+            data="https://doi.org/10.5067/SNWG/OPL3DISPS1-V1",
+            fillvalue=None,
+            description="DOI for landing page containing DISP-S1 product information",
+        )
+        _create_dataset(
+            group=metadata_group,
+            name="algorithm_theoretical_basis_document_doi",
+            dimensions=(),
+            data="https://doi.org/10.5067/SNWG/OPL3DISPS1-V1",
             fillvalue=None,
             description=(
-                "Document identifier for Algorithm Theoretical Basis Document (ATBD)"
+                "DOI for DISP-S1 product containing for Algorithm Theoretical Basis"
+                " Document (ATBD)"
             ),
         )
         _create_dataset(

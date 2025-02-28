@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # /// script
-# dependencies = ["cartopy","cmap", "matplotlib", "numpy", "rioxarray", "tyro"]
+# dependencies = ["cartopy","cmap","matplotlib","numpy","pykdtree","rioxarray","tyro"]
 # ///
 from pathlib import Path
 
@@ -21,15 +21,16 @@ def plot(
     *,
     output_name: Path | str | None = None,
     dset_name: str = "displacement",
+    title: str | None,
     subsample: int = 4,
     apply_recommended_mask: bool = True,
+    zero_mean: bool = True,
     pad_pct: float = 0.3,
     zoom_level: int = 8,
     cmap: str = "vik",
     vm: float = 0.1,
     cbar_label: str | None = None,
     figsize: tuple[float, float] | None = (9, 4),
-    cartopy_crs_name: str = "PlateCarree",
     tick_resolution: float = 1.0,
     interpolation: str | None = "nearest",
 ) -> None:
@@ -41,30 +42,42 @@ def plot(
         Name of DISP product to plot
     output_name : Path | str | None, optional
         Name of the output file to save the plot
-    dset_name : str, default "displacement"
+    dset_name : str, default
         Name of the dataset to plot
+        Default is "displacement"
+    title : str, optional
+        If supplied, a title for the plot axes.
     subsample : int, default 4
         Subsampling factor for the dataset
-    apply_recommended_mask : bool, default True
+    apply_recommended_mask : bool
         Whether to apply the recommended mask to the dataset
-    pad_pct : float, default 0.3
+        Default is True
+    zero_mean : bool
+        Whether to subtract the mean from the image.
+        Default is True
+    pad_pct : float
         Percentage to pad the bounding box.
-    zoom_level : int, default 8
+        Default is 0.3
+    zoom_level : int
         Zoom level for the background tiles.
-    cmap : str, default "vik"
+        High leads to higher resolution background (and larger file size)
+        Default is 8.
+    cmap : str
         Colormap to use for the plot
-    vm : float, default 0.1
-        Maximum absolute value for the colorbar range
+        Default is "vik"
+    vm : float
+        Maximum absolute value for the colorbar range.
+        Default is 0.1
     cbar_label : str, optional
         Label for the colorbar.
     figsize : tuple of float, optional
         Figure size (width, height) in inches.
-    cartopy_crs_name : str, default "PlateCarree"
-        Name of the Cartopy coordinate reference system to use.
-    tick_resolution : float, default 1.0
+    tick_resolution : float
         Resolution of the ticks.
-    interpolation : str | None, default "nearest"
-        Interpolation method to use for imshow
+        Default is 1.0
+    interpolation : str | None
+        Interpolation method to use for `imshow`
+        Default is "nearest".
 
     """
     if output_name is None:
@@ -78,13 +91,14 @@ def plot(
         da = da[::subsample, ::subsample]
     if apply_recommended_mask:
         da = da.where(ds["recommended_mask"][::subsample, ::subsample])
+    if zero_mean:
+        da = da - da.mean()
     da_4326 = da.rio.reproject("EPSG:4326")
 
     tiler = img_tiles.GoogleTiles(style="satellite")
-    crs = getattr(ccrs, cartopy_crs_name)()
+    crs = ccrs.PlateCarree()
 
-    projection = ccrs.PlateCarree()
-    axes_class = (GeoAxes, {"projection": projection})
+    axes_class = (GeoAxes, {"projection": crs})
 
     fig = plt.figure(figsize=figsize)
     # https://scitools.org.uk/cartopy/docs/latest/gallery/miscellanea/axes_grid_basic.html
@@ -93,6 +107,7 @@ def plot(
         111,
         axes_class=axes_class,
         nrows_ncols=(1, 1),
+        # Add a spot for a colorbar with the same height as the image
         axes_pad=0.6,
         cbar_location="right",
         cbar_mode="single",
@@ -113,7 +128,7 @@ def plot(
     ax.add_image(tiler, zoom_level)
     extent_img = _padded_extent(bbox, 0.0)
     axim = ax.imshow(
-        np.asarray(da_4326 - da_4326.mean()),
+        np.asarray(da_4326),
         transform=crs,
         extent=extent_img,
         origin="upper",
@@ -122,7 +137,6 @@ def plot(
         vmax=vm,
         vmin=-vm,
         cmap=cmap,
-        # **imshow_kwargs,
     )
     cbar = cbar_loc.colorbar(axim)
     tick_values = np.linspace(-vm, vm, 5)
@@ -132,6 +146,9 @@ def plot(
 
     cbar_label = cbar_label or da.attrs["units"]
     cbar.set_label(cbar_label)
+
+    if title:
+        ax.set_title(title)
 
     _add_ticks(ax, resolution=tick_resolution)
     fig.tight_layout()

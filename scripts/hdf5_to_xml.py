@@ -4,7 +4,7 @@
 # ///
 """Convert a NetCDF4/HDF5 file into XML.
 
-Can be used to browser metadata contained in the file with a text editor.
+Can be used to browse metadata contained in the file with a text editor.
 
 Creates output files with the same path as the input HDF5 with .xml extensions.
 """

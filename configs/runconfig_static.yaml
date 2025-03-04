@@ -1,0 +1,54 @@
+input_file_group:
+  # REQUIRED: Frame ID of the bursts contained in `cslc_file_list`.
+  #   Type: integer.
+  frame_id:
+  # TODO: ENSURE cslc_file_list NOT REQUIRED
+dynamic_ancillary_file_group:
+  # TODO: MAKE REQUIRED
+  # Paths to the CSLC static_layer files (1 per burst) with line-of-sight unit vectors. If
+  #   none provided, corrections using CSLC static_layer are skipped.
+  #   Type: array.
+  static_layers_files:
+  # TODO: MAKE REQUIRED
+  # Path to the DEM file covering full frame. If none provided, corrections using DEM are
+  #   skipped.
+  #   Type: string | null.
+  dem_file:
+static_ancillary_file_group:
+  # JSON file containing the mapping from frame_id to frame/burst information.
+  #   Type: string | null.
+  frame_to_burst_json: static_ancillary_files/opera-s1-disp-0.7.0-frame-to-burst.json.zip
+primary_executable:
+  # Product type of the PGE.
+  #   Type: string.
+  product_type: DISP_S1_STATIC
+product_path_group:
+  # REQUIRED: Directory where PGE will place results.
+  #   Type: string.
+  product_path: output
+  # Path to the scratch directory.
+  #   Type: string.
+  scratch_path: scratch
+  # Path to the SAS output directory.
+  #   Type: string.
+  sas_output_path: output
+  # Version of the product, in <major>.<minor> format.
+  #   Type: string.
+  product_version: '1.0'
+worker_settings:
+  # Number of threads to use per worker. This sets the OMP_NUM_THREADS environment variable in
+  #   each python process.
+  #   Type: integer.
+  threads_per_worker: 2
+  # If processing separate spatial bursts, number of bursts to run in parallel for wrapped-
+  #   phase-estimation.
+  #   Type: integer.
+  n_parallel_bursts: 9
+  # Size (rows, columns) of blocks of data to load at a time.
+  #   Type: array.
+  block_shape:
+    - 512
+    - 512
+# Path to the output log file in addition to logging to stderr.
+#   Type: string | null.
+log_file: scratch/log_sas.log

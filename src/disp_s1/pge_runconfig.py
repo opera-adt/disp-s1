@@ -6,7 +6,7 @@ import datetime
 import json
 from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Any, ClassVar, List, Optional, Union
+from typing import Any, ClassVar, List, Literal, Optional, Union
 
 from dolphin.stack import CompressedSlcPlan
 from dolphin.workflows.config import (
@@ -128,9 +128,8 @@ class StaticAncillaryFileGroup(YamlModel):
 class PrimaryExecutable(YamlModel):
     """Group describing the primary executable."""
 
-    product_type: str = Field(
-        default="DISP_S1_FORWARD",
-        description="Product type of the PGE.",
+    product_type: Literal["DISP_S1_FORWARD", "DISP_S1_HISTORICAL", "DISP_S1_STATIC"] = (
+        Field(description="Product type of the PGE.")
     )
     model_config = ConfigDict(extra="forbid")
 
@@ -548,3 +547,35 @@ def _nested_update(base: dict, updates: dict):
         else:
             base[k] = v
     return base
+
+
+class StaticLayersDynamicAncillaryFileGroup(YamlModel):
+    """A group of dynamic ancillary files."""
+
+    geometry_files: List[Path] = Field(
+        default_factory=list,
+        alias="static_layers_files",
+        description=(
+            "Paths to the CSLC static_layer files (1 per burst) with line-of-sight"
+            " unit vectors."
+        ),
+    )
+    dem_file: Optional[Path] = Field(
+        ...,
+        description="Path to the DEM file covering full frame.",
+    )
+    model_config = ConfigDict(extra="allow")
+
+
+class StaticLayersRunConfig(RunConfig):
+    """Run configuration for static layers SAS."""
+
+    # Simplest work around to keep PGE interface same:
+    # ignore all the extra fields and allow all
+    model_config = ConfigDict(extra="allow")
+    # BUT, we no longer need dynamic_ancillary_file_group.algorithm_parameters_file
+    # So we shouldn't require it
+    dynamic_ancillary_file_group: StaticLayersDynamicAncillaryFileGroup = Field(
+        default_factory=StaticLayersDynamicAncillaryFileGroup,
+        alias="dynamic_ancillary_file_group",
+    )

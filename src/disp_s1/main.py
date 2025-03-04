@@ -22,7 +22,7 @@ from opera_utils.geometry import get_incidence_angles
 from disp_s1 import __version__, product
 from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
 from disp_s1._ps import precompute_ps
-from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig
+from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig, StaticLayersRunConfig
 
 from ._reference import ReferencePoint, read_reference_point
 from ._utils import (
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 @log_runtime
 def run(
     cfg: DisplacementWorkflow,
-    pge_runconfig: RunConfig,
+    pge_runconfig: RunConfig | StaticLayersRunConfig,
     debug: bool = False,
 ) -> None:
     """Run the displacement workflow on a stack of SLCs.
@@ -54,13 +54,6 @@ def run(
         Default is False.
 
     """
-    if pge_runconfig.primary_executable.product_type == "DISP_S1_STATIC":
-        from . import main_static_layers
-
-        return main_static_layers.run_static_layers(
-            cfg=cfg, pge_runconfig=pge_runconfig
-        )
-
     cfg.work_directory.mkdir(exist_ok=True, parents=True)
     setup_logging(logger_name="disp_s1", debug=debug, filename=cfg.log_file)
     # Save the start for a metadata field

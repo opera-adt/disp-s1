@@ -562,11 +562,13 @@ class StaticLayersDynamicAncillaryFileGroup(YamlModel):
             " unit vectors."
         ),
     )
-    dem_file: Optional[Path] = Field(
+    dem_file: Path = Field(
         ...,
         description="Path to the DEM file covering full frame.",
     )
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(
+        extra="allow", json_schema_extra={"required": ["geometry_files"]}
+    )
 
 
 class StaticLayersRunConfig(RunConfig):
@@ -578,6 +580,6 @@ class StaticLayersRunConfig(RunConfig):
     # BUT, we no longer need dynamic_ancillary_file_group.algorithm_parameters_file
     # So we shouldn't require it
     dynamic_ancillary_file_group: StaticLayersDynamicAncillaryFileGroup = Field(
-        default_factory=StaticLayersDynamicAncillaryFileGroup,
+        ...,
         alias="dynamic_ancillary_file_group",
     )

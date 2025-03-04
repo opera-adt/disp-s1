@@ -238,10 +238,6 @@ def download_dem(config: DEMConfig, polygons: list[Polygon]) -> None:
 
     gdal.BuildVRT(str(config.output_path), dem_files)
 
-    # Cleanup intermediate files
-    for file in dem_files:
-        Path(file).unlink()
-
 
 def stage_dem(
     output: Path,

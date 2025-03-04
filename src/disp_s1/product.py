@@ -78,6 +78,9 @@ GRID_MAPPING_DSET = "spatial_ref"
 
 COMPRESSED_SLC_TEMPLATE = "compressed_{burst_id}_{date_str}.h5"
 
+# Reference time for the time dimension, setting the "seconds since" in the attributes
+TIME_ARRAY_REFERENCE = datetime.datetime(2010, 1, 1, 0, 0, 0)
+
 
 def create_output_product(
     output_name: Filename,
@@ -1591,7 +1594,9 @@ def _create_time_dset(
     return t_ds
 
 
-def _create_time_array(times: list[datetime.datetime]):
+def _create_time_array(
+    times: list[datetime.datetime], since_time: datetime.datetime = TIME_ARRAY_REFERENCE
+):
     """Set up the CF-compliant time array and dimension metadata.
 
     References
@@ -1602,7 +1607,6 @@ def _create_time_array(times: list[datetime.datetime]):
     # 'calendar': 'standard',
     # 'units': 'seconds since 2017-02-03 00:00:00.000000'
     # Create the time array
-    since_time = times[0]
     time = np.array([(t - since_time).total_seconds() for t in times])
     calendar = "standard"
     units = f"seconds since {since_time.strftime(DATETIME_FORMAT)}"

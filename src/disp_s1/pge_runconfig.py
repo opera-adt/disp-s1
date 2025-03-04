@@ -240,7 +240,7 @@ class RunConfig(YamlModel):
     input_file_group: InputFileGroup
     dynamic_ancillary_file_group: DynamicAncillaryFileGroup
     static_ancillary_file_group: StaticAncillaryFileGroup
-    primary_executable: PrimaryExecutable = Field(default_factory=PrimaryExecutable)
+    primary_executable: PrimaryExecutable
     product_path_group: ProductPathGroup
 
     # General workflow metadata
@@ -265,6 +265,8 @@ class RunConfig(YamlModel):
             kwargs["static_ancillary_file_group"] = (
                 StaticAncillaryFileGroup.model_construct()
             )
+        if "primary_executable" not in kwargs:
+            kwargs["primary_executable"] = PrimaryExecutable.model_construct()
         if "product_path_group" not in kwargs:
             kwargs["product_path_group"] = ProductPathGroup.model_construct()
         return super().model_construct(

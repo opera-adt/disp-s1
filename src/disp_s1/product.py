@@ -500,8 +500,9 @@ def _create_corrections_group(
             long_name="Ionospheric Delay",
             data=ionosphere,
             description=(
-                "Ionospheric phase delay, for correcting excess path delay along the"
-                " radar line of sight"
+                "Apparent displacement from excess path delay difference due to signal"
+                " propagation through the ionosphere. Subtract from /displacement to"
+                " apply as a correction."
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
@@ -513,8 +514,9 @@ def _create_corrections_group(
             long_name="Solid Earth Tide",
             data=solid_earth,
             description=(
-                "Solid Earth tide between the reference and secondary acquisition"
-                " times, projected onto the radar line of sight"
+                "Surface displacement due to Solid Earth tide difference between the"
+                " reference and secondary acquisition times, projected onto the radar"
+                " line of sight. Subtract from /displacement to apply as a correction."
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},

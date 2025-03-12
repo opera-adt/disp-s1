@@ -90,7 +90,7 @@ def runconfig_minimum(
 ):
     c = RunConfig(
         input_file_group=input_file_group,
-        primary_executable=PrimaryExecutable(),
+        primary_executable=PrimaryExecutable(product_type="DISP_S1_HISTORICAL"),
         dynamic_ancillary_file_group=dynamic_ancillary_file_group,
         static_ancillary_file_group=static_ancillary_file_group,
         product_path_group=product_path_group,
@@ -207,7 +207,7 @@ def test_reference_changeover(
 ):
     rc = RunConfig(
         input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
-        primary_executable=PrimaryExecutable(),
+        primary_executable=PrimaryExecutable(product_type="DISP_S1_HISTORICAL"),
         dynamic_ancillary_file_group=dynamic_ancillary_file_group,
         static_ancillary_file_group=static_ancillary_file_group,
         product_path_group=product_path_group,
@@ -223,7 +223,7 @@ def test_reference_changeover(
     )
     rc = RunConfig(
         input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
-        primary_executable=PrimaryExecutable(),
+        primary_executable=PrimaryExecutable(product_type="DISP_S1_HISTORICAL"),
         dynamic_ancillary_file_group=dynamic_ancillary_file_group,
         static_ancillary_file_group=static_ancillary_file_group,
         product_path_group=product_path_group,
@@ -237,7 +237,7 @@ def test_reference_changeover(
     )
     rc = RunConfig(
         input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
-        primary_executable=PrimaryExecutable(),
+        primary_executable=PrimaryExecutable(product_type="DISP_S1_HISTORICAL"),
         dynamic_ancillary_file_group=dynamic_ancillary_file_group,
         static_ancillary_file_group=static_ancillary_file_group,
         product_path_group=product_path_group,

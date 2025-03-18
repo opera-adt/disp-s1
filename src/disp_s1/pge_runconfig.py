@@ -562,12 +562,17 @@ class StaticLayersDynamicAncillaryFileGroup(YamlModel):
             " unit vectors."
         ),
     )
+    rtc_static_layers_files: List[Path] = Field(
+        default_factory=list,
+        description="Paths to the RTC layover shadow mask files (1 per burst).",
+    )
     dem_file: Path = Field(
         ...,
         description="Path to the DEM file covering full frame.",
     )
     model_config = ConfigDict(
-        extra="allow", json_schema_extra={"required": ["geometry_files"]}
+        extra="allow",
+        json_schema_extra={"required": ["geometry_files, rtc_static_layers_files"]},
     )
 
 

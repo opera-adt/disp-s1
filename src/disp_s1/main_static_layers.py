@@ -7,7 +7,7 @@ from typing import NamedTuple
 import numpy as np
 import opera_utils.geometry
 import rasterio as rio
-from dolphin import Bbox, PathOrStr
+from dolphin import Bbox, PathOrStr, stitching
 from dolphin._log import log_runtime, setup_logging
 from dolphin.utils import get_max_memory_usage
 from opera_utils.geometry import Layer
@@ -25,6 +25,7 @@ __all__ = ["run_static_layers"]
 
 class StaticLayersOutputs(NamedTuple):
     los_combined_path: Path
+    layover_shadow_mask_path: Path
     dem_path: Path
 
 
@@ -53,9 +54,23 @@ def run_static_layers(
     logger.info("Creating geometry layers Workflow")
     output_dir = pge_runconfig.product_path_group.scratch_path
 
+    layover_shadow_mask_path = Path(output_dir) / "layover_shadow_mask.tif"
+    logger.info("Stitching RTC layover shadow mask files")
+    stitching.merge_images(
+        file_list=pge_runconfig.dynamic_ancillary_file_group.rtc_static_layers_files,
+        outfile=layover_shadow_mask_path,
+        driver="GTIff",
+        resample_alg="nearest",
+        in_nodata=255,
+        out_nodata=255,
+        out_bounds=bounds,
+        out_bounds_epsg=epsg,
+    )
+
+    logger.info("Stitching CSLC line of sight geometry files")
     _geom_files = opera_utils.geometry.stitch_geometry_layers(
         local_hdf5_files=pge_runconfig.dynamic_ancillary_file_group.geometry_files,
-        layers=[Layer.LOS_EAST, Layer.LOS_NORTH, Layer.LAYOVER_SHADOW_MASK],
+        layers=[Layer.LOS_EAST, Layer.LOS_NORTH],
         strides={"x": 6, "y": 3},
         output_dir=output_dir,
         out_bounds=bounds,
@@ -70,6 +85,7 @@ def run_static_layers(
     Path(los_north_path).unlink()
     Path(los_up_path).unlink()
 
+    logger.info("Warping DEM to match UTM frame boundary")
     dem_path = warp_dem_to_utm(
         pge_runconfig.dynamic_ancillary_file_group.dem_file,
         epsg,
@@ -86,6 +102,7 @@ def run_static_layers(
     return StaticLayersOutputs(
         los_combined_path=los_combined_path,
         dem_path=dem_path,
+        layover_shadow_mask_path=layover_shadow_mask_path,
     )
 
 

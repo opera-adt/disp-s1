@@ -125,9 +125,11 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     make_browse_image_from_arr(
         output_filename=output_dir / "los_enu.browse.png",
         arr=arr[-1],
-        mask=arr[0].mask,
         vmin=0.5,
         vmax=1,
+        cmap="gray",
+        # Mask should be 0 for bad, 1 for good, so flip Numpy convention
+        mask=(~arr[0].mask).astype(int),
     )
     for path in static_layers_paths:
         _new_path = shutil.move(path, output_dir)
@@ -195,17 +197,7 @@ def _make_los_up(output_path: Path) -> tuple[Path, Path, Path]:
         los_up = np.sqrt(1 - los_east**2 - los_north**2)
         los_up[los_east == 0] = 0
 
-        profile.update(
-            dtype=rio.float32,
-            count=1,
-            compress="deflate",
-            zlevel=4,
-            tiled=True,
-            blockxsize=128,
-            blockysize=128,
-            predictor=2,
-        )
-
+        profile.update(dtype=rio.float32, count=1, compress="deflate", tiled=True)
         with rio.open(los_up_path, "w", **profile) as dst:
             dst.write(los_up.astype(rio.float32), 1)
 
@@ -239,13 +231,19 @@ def _make_3band_los(
         )
         desc_base = "{} component of line of sight unit vector (ground to satellite)"
         with rio.open(combined_los_path, "w", **profile) as dst:
-            dst.write(src_east.read(1), 1)
+            arr = src_east.read(1)
+            io.round_mantissa(arr, keep_bits=9)
+            dst.write(arr, 1)
             dst.set_band_description(1, desc_base.format("East"))
 
-            dst.write(src_north.read(1), 2)
+            arr = src_north.read(1)
+            io.round_mantissa(arr, keep_bits=9)
+            dst.write(arr, 2)
             dst.set_band_description(2, desc_base.format("North"))
 
-            dst.write(src_up.read(1), 3)
-            dst.set_band_description(3, desc_base.format("Up"))
+            arr = src_up.read(1)
+            io.round_mantissa(arr, keep_bits=9)
+            dst.write(arr, 3)
+            dst.set_band_description(3, desc_base.format("Vertical"))
 
     return combined_los_path

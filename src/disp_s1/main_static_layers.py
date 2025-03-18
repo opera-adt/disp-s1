@@ -116,6 +116,8 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     # TODO: Take metadata from RTC, DISP-S1, etc.
     import shutil
 
+    output_dir.mkdir(exist_ok=True, parents=True)
+
     for path in static_layers_paths:
         shutil.move(path, output_dir)
 

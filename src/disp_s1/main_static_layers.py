@@ -124,6 +124,8 @@ def warp_dem_to_utm(
         dstSRS=f"EPSG:{epsg}",
         outputBounds=(bounds.left, bounds.bottom, bounds.right, bounds.top),
         resampleAlg=gdal.GRA_Cubic,
+        xRes=30,
+        yRes=30,
         format="GTiff",
         srcNodata=None,
         dstNodata=None,

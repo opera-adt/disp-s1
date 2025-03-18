@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import numpy as np
+import opera_utils.download
 import opera_utils.geometry
 import rasterio as rio
 from dolphin import Bbox, PathOrStr, stitching
@@ -162,6 +163,7 @@ def warp_dem_to_utm(
         format="GTiff",
         srcNodata=None,
         dstNodata=None,
+        options=opera_utils.geometry.EXTRA_COMPRESSED_TIFF_OPTIONS,
     )
 
     gdal.Warp(str(output_path), str(dem_file), options=warp_options)
@@ -181,6 +183,7 @@ def _make_los_up(output_path: Path) -> tuple[Path, Path, Path]:
         los_north = src_north.read(1)
 
         los_up = np.sqrt(1 - los_east**2 - los_north**2)
+        los_up[los_east == 0] = 0
 
         profile.update(
             dtype=rio.float32,

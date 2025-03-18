@@ -31,8 +31,6 @@ def _is_static_layers_workflow(yaml_path: Path | str) -> bool:
     y = YAML(typ="safe")
     with open(yaml_path) as f:
         data = y.load(f)
-    # data['primary_executable']['product_type']
-    # Out[8]: 'DISP_S1_HISTORICAL'
     return data["primary_executable"]["product_type"] == "DISP_S1_STATIC"
 
 

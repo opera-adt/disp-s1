@@ -163,7 +163,7 @@ def warp_dem_to_utm(
         format="GTiff",
         srcNodata=None,
         dstNodata=None,
-        options=list(opera_utils.geometry.EXTRA_COMPRESSED_TIFF_OPTIONS),
+        creationOptions=list(opera_utils.geometry.EXTRA_COMPRESSED_TIFF_OPTIONS),
     )
 
     gdal.Warp(str(output_path), str(dem_file), options=warp_options)

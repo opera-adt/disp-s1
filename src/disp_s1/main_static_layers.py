@@ -8,7 +8,7 @@ import numpy as np
 import opera_utils.download
 import opera_utils.geometry
 import rasterio as rio
-from dolphin import Bbox, PathOrStr, stitching
+from dolphin import Bbox, PathOrStr, io, stitching
 from dolphin._log import log_runtime, setup_logging
 from dolphin.utils import get_max_memory_usage
 from opera_utils.geometry import Layer
@@ -117,10 +117,20 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     # TODO: Take metadata from RTC, DISP-S1, etc.
     import shutil
 
+    from disp_s1.browse_image import make_browse_image_from_arr
+
     output_dir.mkdir(exist_ok=True, parents=True)
 
+    arr = io.load_gdal(static_layers_paths[0], masked=True)
+    make_browse_image_from_arr(
+        output_filename=output_dir / "los_enu.browse.png",
+        arr=arr[-1],
+        mask=arr[0].mask,
+        vmin=0.5,
+        vmax=1,
+    )
     for path in static_layers_paths:
-        shutil.move(path, output_dir)
+        _new_path = shutil.move(path, output_dir)
 
 
 def warp_dem_to_utm(

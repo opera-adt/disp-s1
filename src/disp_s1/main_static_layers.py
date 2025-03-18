@@ -99,11 +99,25 @@ def run_static_layers(
     logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
     logger.info(f"Current running disp_s1 version: {__version__}")
 
-    return StaticLayersOutputs(
+    static_layers_paths = StaticLayersOutputs(
         los_combined_path=los_combined_path,
         dem_path=dem_path,
         layover_shadow_mask_path=layover_shadow_mask_path,
     )
+    create_outputs(
+        static_layers_paths=static_layers_paths,
+        output_dir=pge_runconfig.product_path_group.output_directory,
+    )
+    return static_layers_paths
+
+
+def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
+    """Create formatted geotiffs in `output_dir`."""
+    # TODO: Take metadata from RTC, DISP-S1, etc.
+    import shutil
+
+    for path in static_layers_paths:
+        shutil.move(path, output_dir)
 
 
 def warp_dem_to_utm(

@@ -57,6 +57,7 @@ def run_static_layers(
 
     layover_shadow_mask_path = Path(output_dir) / "layover_shadow_mask.tif"
     logger.info("Stitching RTC layover shadow mask files")
+    mask_options = ["COMPRESS=deflate", "TILED=yes", "PREDICTOR=1"]
     stitching.merge_images(
         file_list=pge_runconfig.dynamic_ancillary_file_group.rtc_static_layers_files,
         outfile=layover_shadow_mask_path,
@@ -66,6 +67,7 @@ def run_static_layers(
         out_nodata=255,
         out_bounds=bounds,
         out_bounds_epsg=epsg,
+        options=mask_options,
     )
 
     logger.info("Stitching CSLC line of sight geometry files")

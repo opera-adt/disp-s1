@@ -8,7 +8,7 @@ import numpy as np
 import opera_utils.download
 import opera_utils.geometry
 import rasterio as rio
-from dolphin import Bbox, PathOrStr, stitching
+from dolphin import Bbox, PathOrStr, io, stitching
 from dolphin._log import log_runtime, setup_logging
 from dolphin.utils import get_max_memory_usage
 from opera_utils.geometry import Layer
@@ -57,6 +57,7 @@ def run_static_layers(
 
     layover_shadow_mask_path = Path(output_dir) / "layover_shadow_mask.tif"
     logger.info("Stitching RTC layover shadow mask files")
+    mask_options = ["COMPRESS=deflate", "TILED=yes", "PREDICTOR=1"]
     stitching.merge_images(
         file_list=pge_runconfig.dynamic_ancillary_file_group.rtc_static_layers_files,
         outfile=layover_shadow_mask_path,
@@ -66,6 +67,7 @@ def run_static_layers(
         out_nodata=255,
         out_bounds=bounds,
         out_bounds_epsg=epsg,
+        options=mask_options,
     )
 
     logger.info("Stitching CSLC line of sight geometry files")
@@ -117,10 +119,22 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     # TODO: Take metadata from RTC, DISP-S1, etc.
     import shutil
 
+    from disp_s1.browse_image import make_browse_image_from_arr
+
     output_dir.mkdir(exist_ok=True, parents=True)
 
+    arr = io.load_gdal(static_layers_paths[0], masked=True)
+    make_browse_image_from_arr(
+        output_filename=output_dir / "los_enu.browse.png",
+        arr=arr[-1],
+        vmin=0.5,
+        vmax=1,
+        cmap="gray",
+        # Mask should be 0 for bad, 1 for good, so flip Numpy convention
+        mask=(~arr[0].mask).astype(int),
+    )
     for path in static_layers_paths:
-        shutil.move(path, output_dir)
+        _new_path = shutil.move(path, output_dir)
 
 
 def warp_dem_to_utm(
@@ -185,17 +199,7 @@ def _make_los_up(output_path: Path) -> tuple[Path, Path, Path]:
         los_up = np.sqrt(1 - los_east**2 - los_north**2)
         los_up[los_east == 0] = 0
 
-        profile.update(
-            dtype=rio.float32,
-            count=1,
-            compress="deflate",
-            zlevel=4,
-            tiled=True,
-            blockxsize=128,
-            blockysize=128,
-            predictor=2,
-        )
-
+        profile.update(dtype=rio.float32, count=1, compress="deflate", tiled=True)
         with rio.open(los_up_path, "w", **profile) as dst:
             dst.write(los_up.astype(rio.float32), 1)
 
@@ -229,13 +233,19 @@ def _make_3band_los(
         )
         desc_base = "{} component of line of sight unit vector (ground to satellite)"
         with rio.open(combined_los_path, "w", **profile) as dst:
-            dst.write(src_east.read(1), 1)
+            arr = src_east.read(1)
+            io.round_mantissa(arr, keep_bits=9)
+            dst.write(arr, 1)
             dst.set_band_description(1, desc_base.format("East"))
 
-            dst.write(src_north.read(1), 2)
+            arr = src_north.read(1)
+            io.round_mantissa(arr, keep_bits=9)
+            dst.write(arr, 2)
             dst.set_band_description(2, desc_base.format("North"))
 
-            dst.write(src_up.read(1), 3)
-            dst.set_band_description(3, desc_base.format("Up"))
+            arr = src_up.read(1)
+            io.round_mantissa(arr, keep_bits=9)
+            dst.write(arr, 3)
+            dst.set_band_description(3, desc_base.format("Vertical"))
 
     return combined_los_path

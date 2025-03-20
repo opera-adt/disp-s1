@@ -430,7 +430,7 @@ def _validate_dataset(
         raise ComparisonError(
             f"Dataset {golden_dataset.name} values do not match: Number of"
             f" pixels failed: {num_failed} / {num_pixels} ="
-            f" {100*num_failed / num_pixels:.2f}%"
+            f" {100 * num_failed / num_pixels:.2f}%"
         )
 
 
@@ -512,3 +512,24 @@ def compare(golden: Filename, test: Filename, data_dset: str = DSET_DEFAULT) -> 
 
     logger.info(f"Files {golden} and {test} match.")
     _check_compressed_slc_dirs(golden, test)
+
+
+def compare_static_layers(golden_dir: Path, test_dir: Path) -> None:
+    """Compare two HDF5 files for consistency."""
+    logger.info(f"Comparing contents of {test_dir} to {golden_dir}...")
+    golden_files = sorted(golden_dir.glob("*.tif"), key=lambda p: p.name)
+    test_files = sorted(test_dir.glob("*.tif"), key=lambda p: p.name)
+    if len(golden_files) != len(test_files):
+        msg = f"Found {len(golden_files)} golden files, but{len(test_files)} test files"
+        raise ComparisonError(msg)
+
+    for golden, test in zip(golden_files, test_files):
+        logger.info(f"Comparing {test} to {golden}...")
+        arr_golden = io.load_gdal(golden)
+        arr_test = io.load_gdal(test)
+        np.allclose(arr_golden, arr_test, equal_nan=True)
+
+        logger.info("Checking geospatial metadata...")
+        _check_raster_geometadata(golden, test)
+
+    logger.info("All files match.")

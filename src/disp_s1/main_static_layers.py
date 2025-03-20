@@ -4,13 +4,15 @@ import logging
 from pathlib import Path
 from typing import NamedTuple
 
+import isce3
 import numpy as np
 import opera_utils.download
 import opera_utils.geometry
 import rasterio as rio
 from dolphin import Bbox, PathOrStr, io, stitching
 from dolphin._log import log_runtime, setup_logging
-from dolphin.utils import get_max_memory_usage
+from dolphin.utils import get_max_memory_usage, numpy_to_gdal_type
+from numpy.typing import DTypeLike
 from opera_utils.geometry import Layer
 from osgeo import gdal
 
@@ -257,3 +259,44 @@ def _make_3band_los(
             dst.set_band_description(3, desc_base.format("Vertical"))
 
     return combined_los_path
+
+
+def create_single_band_gtiff(
+    path: PathOrStr,
+    shape: tuple[int, int],
+    dtype: DTypeLike,
+) -> isce3.io.Raster:
+    from os import fsdecode
+
+    gdal_dtype = numpy_to_gdal_type(dtype)
+    length, width = shape
+    return isce3.io.Raster(
+        path=fsdecode(path),
+        width=width,
+        length=length,
+        num_bands=1,
+        dtype=gdal_dtype,
+        driver_name="GTiff",
+    )
+
+
+def warp_with_isce3(out_dem_path, in_dem_path, bbox, epsg) -> None:
+    # epsg, bbox = opera_utils.get_frame_bbox(11115)
+    left, bottom, right, top = bbox
+    width = int(np.round((right - left) / 30))
+    length = int(np.round((top - bottom) / 30))
+    in_raster = isce3.io.Raster(in_dem_path)
+    out_raster = create_single_band_gtiff(out_dem_path, (length, width), "float32")
+    gg = isce3.product.GeoGridParameters(
+        start_x=left,
+        start_y=top,
+        spacing_x=30,
+        spacing_y=-30,
+        width=width,
+        length=length,
+        epsg=epsg,
+    )
+    logger.info("Warping DEM with isce3")
+    isce3.geogrid.relocate_raster(in_raster, gg, out_raster)
+    out_raster.close_dataset()
+    del out_raster

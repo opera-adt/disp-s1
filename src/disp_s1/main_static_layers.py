@@ -127,7 +127,7 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
 
     create_overviews(
         file_paths=static_layers_paths,
-        levels=[2, 4, 8, 16, 32, 64],
+        levels=[4, 8, 16, 32, 64],
         resampling="nearest",
     )
 

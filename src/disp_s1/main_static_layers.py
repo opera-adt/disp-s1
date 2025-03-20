@@ -119,9 +119,17 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     # TODO: Take metadata from RTC, DISP-S1, etc.
     import shutil
 
+    from dolphin._overviews import create_overviews
+
     from disp_s1.browse_image import make_browse_image_from_arr
 
     output_dir.mkdir(exist_ok=True, parents=True)
+
+    create_overviews(
+        file_paths=static_layers_paths,
+        levels=[2, 4, 8, 16, 32, 64],
+        resampling="nearest",
+    )
 
     arr = io.load_gdal(static_layers_paths[0], masked=True)
     make_browse_image_from_arr(

@@ -323,10 +323,14 @@ recommended_temporal_coherence_threshold: 0.6
 #   temporal coherence below `recommended_temporal_coherence_threshold` are masked.
 #   Type: number.
 recommended_similarity_threshold: 0.5
+# When creating `recommended_mask`, use the `connected_component_label`"
+#   layer to hide pixels whose label == 0.
+#   Type: boolean.
+recommended_use_conncomp: false
 # Spatial wavelength cutoff (in meters) for the spatial filter. Used to create the short
 #   wavelength displacement layer.
 #   Type: number.
-spatial_wavelength_cutoff: 25000.0
+spatial_wavelength_cutoff: 60000.0
 # `vmin, vmax` matplotlib arguments (in meters) passed to browse image creator.
 #   Type: array.
 browse_image_vmin_vmax:

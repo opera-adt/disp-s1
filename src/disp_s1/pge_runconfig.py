@@ -209,6 +209,13 @@ class AlgorithmParameters(YamlModel):
             " `recommended_temporal_coherence_threshold` are masked."
         ),
     )
+    recommended_use_conncomp: bool = Field(
+        False,
+        description=(
+            "When creating `recommended_mask`, use the `connected_component_label`"
+            " layer to hide pixels whose label == 0."
+        ),
+    )
     # Extra product creation options
     spatial_wavelength_cutoff: float = Field(
         25_000,

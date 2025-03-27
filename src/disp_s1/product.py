@@ -265,7 +265,6 @@ def create_output_product(
     similarity = io.load_gdal(similarity_filename, masked=True).filled(0)
 
     # Mark pixels that are bad
-    is_zero_conncomp = conncomps == 0
     bad_temporal_coherence = (
         temporal_coherence
         < algorithm_parameters.recommended_temporal_coherence_threshold
@@ -274,9 +273,16 @@ def create_output_product(
     is_low_quality = bad_temporal_coherence & bad_similarity
 
     # If a pixel has any of the reasons to be bad, recommend masking
-    bad_pixel_mask = is_water | is_zero_conncomp | is_low_quality
-    # Note: An alternate way to view this:
-    # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
+    if algorithm_parameters.recommended_use_conncomp:
+        is_zero_conncomp = conncomps == 0
+        # An alternate way to view this:
+        # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
+        bad_pixel_mask = is_water | is_low_quality | is_zero_conncomp
+    else:
+        # An alternate way to view this:
+        # is_land & (has_good_temporal_coherence or has_good_similarity)
+        bad_pixel_mask = is_water | is_low_quality
+
     recommended_mask = np.logical_not(bad_pixel_mask)
     del temporal_coherence, conncomps, similarity
     # Add the current threshold to the product attributes
@@ -286,6 +292,9 @@ def create_output_product(
         ),
         "temporal_coherence_threshold": str(
             algorithm_parameters.recommended_temporal_coherence_threshold
+        ),
+        "uses_connected_component_labels": str(
+            algorithm_parameters.recommended_use_conncomp
         ),
     }
 

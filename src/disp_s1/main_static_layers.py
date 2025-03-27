@@ -183,7 +183,7 @@ def warp_dem_to_utm(
     left, bottom, right, top = bounds
     width = int(np.round((right - left) / 30))
     length = int(np.round((top - bottom) / 30))
-    in_raster = isce3.io.Raster(dem_file)
+    in_raster = isce3.io.Raster(fsdecode(dem_file))
     out_raster = create_single_band_gtiff(temp_path, (length, width), "float32")
     geo_grid = isce3.product.GeoGridParameters(
         start_x=left,

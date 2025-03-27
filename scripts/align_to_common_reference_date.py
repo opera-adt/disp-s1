@@ -311,6 +311,22 @@ def _parse_datetimes(
     return reference_times, secondary_times, generation_times
 
 
+def _get_last_file_per_ministack(
+    opera_file_list: Sequence[Path | str],
+) -> list[Path | str]:
+    def _get_generation_time(fname):
+        return _parse_datetimes([fname])[2][0]
+
+    last_per_ministack = []
+    for d, cur_groupby in itertools.groupby(
+        sorted(opera_file_list), key=_get_generation_time
+    ):
+        # cur_groupby is an iterable of all matching
+        # Get the first one
+        last_per_ministack.append(list(cur_groupby)[-1])
+    return last_per_ministack
+
+
 def _pick_reference_point(
     output_dir: Path,
     temp_coh_files: list[Path],

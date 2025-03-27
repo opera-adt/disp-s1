@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import logging
+from os import fsdecode
 from pathlib import Path
 from typing import NamedTuple
 
+import isce3
 import numpy as np
 import opera_utils.download
 import opera_utils.geometry
 import rasterio as rio
 from dolphin import Bbox, PathOrStr, io, stitching
 from dolphin._log import log_runtime, setup_logging
-from dolphin.utils import get_max_memory_usage
+from dolphin.utils import get_max_memory_usage, numpy_to_gdal_type
+from numpy.typing import DTypeLike
 from opera_utils.geometry import Layer
 from osgeo import gdal
 
@@ -175,20 +178,33 @@ def warp_dem_to_utm(
     from osgeo import gdal
 
     output_path = output_dir / "dem_warped_utm.tif"
+    temp_path = output_path.with_suffix(".temp.tif")
 
-    warp_options = gdal.WarpOptions(
-        dstSRS=f"EPSG:{epsg}",
-        outputBounds=(bounds.left, bounds.bottom, bounds.right, bounds.top),
-        resampleAlg=gdal.GRA_Cubic,
-        xRes=30,
-        yRes=30,
-        format="GTiff",
-        srcNodata=None,
-        dstNodata=None,
+    left, bottom, right, top = bounds
+    width = int(np.round((right - left) / 30))
+    length = int(np.round((top - bottom) / 30))
+    in_raster = isce3.io.Raster(dem_file)
+    out_raster = create_single_band_gtiff(temp_path, (length, width), "float32")
+    geo_grid = isce3.product.GeoGridParameters(
+        start_x=left,
+        start_y=top,
+        spacing_x=30,
+        spacing_y=-30,
+        width=width,
+        length=length,
+        epsg=epsg,
+    )
+    logger.info("Warping DEM with isce3")
+    isce3.geogrid.relocate_raster(in_raster, geo_grid, out_raster)
+    out_raster.close_dataset()
+    del out_raster
+
+    # Recompress afterward
+    gdal.Translate(
+        fsdecode(output_path),
+        fsdecode(temp_path),
         creationOptions=list(opera_utils.geometry.EXTRA_COMPRESSED_TIFF_OPTIONS),
     )
-
-    gdal.Warp(str(output_path), str(dem_file), options=warp_options)
 
     return output_path
 
@@ -257,3 +273,37 @@ def _make_3band_los(
             dst.set_band_description(3, desc_base.format("Vertical"))
 
     return combined_los_path
+
+
+def create_single_band_gtiff(
+    path: PathOrStr,
+    shape: tuple[int, int],
+    dtype: DTypeLike,
+) -> isce3.io.Raster:
+    """Create a single-band GeoTIFF `isce3.io.Raster`.
+
+    Parameters
+    ----------
+    path : PathOrStr
+        Path where the GeoTIFF will be created.
+    shape : tuple[int, int]
+        The (length, width) dimensions of the raster.
+    dtype : DTypeLike
+        NumPy data type of the raster. Will be converted to corresponding GDAL type.
+
+    Returns
+    -------
+    isce3.io.Raster
+        Newly created ISCE3 Raster object pointing to the file
+
+    """
+    gdal_dtype = numpy_to_gdal_type(dtype)
+    length, width = shape
+    return isce3.io.Raster(
+        path=fsdecode(path),
+        width=width,
+        length=length,
+        num_bands=1,
+        dtype=gdal_dtype,
+        driver_name="GTiff",
+    )

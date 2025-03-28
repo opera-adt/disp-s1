@@ -31,7 +31,6 @@ def download_static_layers(
     """
     import opera_utils.geometry
 
-    # Get all bursts for frame
     bursts_to_download = get_burst_ids_for_frame(frame_id)
 
     logging.info(
@@ -39,9 +38,7 @@ def download_static_layers(
         f" {bursts_to_download}"
     )
 
-    # Make sure output directory exists
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-
     opera_utils.geometry.download_cslc_static_layers(
         burst_ids=bursts_to_download, output_dir=output_dir
     )
@@ -64,9 +61,7 @@ def download_dem(frame_id: int, output: Path) -> None:
     utm_epsg, utm_bounds = opera_utils.get_frame_bbox(frame_id=frame_id)
     bbox = opera_utils.reproject_bounds(utm_bounds, src_epsg=utm_epsg, dst_epsg=4326)
 
-    # Ensure parent directory exists
     output.parent.mkdir(parents=True, exist_ok=True)
-
     return stage_dem(
         output=output,
         bbox=bbox,
@@ -84,9 +79,7 @@ def download_rtc_static_layers(frame_id: int, output_dir: Path) -> None:
         Directory to save downloaded RTC static layers
 
     """
-    # Make sure output directory exists
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-
     burst_ids = get_burst_ids_for_frame(frame_id)
     logging.info(f"Downloading RTC static layers for {len(burst_ids)} bursts")
 
@@ -128,11 +121,10 @@ def create_runconfig(
         Object for Static Layers workflow configuration
 
     """
-    # Get list of static layer files
     cslc_static_files = sorted(glob.glob(str(cslc_static_dir / "*.h5")))
     rtc_static_files = sorted(glob.glob(str(rtc_static_dir / "*_mask.tif")))
 
-    # Create runconfig dictionary
+    # populate only the required parameters for the static layers workflow
     runconfig_params = {
         "input_file_group": {"frame_id": frame_id},
         "dynamic_ancillary_file_group": {
@@ -151,19 +143,13 @@ def create_runconfig(
         "log_file": str(scratch_dir / "log_sas.log"),
     }
     rc = StaticLayersRunConfig(**runconfig_params)
-    # Save to file
     runconfig_path = Path("runconfig_static.yaml")
     rc.to_yaml(runconfig_path)
     logging.info(f"Created runconfig at {runconfig_path}")
     return rc
 
 
-def main(
-    frame_id: int,
-    /,
-    output_dir: Path = Path("output"),
-    scratch_dir: Path = Path("scratch"),
-) -> None:
+def main(frame_id: int, /, output_dir: Path | None = None) -> None:
     """Run the full static layers setup and processing workflow.
 
     Parameters
@@ -171,21 +157,19 @@ def main(
     frame_id : int
         Sentinel-1 OPERA Frame ID
     output_dir : Path, optional
-        Directory to save output products, by default Path("output")
-    scratch_dir : Path, optional
-        Directory for scratch files and intermediate data, by default Path("scratch")
+        Directory to save output products.
+        By default, saves to Path(f"F{frame_id:05d}") for the given frame id.
 
     """
     setup_logging(logger_name="disp_s1")
+    if output_dir is None:
+        output_dir = Path(f"F{frame_id:05d}")
 
-    # Create frame-specific directory paths
-    frame_prefix = f"f{frame_id:05d}"
-    cslc_static_dir = scratch_dir / f"{frame_prefix}-example/cslc_static"
-    rtc_static_dir = scratch_dir / f"{frame_prefix}-example/rtc_static"
-
-    # Ensure directories exist
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    Path(scratch_dir).mkdir(parents=True, exist_ok=True)
+    scratch_dir = output_dir / "scratch"
+    scratch_dir.mkdir(parents=True, exist_ok=True)
+    # Create sub-paths for downloads
+    cslc_static_dir = scratch_dir / "cslc_static"
+    rtc_static_dir = scratch_dir / "rtc_static"
 
     # Step 1: Download DEM
     dem_path = scratch_dir / "dem.vrt"
@@ -200,7 +184,7 @@ def main(
     logging.info(f"Step 3: Downloading RTC static layers for frame {frame_id}")
     download_rtc_static_layers(frame_id=frame_id, output_dir=rtc_static_dir)
 
-    # Step 4: Create runconfig
+    # Step 4: Create runconfig and run
     logging.info("Step 4: Creating runconfig YAML")
     runconfig = create_runconfig(
         frame_id=frame_id,

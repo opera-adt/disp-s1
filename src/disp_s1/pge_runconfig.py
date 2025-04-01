@@ -202,7 +202,7 @@ class AlgorithmParameters(YamlModel):
         ),
     )
     recommended_similarity_threshold: float = Field(
-        0.5,
+        0.3,
         description=(
             "When creating `recommended_mask`, pixels with similarity below this"
             " threshold and with temporal coherence below"
@@ -218,14 +218,14 @@ class AlgorithmParameters(YamlModel):
     )
     # Extra product creation options
     spatial_wavelength_cutoff: float = Field(
-        25_000,
+        30_000,
         description=(
             "Spatial wavelength cutoff (in meters) for the spatial filter. Used to"
             " create the short wavelength displacement layer"
         ),
     )
     browse_image_vmin_vmax: tuple[float, float] = Field(
-        (-0.10, 0.10),
+        (-0.05, 0.05),
         description=(
             "`vmin, vmax` matplotlib arguments (in meters) passed to browse image"
             " creator."

@@ -14,6 +14,7 @@ from dolphin._log import log_runtime, setup_logging
 from dolphin.unwrap._utils import create_combined_mask
 from dolphin.utils import DummyProcessPoolExecutor, full_suffix, get_max_memory_usage
 from dolphin.workflows.config import DisplacementWorkflow
+from dolphin.workflows.corrections import run as run_corrections
 from dolphin.workflows.displacement import OutputPaths
 from dolphin.workflows.displacement import run as run_displacement
 from opera_utils import get_dates, group_by_burst, group_by_date
@@ -97,6 +98,23 @@ def run(
 
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
+
+    # Run dolphin's corrections workflow
+    assert out_paths.timeseries_paths is not None
+    out_corrections_paths = run_corrections(
+        cfg=cfg,
+        correction_options=cfg.correction_options,
+        timeseries_paths=out_paths.timeseries_paths,
+        out_dir=cfg.work_directory,
+        debug=debug,
+    )
+    # Update the output paths with the corrections to only pass one object
+    setattr(
+        out_paths,
+        "ionospheric_corrections",
+        out_corrections_paths.ionospheric_corrections,
+    )
+
     create_products(
         out_paths=out_paths,
         cfg=cfg,

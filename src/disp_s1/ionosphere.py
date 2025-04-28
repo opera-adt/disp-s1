@@ -286,6 +286,8 @@ def download_ionosphere_files(config: DownloadConfig) -> list[Path]:
         If a required ionosphere file cannot be found
 
     """
+    from opera_utils import get_dates
+
     # Get credentials if not provided
     username = config.username
     password = config.password
@@ -303,17 +305,15 @@ def download_ionosphere_files(config: DownloadConfig) -> list[Path]:
     session = SessionWithHeaderRedirection(username, password)
     downloaded_files = []
 
-    for input_file in config.input_files:
-        # Try parsing as SAFE first, then CSLC
-        try:
-            date_str = parse_safe_date(input_file)
-        except ValueError:
-            try:
-                date_str = parse_cslc_date(input_file)
-            except ValueError:
-                raise ValueError(
-                    f"File {input_file} does not match SAFE or CSLC naming convention"
-                )
+    date_list = []
+    for file in config.input_files:
+        date_list.extend(get_dates(file))
+
+    date_list = [
+        datetime.datetime.strftime(date, "%Y%m%d") for date in list(set(date_list))
+    ]
+
+    for date_str in date_list:
 
         archive_date = ArchiveDate.from_date_str(date_str)
 

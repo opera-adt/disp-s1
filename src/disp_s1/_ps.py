@@ -191,12 +191,12 @@ def run_combine(
         return out_dispersion, out_mean
 
     reader_compslc = io.HDF5StackReader.from_file_list(
-        file_list=compressed_slc_files,
+        files=compressed_slc_files,
         dset_names=subdataset,
         nodata=np.nan,
     )
     reader_compslc_dispersion = io.HDF5StackReader.from_file_list(
-        file_list=compressed_slc_files,
+        files=compressed_slc_files,
         dset_names="/data/amplitude_dispersion",
         nodata=np.nan,
     )

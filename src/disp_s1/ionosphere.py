@@ -168,8 +168,9 @@ def parse_cslc_date(filename: Path | str) -> str:
     cslc_name = Path(filename).stem
 
     pattern = (
-        r"OPERA_L2_(COMPRESSED-)?CSLC-S1_(?P<burst_id>\w{4}-\w{6}-\w{3})_"
-        r"(?P<acquisition_ts>\d{8}T\d{6})Z_.*"
+        r"OPERA_L2_(COMPRESSED-)?CSLC-S1_"
+        r"(?P<burst_id>[Tt]\d{3}[-_]\d{6}[-_][Ii][Ww]\d)[-_]"
+        r"(?P<acquisition_ts>\d{8}(T\d{6}Z)?)_.*"
     )
 
     match = re.match(pattern, cslc_name)

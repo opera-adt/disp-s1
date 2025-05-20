@@ -267,7 +267,7 @@ def _create_disp_s1_compressed_filename(
 )
 @click.option("--dry-run", is_flag=True)
 def main(input_files, output_dir, version, dry_run):
-    """Rename a DISP-S1 NetCDF file to an official OPERA name."""
+    """Rename a DISP-S1 NetCDF/Compressed HDF5 file to an official OPERA name."""
     for input_file in input_files:
         rename_disp_s1_file(
             input_file=input_file,

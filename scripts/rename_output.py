@@ -20,6 +20,7 @@ from typing import Optional
 
 import click
 import h5py
+from opera_utils import get_burst_id, get_dates
 
 
 def _read_disp_s1_metadata(nc_file: Path) -> dict:
@@ -174,6 +175,18 @@ def rename_disp_s1_file(
         The path to the newly renamed file.
 
     """
+    if Path(input_file).stem.lower().startswith("compressed"):
+        new_filename = _create_disp_s1_compressed_filename(input_file=input_file)
+    else:
+        new_filename = _create_disp_s1_filename(input_file=input_file, version=version)
+    return _rename(input_file, new_filename, output_dir=output_dir, dry_run=dry_run)
+
+
+def _create_disp_s1_filename(
+    input_file: Path,
+    version: str = "0.10",
+) -> str:
+    """Create the DISP-S1 NetCDF file to the OPERA naming convention."""
     meta = _read_disp_s1_metadata(input_file)
 
     frame_id = meta["frame_id"]
@@ -191,8 +204,15 @@ def rename_disp_s1_file(
         version=version,
     )
 
-    new_filename = f"{core_name}.nc"
+    return f"{core_name}.nc"
 
+
+def _rename(
+    input_file: Path,
+    new_filename: str,
+    output_dir: Optional[Path] = None,
+    dry_run: bool = False,
+) -> Path:
     # If no output directory was provided, use the same directory as the input file
     if output_dir is None:
         output_dir = input_file.parent
@@ -208,6 +228,35 @@ def rename_disp_s1_file(
     return new_file_path
 
 
+def _create_disp_s1_compressed_filename(
+    input_file: Path,
+    prod_time: datetime.datetime | None = None,
+) -> str:
+    """Create the compressed SLC filename folloing OPERA naming convention."""
+    if not Path(input_file).stem.lower().startswith("compressed"):
+        raise ValueError(f"{input_file} is not a Compressed SLC")
+
+    try:
+        ref_datetime, start_datetime, stop_datetime = get_dates(input_file)[:3]
+        burst_id = get_burst_id(input_file)
+    except Exception as e:
+        fmt = "<base-date>_<start-date>_<end-date>_<burst_id>"
+        raise ValueError(f"{input_file} name does not match {fmt}") from e
+
+    if prod_time is None:
+        prod_time = datetime.datetime.now()
+    prod_time_str = _format_dt(prod_time)
+
+    datefmt = "%Y%m%d"
+    burst_id_caps = burst_id.replace("_", "-").upper()
+    return (
+        f"OPERA_L2_COMPRESSED-CSLC-S1_{burst_id_caps}_"
+        f"{ref_datetime.strftime(datefmt)}T000000Z_{start_datetime.strftime(datefmt)}T000000Z_"
+        f"{stop_datetime.strftime(datefmt)}T000000Z_{prod_time_str}_"
+        "VV_v1.0.h5"
+    )
+
+
 @click.command()
 @click.argument("input_files", type=click.Path(exists=True, path_type=Path), nargs=-1)
 @click.option(
@@ -220,7 +269,7 @@ def rename_disp_s1_file(
 )
 @click.option("--dry-run", is_flag=True)
 def main(input_files, output_dir, version, dry_run):
-    """Rename a DISP-S1 NetCDF file to an official OPERA name."""
+    """Rename a DISP-S1 NetCDF/Compressed HDF5 file to an official OPERA name."""
     for input_file in input_files:
         rename_disp_s1_file(
             input_file=input_file,

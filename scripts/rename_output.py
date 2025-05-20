@@ -237,7 +237,7 @@ def _create_disp_s1_compressed_filename(
         raise ValueError(f"{input_file} is not a Compressed SLC")
 
     try:
-        ref_date, start_date, stop_date = get_dates(input_file)[:3]
+        ref_datetime, start_datetime, stop_datetime = get_dates(input_file)[:3]
         burst_id = get_burst_id(input_file)
     except Exception as e:
         fmt = "<base-date>_<start-date>_<end-date>_<burst_id>"
@@ -247,10 +247,11 @@ def _create_disp_s1_compressed_filename(
         prod_time = datetime.datetime.now()
     prod_time_str = _format_dt(prod_time)
 
+    datefmt = "%Y%m%d"
     return (
         f"OPERA_L2_COMPRESSED-CSLC-S1_{burst_id}_"
-        f"{ref_date}T000000Z_{start_date}T000000Z_"
-        f"{stop_date}T000000Z_{prod_time_str}_"
+        f"{ref_datetime.strftime(datefmt)}T000000Z_{start_datetime.strftime(datefmt)}T000000Z_"
+        f"{stop_datetime.strftime(datefmt)}T000000Z_{prod_time_str}_"
         "VV_v1.0.h5"
     )
 

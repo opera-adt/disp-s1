@@ -76,7 +76,7 @@ HDF5_OPTS["chunks"] = tuple(CHUNK_SHAPE)  # type: ignore
 # https://github.com/corteva/rioxarray/blob/5783693895b4b055909c5758a72a5d40a365ef11/rioxarray/rioxarray.py#L34 # noqa
 GRID_MAPPING_DSET = "spatial_ref"
 
-COMPRESSED_SLC_TEMPLATE = "OPERA_L2_COMPRESSED-CSLC-S1_{burst_id}-{date_str}.h5"
+COMPRESSED_SLC_TEMPLATE = "compressed_{burst_id}_{date_str}.h5"
 
 
 def create_output_product(

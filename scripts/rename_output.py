@@ -248,8 +248,9 @@ def _create_disp_s1_compressed_filename(
     prod_time_str = _format_dt(prod_time)
 
     datefmt = "%Y%m%d"
+    burst_id_caps = burst_id.replace("_", "-").upper()
     return (
-        f"OPERA_L2_COMPRESSED-CSLC-S1_{burst_id}_"
+        f"OPERA_L2_COMPRESSED-CSLC-S1_{burst_id_caps}_"
         f"{ref_datetime.strftime(datefmt)}T000000Z_{start_datetime.strftime(datefmt)}T000000Z_"
         f"{stop_datetime.strftime(datefmt)}T000000Z_{prod_time_str}_"
         "VV_v1.0.h5"

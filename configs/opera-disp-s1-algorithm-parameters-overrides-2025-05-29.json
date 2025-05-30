@@ -1,0 +1,40 @@
+{
+  "23210": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "23211": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "33038": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "33039": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "20688": {
+    "unwrap_options": {
+      "unwrap_method": "spurt"
+    }
+  },
+  "1088": {
+    "unwrap_options": {
+      "unwrap_method": "spurt"
+    }
+  }
+}

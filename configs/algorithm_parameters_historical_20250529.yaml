@@ -173,7 +173,7 @@ unwrap_options:
       target_points_for_generation: 120000
       # Target points per tile when generating tiles.
       #   Type: integer.
-      target_points_per_tile: 1500000
+      target_points_per_tile: 1400000
       # Dilation factor of non-overlapping tiles. 0.05 would lead to 5 percent dilation of the
       #   tile.
       #   Type: number.
@@ -186,7 +186,7 @@ unwrap_options:
       # Number of workers for spatial unwrapping in parallel. Set value to <=0 to let workflow use
       #   (ncpus - 1).
       #   Type: integer.
-      s_worker_count: 7
+      s_worker_count: 3
       # Temporal unwrapping operations over spatial links are performed in batches and each batch
       #   is solved in parallel.
       #   Type: integer.

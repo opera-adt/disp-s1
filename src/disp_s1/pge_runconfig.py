@@ -410,8 +410,8 @@ class RunConfig(YamlModel):
                 algorithm_parameters_file=algorithm_parameters_file,
                 mask_file=workflow.mask_file,
                 ionosphere_files=workflow.correction_options.ionosphere_files,
-                troposphere_files=workflow.correction_options.troposphere_files,
-                dem_file=workflow.correction_options.dem_file,
+                # troposphere_files=workflow.correction_options.troposphere_files,
+                # dem_file=workflow.correction_options.dem_file,
                 static_layers_files=workflow.correction_options.geometry_files,
             ),
             static_ancillary_file_group=StaticAncillaryFileGroup(

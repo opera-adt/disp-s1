@@ -1,0 +1,76 @@
+{
+  "23210": {
+    "recommended_similarity_threshold": 0.3,
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "23211": {
+    "recommended_similarity_threshold": 0.3,
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "33038": {
+    "recommended_similarity_threshold": 0.3,
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "33039": {
+    "recommended_similarity_threshold": 0.3,
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.1
+      }
+    }
+  },
+  "20688": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
+    }
+  },
+  "1088": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
+    }
+  },
+  "1089": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
+    }
+  },
+  "10860": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
+    }
+  },
+  "38246": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
+    }
+  },
+  "38247": {
+    "unwrap_options": {
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
+    }
+  }
+}

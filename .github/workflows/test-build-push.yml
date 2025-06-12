@@ -21,7 +21,7 @@ jobs:
           - label: Last Release
             tag: v0.38.0
 
-      fail-fast: true
+      fail-fast: false
     name: ${{ matrix.os }} • ${{ matrix.dolphin.label }}
     runs-on: ${{ matrix.os }}
     defaults:

@@ -45,6 +45,7 @@ def input_file_group(slc_file_list_nc_with_sds):
 @pytest.fixture
 def algorithm_parameters_file(tmp_path):
     f = tmp_path / "test.yaml"
+    # Produce all defaults
     AlgorithmParameters().to_yaml(f)
     return f
 
@@ -115,10 +116,10 @@ def test_algorithm_parameters_defaults():
     assert params.algorithm_parameters_overrides_json is None
     assert params.subdataset == "/data/VV"
     assert params.recommended_temporal_coherence_threshold == 0.6
-    assert params.recommended_similarity_threshold == 0.3
+    assert params.recommended_similarity_threshold == 0.4
     assert params.spatial_wavelength_cutoff == 30_000
     assert params.browse_image_vmin_vmax == (-0.05, 0.05)
-    assert params.num_parallel_products == 3
+    assert params.num_parallel_products == 4
 
     # Check that nested objects are created with their default factories
     assert isinstance(params.ps_options, PsOptions)
@@ -442,7 +443,7 @@ def test_reference_date_last_per_ministack():
 def overrides_file():
     return (
         Path(__file__).parent
-        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-02-21.json"
+        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-05-29.json"
     )
 
 
@@ -450,8 +451,23 @@ def test_algorithm_overrides_hawaii(overrides_file, algorithm_parameters_file):
     orig_params = AlgorithmParameters.from_yaml(algorithm_parameters_file)
     orig_params.algorithm_parameters_overrides_json = overrides_file
 
-    p2 = pge_runconfig._override_parameters(orig_params, 23210)  # hawaii
-    assert p2.unwrap_options.unwrap_method == "spurt"
+    # Hawaii
+    for fid in [23210, 23211, 33038, 33039]:
+        p2 = pge_runconfig._override_parameters(orig_params, fid)
+        assert (
+            p2.unwrap_options.preprocess_options.interpolation_similarity_threshold
+            == 0.1
+        )
+        assert p2.recommended_similarity_threshold == 0.3
+
+    # Mexico city
+    for fid in [20688, 1088, 1089, 10860, 38246, 38247]:
+        p2 = pge_runconfig._override_parameters(orig_params, fid)
+        assert (
+            p2.unwrap_options.preprocess_options.interpolation_similarity_threshold
+            == 0.25
+        )
+        assert p2.recommended_similarity_threshold == 0.4
 
 
 def test_algorithm_overrides_empty_frame(overrides_file, algorithm_parameters_file):

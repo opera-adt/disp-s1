@@ -202,7 +202,7 @@ class AlgorithmParameters(YamlModel):
         ),
     )
     recommended_similarity_threshold: float = Field(
-        0.3,
+        0.4,
         description=(
             "When creating `recommended_mask`, pixels with similarity below this"
             " threshold and with temporal coherence below"
@@ -232,7 +232,7 @@ class AlgorithmParameters(YamlModel):
         ),
     )
     num_parallel_products: int = Field(
-        3, description="Number of output products to create in parallel."
+        4, description="Number of output products to create in parallel."
     )
 
     model_config = ConfigDict(extra="forbid")

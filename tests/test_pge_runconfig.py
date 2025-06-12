@@ -442,7 +442,7 @@ def test_reference_date_last_per_ministack():
 def overrides_file():
     return (
         Path(__file__).parent
-        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-02-21.json"
+        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-05-29.json"
     )
 
 
@@ -451,7 +451,17 @@ def test_algorithm_overrides_hawaii(overrides_file, algorithm_parameters_file):
     orig_params.algorithm_parameters_overrides_json = overrides_file
 
     p2 = pge_runconfig._override_parameters(orig_params, 23210)  # hawaii
-    assert p2.unwrap_options.unwrap_method == "spurt"
+    assert (
+        p2.unwrap_options.preprocess_options.interpolation_similarity_threshold == 0.1
+    )
+    p2 = pge_runconfig._override_parameters(orig_params, 1088)  # Mexico city
+    assert (
+        p2.unwrap_options.preprocess_options.interpolation_similarity_threshold == 0.25
+    )
+    p2 = pge_runconfig._override_parameters(orig_params, 20688)  # Mexico city
+    assert (
+        p2.unwrap_options.preprocess_options.interpolation_similarity_threshold == 0.25
+    )
 
 
 def test_algorithm_overrides_empty_frame(overrides_file, algorithm_parameters_file):

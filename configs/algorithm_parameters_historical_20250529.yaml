@@ -253,9 +253,6 @@ timeseries_options:
   #   Type: integer.
   num_parallel_blocks: 4
 output_options:
-  # Output (x, y) resolution (in units of input data).
-  #   Type: object | null.
-  output_resolution:
   # Alternative to specifying output resolution: Specify the (x, y) strides (decimation
   #   factor) to perform while processing input. For example, strides of [4, 2] would turn an
   #   input resolution of [5, 10] into an output resolution of [20, 20].
@@ -298,14 +295,6 @@ output_options:
   #   https://gdal.org/programs/gdaladdo.html for more.
   #   Type: boolean.
   add_overviews: false
-  # List of overview levels to create (if `add_overviews=True`).
-  #   Type: array.
-  overview_levels:
-    - 4
-    - 8
-    - 16
-    - 32
-    - 64
   # Specify an extra reference datetime in UTC. Adding this lets you to create and unwrap two
   #   single reference networks; the later resets at the given date (e.g. for a large
   #   earthquake event). If passing strings, formats accepted are YYYY-MM-

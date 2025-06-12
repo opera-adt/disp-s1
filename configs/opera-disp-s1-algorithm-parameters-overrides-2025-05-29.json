@@ -29,12 +29,16 @@
   },
   "20688": {
     "unwrap_options": {
-      "unwrap_method": "spurt"
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
     }
   },
   "1088": {
     "unwrap_options": {
-      "unwrap_method": "spurt"
+      "preprocess_options": {
+        "interpolation_similarity_threshold": 0.25
+      }
     }
   }
 }

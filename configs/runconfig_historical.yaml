@@ -8,7 +8,7 @@ input_file_group:
 dynamic_ancillary_file_group:
   # REQUIRED: Path to file containing SAS algorithm parameters.
   #   Type: string.
-  algorithm_parameters_file: algorithm_parameters_historical_20250213.yaml
+  algorithm_parameters_file: algorithm_parameters_historical_20250529.yaml
   # Paths to the CSLC static_layer files (1 per burst) with line-of-sight unit vectors. If
   #   none provided, corrections using CSLC static_layer are skipped.
   #   Type: array.
@@ -32,7 +32,7 @@ dynamic_ancillary_file_group:
 static_ancillary_file_group:
   # JSON file containing the mapping from frame_id to frame/burst information.
   #   Type: string | null.
-  frame_to_burst_json: static_ancillary_files/opera-s1-disp-0.7.0-frame-to-burst.json.zip
+  frame_to_burst_json: static_ancillary_files/opera-s1-disp-0.9.0-frame-to-burst.json.zip
   # JSON file containing list of reference date changes for each frame.
   #   Type: string | null.
   reference_date_database_json: static_ancillary_files/opera-disp-s1-reference-dates-2025-01-15-minimal.json

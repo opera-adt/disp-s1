@@ -450,18 +450,23 @@ def test_algorithm_overrides_hawaii(overrides_file, algorithm_parameters_file):
     orig_params = AlgorithmParameters.from_yaml(algorithm_parameters_file)
     orig_params.algorithm_parameters_overrides_json = overrides_file
 
-    p2 = pge_runconfig._override_parameters(orig_params, 23210)  # hawaii
-    assert (
-        p2.unwrap_options.preprocess_options.interpolation_similarity_threshold == 0.1
-    )
-    p2 = pge_runconfig._override_parameters(orig_params, 1088)  # Mexico city
-    assert (
-        p2.unwrap_options.preprocess_options.interpolation_similarity_threshold == 0.25
-    )
-    p2 = pge_runconfig._override_parameters(orig_params, 20688)  # Mexico city
-    assert (
-        p2.unwrap_options.preprocess_options.interpolation_similarity_threshold == 0.25
-    )
+    # Hawaii
+    for fid in [23210, 23211, 33038, 33039]:
+        p2 = pge_runconfig._override_parameters(orig_params, fid)
+        assert (
+            p2.unwrap_options.preprocess_options.interpolation_similarity_threshold
+            == 0.1
+        )
+        assert p2.recommended_similarity_threshold == 0.3
+
+    # Mexico city
+    for fid in [23210, 23211, 33038, 33039]:
+        p2 = pge_runconfig._override_parameters(orig_params, fid)
+        assert (
+            p2.unwrap_options.preprocess_options.interpolation_similarity_threshold
+            == 0.25
+        )
+        assert p2.recommended_similarity_threshold == 0.4
 
 
 def test_algorithm_overrides_empty_frame(overrides_file, algorithm_parameters_file):

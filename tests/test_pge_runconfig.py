@@ -153,8 +153,6 @@ def test_runconfig_from_workflow(
         algorithm_parameters_file=algo_file,
     ).to_workflow()
 
-    # these will be slightly different
-    w2.creation_time_utc = w.creation_time_utc
     assert w == w2
 
 

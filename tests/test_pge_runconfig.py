@@ -96,6 +96,7 @@ def runconfig_minimum(
         static_ancillary_file_group=static_ancillary_file_group,
         product_path_group=product_path_group,
     )
+    assert c.static_ancillary_file_group.algorithm_parameters_overrides_json is None
     return c
 
 
@@ -113,7 +114,6 @@ def test_algorithm_parameters_defaults():
     params = AlgorithmParameters()
 
     # Check direct attributes
-    assert params.algorithm_parameters_overrides_json is None
     assert params.subdataset == "/data/VV"
     assert params.recommended_temporal_coherence_threshold == 0.6
     assert params.recommended_similarity_threshold == 0.4

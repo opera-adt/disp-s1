@@ -444,7 +444,7 @@ def test_reference_date_last_per_ministack():
 def overrides_file():
     return (
         Path(__file__).parent
-        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-05-29.json"
+        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-06-17.json"
     )
 
 

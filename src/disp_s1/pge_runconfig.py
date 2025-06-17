@@ -23,7 +23,6 @@ from dolphin.workflows.config import (
 )
 from dolphin.workflows.config._common import _read_file_list_or_glob
 from opera_utils import (
-    OPERA_DATASET_NAME,
     PathOrStr,
     get_burst_ids_for_frame,
     get_dates,
@@ -188,11 +187,6 @@ class AlgorithmParameters(YamlModel):
     timeseries_options: TimeseriesOptions = Field(default_factory=TimeseriesOptions)
     output_options: OutputOptions = Field(default_factory=OutputOptions)
 
-    subdataset: str = Field(
-        default=OPERA_DATASET_NAME,
-        description="Name of the subdataset to use in the input NetCDF files.",
-    )
-
     recommended_temporal_coherence_threshold: float = Field(
         0.6,
         description=(
@@ -330,7 +324,8 @@ class RunConfig(YamlModel):
             raise ValueError("The CSLC data and frame id do not match")
 
         # Setup the OPERA-specific options to adjust from dolphin's defaults
-        input_options = {"subdataset": param_dict.pop("subdataset")}
+        # TODO: this needs to change if DISP-S1 ever processes other polarizations
+        input_options = {"subdataset": "/data/VV"}
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)

@@ -202,14 +202,8 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.01) 
         simplify=simplify_tolerance,
     )
 
-    # Convert WKT to Shapely geometry, extract exterior, and convert back to Polygon WKT
-    in_multi = shapely.from_wkt(wkt)
-
-    # This may have holes; get the exterior
-    # Largest polygon should be first in MultiPolygon returned by GDAL
-    footprint = shapely.Polygon(in_multi.geoms[0].exterior)
     # Split on antimeridian and return the WKT string
-    return split_on_antimeridian(footprint).wkt
+    return split_on_antimeridian(shapely.from_wkt(wkt)).wkt
 
 
 def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
@@ -236,7 +230,7 @@ def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
 
     # Check antimeridian crossing
     if (x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max):
-        antimeridian = shapely.wkt.loads("LINESTRING( 180.0 -90.0, 180.0 90.0)")
+        antimeridian = shapely.from_wkt("LINESTRING( 180.0 -90.0, 180.0 90.0)")
 
         # build new polygon with all longitudes between 0 and 360
         x, y = polygon.exterior.coords.xy

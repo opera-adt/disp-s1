@@ -23,7 +23,6 @@ from dolphin.workflows.config import (
 )
 from dolphin.workflows.config._common import _read_file_list_or_glob
 from opera_utils import (
-    OPERA_DATASET_NAME,
     PathOrStr,
     get_burst_ids_for_frame,
     get_dates,
@@ -64,6 +63,7 @@ class DynamicAncillaryFileGroup(YamlModel):
         default=...,
         description="Path to file containing SAS algorithm parameters.",
     )
+
     geometry_files: List[Path] = Field(
         default_factory=list,
         alias="static_layers_files",
@@ -111,6 +111,13 @@ class DynamicAncillaryFileGroup(YamlModel):
 class StaticAncillaryFileGroup(YamlModel):
     """Group for files which remain static over time."""
 
+    algorithm_parameters_overrides_json: Union[Path, None] = Field(
+        None,
+        description=(
+            "JSON file containing frame-specific algorithm parameters to override the"
+            " defaults passed in the `algorithm_parameters.yaml`."
+        ),
+    )
     frame_to_burst_json: Union[Path, None] = Field(
         None,
         description=(
@@ -170,14 +177,6 @@ class ProductPathGroup(YamlModel):
 class AlgorithmParameters(YamlModel):
     """Class containing all the other `DisplacementWorkflow` classes."""
 
-    algorithm_parameters_overrides_json: Union[Path, None] = Field(
-        None,
-        description=(
-            "JSON file containing frame-specific algorithm parameters to override the"
-            " defaults passed in the `algorithm_parameters.yaml`."
-        ),
-    )
-
     # Options for each step in the workflow
     ps_options: PsOptions = Field(default_factory=PsOptions)
     phase_linking: PhaseLinkingOptions = Field(default_factory=PhaseLinkingOptions)
@@ -187,11 +186,6 @@ class AlgorithmParameters(YamlModel):
     unwrap_options: UnwrapOptions = Field(default_factory=UnwrapOptions)
     timeseries_options: TimeseriesOptions = Field(default_factory=TimeseriesOptions)
     output_options: OutputOptions = Field(default_factory=OutputOptions)
-
-    subdataset: str = Field(
-        default=OPERA_DATASET_NAME,
-        description="Name of the subdataset to use in the input NetCDF files.",
-    )
 
     recommended_temporal_coherence_threshold: float = Field(
         0.6,
@@ -304,7 +298,12 @@ class RunConfig(YamlModel):
         algorithm_parameters = AlgorithmParameters.from_yaml(
             self.dynamic_ancillary_file_group.algorithm_parameters_file,
         )
-        new_parameters = _override_parameters(algorithm_parameters, frame_id=frame_id)
+        overrides_file = (
+            self.static_ancillary_file_group.algorithm_parameters_overrides_json
+        )
+        new_parameters = _override_parameters(
+            algorithm_parameters, overrides_file=overrides_file, frame_id=frame_id
+        )
         # regenerate to ensure all defaults remained in updated version
         algo_params = AlgorithmParameters(**new_parameters.model_dump())
         param_dict = algo_params.model_dump()
@@ -325,7 +324,8 @@ class RunConfig(YamlModel):
             raise ValueError("The CSLC data and frame id do not match")
 
         # Setup the OPERA-specific options to adjust from dolphin's defaults
-        input_options = {"subdataset": param_dict.pop("subdataset")}
+        # TODO: this needs to change if DISP-S1 ever processes other polarizations
+        input_options = {"subdataset": "/data/VV"}
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)
@@ -433,14 +433,15 @@ class RunConfig(YamlModel):
 
 
 def _override_parameters(
-    algorithm_parameters: AlgorithmParameters, frame_id: int
+    algorithm_parameters: AlgorithmParameters,
+    overrides_file: Path | None,
+    frame_id: int,
 ) -> AlgorithmParameters:
     param_dict = algorithm_parameters.model_dump()
-    # Get the "override" file for this set of parameters
-    overrides_json = param_dict.pop("algorithm_parameters_overrides_json")
-
     # Load any overrides for this frame
-    override_params = _parse_algorithm_overrides(overrides_json, frame_id)
+    override_params = _parse_algorithm_overrides(
+        overrides_file=overrides_file, frame_id=frame_id
+    )
 
     # Override the dict with the new options
     param_dict = _nested_update(param_dict, override_params)
@@ -536,11 +537,11 @@ def _parse_reference_date_json(
 
 
 def _parse_algorithm_overrides(
-    override_file: Path | str | None, frame_id: int | str
+    overrides_file: Path | str | None, frame_id: int | str
 ) -> dict[str, Any]:
     """Find the frame-specific parameters to override for algorithm_parameters."""
-    if override_file is not None:
-        with open(override_file) as f:
+    if overrides_file is not None:
+        with open(overrides_file) as f:
             overrides = json.load(f)
             if "data" in overrides:
                 return overrides["data"].get(str(frame_id), {})

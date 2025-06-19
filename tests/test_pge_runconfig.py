@@ -96,6 +96,7 @@ def runconfig_minimum(
         static_ancillary_file_group=static_ancillary_file_group,
         product_path_group=product_path_group,
     )
+    assert c.static_ancillary_file_group.algorithm_parameters_overrides_json is None
     return c
 
 
@@ -113,8 +114,6 @@ def test_algorithm_parameters_defaults():
     params = AlgorithmParameters()
 
     # Check direct attributes
-    assert params.algorithm_parameters_overrides_json is None
-    assert params.subdataset == "/data/VV"
     assert params.recommended_temporal_coherence_threshold == 0.6
     assert params.recommended_similarity_threshold == 0.4
     assert params.spatial_wavelength_cutoff == 30_000
@@ -135,7 +134,9 @@ def test_runconfig_to_yaml(runconfig_minimum):
 
 
 def test_runconfig_to_workflow(runconfig_minimum):
-    print(runconfig_minimum.to_workflow())
+    w = runconfig_minimum.to_workflow()
+    print(w)
+    assert w.input_options.subdataset == "/data/VV"
 
 
 def test_runconfig_from_workflow(
@@ -443,7 +444,7 @@ def test_reference_date_last_per_ministack():
 def overrides_file():
     return (
         Path(__file__).parent
-        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-05-29.json"
+        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-06-17.json"
     )
 
 

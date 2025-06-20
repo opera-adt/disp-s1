@@ -36,7 +36,7 @@ from .enums import ProcessingMode
 
 
 class InputFileGroup(YamlModel):
-    """Inputs for the PGE."""
+    """Inputs for the SAS."""
 
     cslc_file_list: List[Path] = Field(
         default_factory=list,
@@ -57,7 +57,7 @@ class InputFileGroup(YamlModel):
 
 
 class DynamicAncillaryFileGroup(YamlModel):
-    """Dynamic ancillary files for the PGE."""
+    """Dynamic ancillary files for the SAS."""
 
     algorithm_parameters_file: Path = Field(
         default=...,
@@ -109,7 +109,7 @@ class DynamicAncillaryFileGroup(YamlModel):
 
 
 class StaticAncillaryFileGroup(YamlModel):
-    """Static ancillary files for the PGE."""
+    """Static ancillary files for the SAS."""
 
     algorithm_parameters_overrides_json: Union[Path, None] = Field(
         None,
@@ -133,7 +133,7 @@ class StaticAncillaryFileGroup(YamlModel):
 
 
 class PrimaryExecutable(YamlModel):
-    """Primary executable for the PGE."""
+    """Primary executable for the SAS."""
 
     product_type: Literal["DISP_S1_FORWARD", "DISP_S1_HISTORICAL", "DISP_S1_STATIC"] = (
         Field(description="Product type of the PGE.")
@@ -142,7 +142,7 @@ class PrimaryExecutable(YamlModel):
 
 
 class ProductPathGroup(YamlModel):
-    """Product paths for the PGE."""
+    """Product paths for the SAS."""
 
     product_path: Path = Field(
         default=...,

@@ -36,7 +36,7 @@ from .enums import ProcessingMode
 
 
 class InputFileGroup(YamlModel):
-    """Inputs for A group of input files."""
+    """Inputs for the PGE."""
 
     cslc_file_list: List[Path] = Field(
         default_factory=list,
@@ -57,7 +57,7 @@ class InputFileGroup(YamlModel):
 
 
 class DynamicAncillaryFileGroup(YamlModel):
-    """A group of dynamic ancillary files."""
+    """Dynamic ancillary files for the PGE."""
 
     algorithm_parameters_file: Path = Field(
         default=...,
@@ -109,7 +109,7 @@ class DynamicAncillaryFileGroup(YamlModel):
 
 
 class StaticAncillaryFileGroup(YamlModel):
-    """Group for files which remain static over time."""
+    """Static ancillary files for the PGE."""
 
     algorithm_parameters_overrides_json: Union[Path, None] = Field(
         None,
@@ -133,7 +133,7 @@ class StaticAncillaryFileGroup(YamlModel):
 
 
 class PrimaryExecutable(YamlModel):
-    """Group describing the primary executable."""
+    """Primary executable for the PGE."""
 
     product_type: Literal["DISP_S1_FORWARD", "DISP_S1_HISTORICAL", "DISP_S1_STATIC"] = (
         Field(description="Product type of the PGE.")
@@ -142,7 +142,7 @@ class PrimaryExecutable(YamlModel):
 
 
 class ProductPathGroup(YamlModel):
-    """Group describing the product paths."""
+    """Product paths for the PGE."""
 
     product_path: Path = Field(
         default=...,
@@ -175,7 +175,7 @@ class ProductPathGroup(YamlModel):
 
 
 class AlgorithmParameters(YamlModel):
-    """Class containing all the other `DisplacementWorkflow` classes."""
+    """Class containing all the other `DisplacementWorkflow` parameters."""
 
     # Options for each step in the workflow
     ps_options: PsOptions = Field(default_factory=PsOptions)
@@ -233,7 +233,7 @@ class AlgorithmParameters(YamlModel):
 
 
 class RunConfig(YamlModel):
-    """A PGE run configuration."""
+    """A SAS run configuration."""
 
     # Used for the top-level key
     name: ClassVar[str] = "disp_s1_workflow"

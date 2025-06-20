@@ -443,18 +443,17 @@ def test_reference_date_last_per_ministack():
 @pytest.fixture
 def overrides_file():
     return (
-        Path(__file__).parent
-        / "data/opera-disp-s1-algorithm-parameters-overrides-2025-06-17.json"
+        Path(__file__).parent.parent
+        / "configs/opera-disp-s1-algorithm-parameters-overrides-2025-06-17.json"
     )
 
 
 def test_algorithm_overrides_hawaii(overrides_file, algorithm_parameters_file):
     orig_params = AlgorithmParameters.from_yaml(algorithm_parameters_file)
-    orig_params.algorithm_parameters_overrides_json = overrides_file
 
     # Hawaii
     for fid in [23210, 23211, 33038, 33039]:
-        p2 = pge_runconfig._override_parameters(orig_params, fid)
+        p2 = pge_runconfig._override_parameters(orig_params, overrides_file, fid)
         assert (
             p2.unwrap_options.preprocess_options.interpolation_similarity_threshold
             == 0.1
@@ -463,7 +462,7 @@ def test_algorithm_overrides_hawaii(overrides_file, algorithm_parameters_file):
 
     # Mexico city
     for fid in [20688, 1088, 1089, 10860, 38246, 38247]:
-        p2 = pge_runconfig._override_parameters(orig_params, fid)
+        p2 = pge_runconfig._override_parameters(orig_params, overrides_file, fid)
         assert (
             p2.unwrap_options.preprocess_options.interpolation_similarity_threshold
             == 0.25
@@ -473,8 +472,7 @@ def test_algorithm_overrides_hawaii(overrides_file, algorithm_parameters_file):
 
 def test_algorithm_overrides_empty_frame(overrides_file, algorithm_parameters_file):
     orig_params = AlgorithmParameters.from_yaml(algorithm_parameters_file)
-    orig_params.algorithm_parameters_overrides_json = overrides_file
 
     # frame id with no override
-    p4 = pge_runconfig._override_parameters(orig_params, 1234)
+    p4 = pge_runconfig._override_parameters(orig_params, overrides_file, 1234)
     assert p4.unwrap_options == orig_params.unwrap_options

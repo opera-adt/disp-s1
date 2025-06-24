@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from os import fsdecode
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import isce3
 import numpy as np
@@ -33,23 +33,11 @@ DATE_TIME_METADATA_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 PRODUCT_SPECIFICATION_VERSION = "1.0.0"  # Update as needed
 SOFTWARE_VERSION = __version__
 
-DEM_METADATA = [
-    (
-        "processing_information_dem_interpolation_algorithm",
-        "biquintic",
-        "DEM interpolation method",
-    ),
-    (
-        "processing_information_dem_egm_model",
-        "Earth Gravitational Model 2008 (EGM2008)",
-        "Earth Gravitational Model associated with the DEM",
-    ),
-    (
-        "input_dem_source",
-        "Copernicus GLO-30 DEM for OPERA",
-        "Description of the input digital elevation model (DEM)",
-    ),
-]
+DEM_METADATA = {
+    "dem_interpolation_algorithm": "biquintic",
+    "dem_egm_model": "Earth Gravitational Model 2008 (EGM2008)",
+    "input_dem_source": "Copernicus GLO-30 DEM for OPERA",
+}
 MASK_DESCRIPTION = (
     "Mask Layer. Values: 0: not masked; 1: shadow; 2: layover; 3: layover and shadow;"
     " 255: invalid/fill value"
@@ -143,16 +131,16 @@ def run_static_layers(
         dem_path=dem_path,
         layover_shadow_mask_path=layover_shadow_mask_path,
     )
-    create_outputs(
-        static_layers_paths=static_layers_paths,
-        output_dir=pge_runconfig.product_path_group.output_directory,
-    )
     # Create metadata for the products
     add_product_metadata(
         static_layers_paths=static_layers_paths,
         pge_runconfig=pge_runconfig,
         frame_id=pge_runconfig.input_file_group.frame_id,
         processing_datetime=processing_start_datetime,
+    )
+    create_outputs(
+        static_layers_paths=static_layers_paths,
+        output_dir=pge_runconfig.product_path_group.output_directory,
     )
 
     return static_layers_paths
@@ -174,8 +162,6 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
         levels=[4, 8, 16, 32, 64],
         resampling="nearest",
     )
-
-    # Add metadata for layover shadow mask
 
     arr = io.load_gdal(static_layers_paths[0], masked=True)
     make_browse_image_from_arr(
@@ -488,8 +474,31 @@ def add_product_metadata(
 
     # Add common metadata to each file
     for file_path in static_layers_paths:
-        io.set_raster_metadata(file_path, geotiff_metadata, domain="")
+        _append_to_metadata(file_path, geotiff_metadata)
 
     # Add DEM metadata
-    dem_metadata_dict = metadata_items_to_geotiff_metadata_dict(DEM_METADATA)
-    io.set_raster_metadata(static_layers_paths.dem_path, dem_metadata_dict, domain="")
+    _append_to_metadata(static_layers_paths.dem_path, DEM_METADATA)
+
+
+def _append_to_metadata(
+    filename: Path | str, metadata: dict[str, Any], domain: str = ""
+) -> None:
+    """Add a dict of metadata to a raster file.
+
+    Parameters
+    ----------
+    filename : Path | str
+        Path to the file to load.
+    metadata : dict
+        Dictionary of metadata to add.
+    domain : str, optional
+        Domain to add metadata for. Default is "".
+
+    """
+    ds = gdal.Open(fsdecode(filename), gdal.GA_Update)
+    current_metadata = ds.GetMetadata(domain)
+    # Ensure the keys/values are written as strings
+    md_dict = {k: str(v) for k, v in metadata.items()}
+    ds.SetMetadata(current_metadata | md_dict, domain)
+    ds.FlushCache()
+    ds = None

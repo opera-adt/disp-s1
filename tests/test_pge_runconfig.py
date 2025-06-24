@@ -476,3 +476,17 @@ def test_algorithm_overrides_empty_frame(overrides_file, algorithm_parameters_fi
     # frame id with no override
     p4 = pge_runconfig._override_parameters(orig_params, overrides_file, 1234)
     assert p4.unwrap_options == orig_params.unwrap_options
+
+
+def test_input_file_group_last_processed():
+    """Test that InputFileGroup correctly handles last_processed field."""
+    # Test with no last_processed (default)
+    file_group = InputFileGroup(cslc_file_list=["test_file.h5"], frame_id=12345)
+    assert file_group.last_processed is None
+
+    # Test with last_processed datetime
+    last_proc_date = datetime.datetime(2024, 3, 15, 12, 0, 0)
+    file_group_with_date = InputFileGroup(
+        cslc_file_list=["test_file.h5"], frame_id=12345, last_processed=last_proc_date
+    )
+    assert file_group_with_date.last_processed == last_proc_date

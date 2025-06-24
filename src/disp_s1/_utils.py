@@ -206,8 +206,8 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.01) 
     return split_on_antimeridian(shapely.from_wkt(wkt)).wkt
 
 
-def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
-    """Split `polygon` if it crosses the antimeridian (180°).
+def split_on_antimeridian(geometry: Polygon | MultiPolygon) -> MultiPolygon:
+    """Split `geometry` if it crosses the antimeridian (180°).
 
     Source:
     https://github.com/nasa/opera-sds-pcm/blob/a5a3db25be462e7955e5de06d6f9d1d8236a1ef2/util/geo_util.py#L265
@@ -215,49 +215,49 @@ def split_on_antimeridian(polygon: Polygon) -> MultiPolygon:
 
     Parameters
     ----------
-    polygon : shapely.geometry.Polygon
-        Input polygon.
+    geometry : shapely.geometry.Polygon | MultiPolygon
+        Input geometry.
 
     Returns
     -------
     MultiPolygon
         A MultiPolygon containing 1 or 2 `.geoms`:
-        The input polygon if it didn't cross the antimeridian, or
+        The input geometry if it didn't cross the antimeridian, or
         two polygons otherwise (one on either side of the antimeridian).
 
     """
-    x_min, _, x_max, _ = polygon.bounds
+    x_min, _, x_max, _ = geometry.bounds
 
     # Check antimeridian crossing
-    if (x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max):
-        antimeridian = shapely.from_wkt("LINESTRING( 180.0 -90.0, 180.0 90.0)")
+    if not ((x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max)):
+        return MultiPolygon([geometry]) if isinstance(geometry, Polygon) else geometry
 
-        # build new polygon with all longitudes between 0 and 360
-        x, y = polygon.exterior.coords.xy
-        new_x = (k + (k <= 0.0) * 360 for k in x)
-        new_ring = LinearRing(zip(new_x, y))
+    antimeridian = shapely.from_wkt("LINESTRING( 180.0 -90.0, 180.0 90.0)")
 
-        # Split input polygon
-        # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
-        merged_lines = shapely.ops.linemerge([antimeridian, new_ring])
-        border_lines = shapely.ops.unary_union(merged_lines)
-        decomp = shapely.ops.polygonize(border_lines)
+    polygon = geometry.geoms[0] if isinstance(geometry, MultiPolygon) else geometry
 
-        polys = list(decomp)
+    # build new polygon with all longitudes between 0 and 360
+    x, y = polygon.exterior.coords.xy
+    new_x = (k + (k <= 0.0) * 360 for k in x)
+    new_ring = LinearRing(zip(new_x, y))
 
-        for polygon_count in range(len(polys)):
-            x, y = polys[polygon_count].exterior.coords.xy
-            # if there are no longitude values above 180, continue
-            if not any(k > 180 for k in x):
-                continue
+    # Split input polygon
+    # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
+    merged_lines = shapely.ops.linemerge([antimeridian, new_ring])
+    border_lines = shapely.ops.unary_union(merged_lines)
+    decomp = shapely.ops.polygonize(border_lines)
 
-            # otherwise, wrap longitude values down by 360 degrees
-            x_wrapped_minus_360 = np.asarray(x) - 360
-            polys[polygon_count] = Polygon(zip(x_wrapped_minus_360, y))
+    polys = list(decomp)
 
-    else:
-        # If antimeridian is not crossed, treat input polygon as list
-        polys = [polygon]
+    for polygon_count in range(len(polys)):
+        x, y = polys[polygon_count].exterior.coords.xy
+        # if there are no longitude values above 180, continue
+        if not any(k > 180 for k in x):
+            continue
+
+        # otherwise, wrap longitude values down by 360 degrees
+        x_wrapped_minus_360 = np.asarray(x) - 360
+        polys[polygon_count] = Polygon(zip(x_wrapped_minus_360, y))
 
     return MultiPolygon(polys)
 

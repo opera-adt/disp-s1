@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from dolphin import io
 from dolphin.workflows import UnwrapOptions
-from shapely import from_wkt
+from shapely import MultiPolygon, from_wkt
 
 from disp_s1._utils import (
     METERS_TO_RADIANS,
@@ -179,7 +179,7 @@ def test_update_spurt_conncomps(setup_test_files):
         assert cc_p.name.endswith(".unw.conncomp.tif"), f"Wrong extension for {cc_p}"
 
 
-def test_check_dateline():
+def test_check_split_on_antimeridian():
     """Test a polygon not on the antimeridian."""
     polygon = from_wkt(
         "POLYGON ((-111.343848786559 33.167961010325, -111.418794476835"
@@ -194,6 +194,21 @@ def test_check_dateline():
     assert multipoly.area == polygon.area
 
 
+def test_split_on_antimeridian_input_multipolygon():
+    polygon = from_wkt(
+        "POLYGON ((-111.343848786559 33.167961010325, -111.418794476835"
+        " 32.8232467872268, -110.528205605868 32.6834192684192, -110.510122005303"
+        " 32.8302954024662, -110.475359683262 32.9094439302636, -110.455061760006"
+        " 33.0281538694422, -111.343848786559 33.167961010325))"
+    )
+    multipoly = MultiPolygon([polygon])
+
+    multipoly = split_on_antimeridian(multipoly)
+    assert len(multipoly.geoms) == 1
+    assert multipoly.geoms[0] == polygon
+    assert multipoly.area == polygon.area
+
+
 def test_dateline_crossing():
     # Polygon on Ross Ice Shelf (Antarctica)
     # crossing the dateline
@@ -203,9 +218,10 @@ def test_dateline_crossing():
         "152.885 -81.8908,-149.3722 -81.6129,-160.9795 -76.9215))"
     )
     polygon = from_wkt(polygon_wkt)
+    in_multipoly = MultiPolygon([polygon])
 
     # Check if crossing dateline
-    multipoly = split_on_antimeridian(polygon)
+    multipoly = split_on_antimeridian(in_multipoly)
 
     assert len(multipoly.geoms) == 2
 

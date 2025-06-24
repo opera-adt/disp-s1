@@ -169,7 +169,7 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     create_overviews(
         file_paths=static_layers_paths,
         levels=[4, 8, 16, 32, 64],
-        resampling=Resampling.nearest,
+        resampling=Resampling.NEAREST,
     )
 
     arr = io.load_gdal(static_layers_paths[0], masked=True)

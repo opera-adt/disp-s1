@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from itertools import repeat
 from multiprocessing import get_context
@@ -34,6 +35,13 @@ from ._utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class OutputPathsWithCorrections(OutputPaths):
+    """Extensions of dolphin's OutputPaths with ionospheric corrections."""
+
+    ionospheric_corrections: list[Path]
 
 
 @log_runtime
@@ -99,6 +107,19 @@ def run(
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
 
+    # Filter by last processed date
+    if last_processed := pge_runconfig.input_file_group.last_processed:
+        logger.info(f"Filtering outputs before {last_processed}")
+        logger.info(
+            f"Before filtering: {len(out_paths.timeseries_paths)} outputs:"
+            f" {out_paths.timeseries_paths}"
+        )
+        out_paths = _filter_before_last_processed(out_paths, last_processed)
+        logger.info(
+            f"After filtering: {len(out_paths.timeseries_paths)} outputs:"
+            f" {out_paths.timeseries_paths}"
+        )
+
     # Run dolphin's corrections workflow
     assert out_paths.timeseries_paths is not None
     out_corrections_paths = run_corrections(
@@ -108,15 +129,15 @@ def run(
         out_dir=cfg.work_directory,
         debug=debug,
     )
+    assert out_corrections_paths.ionospheric_corrections is not None
     # Update the output paths with the corrections to only pass one object
-    setattr(
-        out_paths,
-        "ionospheric_corrections",
-        out_corrections_paths.ionospheric_corrections,
+    out_paths_with_corr = OutputPathsWithCorrections(
+        **asdict(out_paths),
+        ionospheric_corrections=out_corrections_paths.ionospheric_corrections,
     )
 
     create_products(
-        out_paths=out_paths,
+        out_paths=out_paths_with_corr,
         cfg=cfg,
         pge_runconfig=pge_runconfig,
         processing_start_datetime=processing_start_datetime,
@@ -128,6 +149,25 @@ def run(
     logger.info(f"Maximum memory usage: {max_mem:.2f} GB")
     logger.info(f"Config file dolphin version: {cfg._dolphin_version}")
     logger.info(f"Current running disp_s1 version: {__version__}")
+
+
+def _filter_before_last_processed(
+    out_paths: OutputPaths, last_processed: datetime
+) -> OutputPaths:
+    """Filter `out_paths` to products with secondary datetime > `last_processed`."""
+    # For the following attributes, filter based on last_processed
+    out_dict = asdict(out_paths)
+    for attr in [
+        "stitched_ifg_paths",
+        "stitched_cor_paths",
+        "conncomp_paths",
+        "timeseries_paths",
+        "timeseries_residual_paths",
+    ]:
+        cur_files = getattr(out_paths, attr)
+        # Overwrite the attribute with the filtered files
+        out_dict[attr] = [p for p in cur_files if get_dates(p)[1] >= last_processed]
+    return OutputPaths(**out_dict)
 
 
 def create_products(

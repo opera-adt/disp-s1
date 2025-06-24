@@ -50,6 +50,15 @@ class InputFileGroup(YamlModel):
     model_config = ConfigDict(
         extra="forbid", json_schema_extra={"required": ["cslc_file_list", "frame_id"]}
     )
+    last_processed: Optional[datetime.datetime] = Field(
+        None,
+        description=(
+            "(For FORWARD/'Catch up' HISTORICAL processing mode) last processed date"
+            " for the frame. If provided, the SAS will only output products whose"
+            " secondary datetime is *after* `last_processed`. Otherwise, the SAS will"
+            " output all products."
+        ),
+    )
 
     _check_cslc_file_glob = field_validator("cslc_file_list", mode="before")(
         _read_file_list_or_glob

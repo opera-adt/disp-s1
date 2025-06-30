@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from os import fsdecode
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, Literal, NamedTuple
 
+import h5py
 import isce3
 import numpy as np
 import opera_utils.download
@@ -25,6 +27,22 @@ logger = logging.getLogger(__name__)
 gdal.UseExceptions()
 
 __all__ = ["run_static_layers"]
+
+
+# Constants (adapt these to match your actual constants)
+DATE_TIME_METADATA_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+PRODUCT_SPECIFICATION_VERSION = "1.0.0"  # Update as needed
+SOFTWARE_VERSION = __version__
+
+DEM_METADATA = {
+    "dem_interpolation_algorithm": "biquintic",
+    "dem_egm_model": "Earth Gravitational Model 2008 (EGM2008)",
+    "input_dem_source": "Copernicus GLO-30 DEM for OPERA",
+}
+MASK_DESCRIPTION = (
+    "Mask Layer. Values: 0: not masked; 1: shadow; 2: layover; 3: layover and shadow;"
+    " 255: invalid/fill value"
+)
 
 
 class StaticLayersOutputs(NamedTuple):
@@ -50,6 +68,9 @@ def run_static_layers(
         Paths to the output files.
 
     """
+    # Record processing start time
+    processing_start_datetime = datetime.now(tz=timezone.utc)
+
     setup_logging(logger_name="disp_s1", filename=pge_runconfig.log_file)
     epsg, bounds = opera_utils.get_frame_bbox(
         pge_runconfig.input_file_group.frame_id,
@@ -72,16 +93,23 @@ def run_static_layers(
         out_bounds_epsg=epsg,
         options=mask_options,
     )
+    io.set_raster_description(layover_shadow_mask_path, description=MASK_DESCRIPTION)
 
     logger.info("Stitching CSLC line of sight geometry files")
+    cslc_static_files = pge_runconfig.dynamic_ancillary_file_group.geometry_files
     _geom_files = opera_utils.geometry.stitch_geometry_layers(
-        local_hdf5_files=pge_runconfig.dynamic_ancillary_file_group.geometry_files,
+        local_hdf5_files=cslc_static_files,
         layers=[Layer.LOS_EAST, Layer.LOS_NORTH],
         strides={"x": 6, "y": 3},
         output_dir=output_dir,
         out_bounds=bounds,
         out_bounds_epsg=epsg,
     )
+    with h5py.File(cslc_static_files[0], "r") as hf:
+        track_number = int(hf["/identification/track_number"][()])
+        orbit_direction = hf["/identification/orbit_pass_direction"][()]
+        if isinstance(orbit_direction, bytes):
+            orbit_direction = orbit_direction.decode("utf-8")
 
     los_east_path, los_north_path, los_up_path = _make_los_up(output_dir)
     los_combined_path = _make_3band_los(los_east_path, los_north_path, los_up_path)
@@ -110,10 +138,20 @@ def run_static_layers(
         dem_path=dem_path,
         layover_shadow_mask_path=layover_shadow_mask_path,
     )
+    # Create metadata for the products
+    add_product_metadata(
+        static_layers_paths=static_layers_paths,
+        pge_runconfig=pge_runconfig,
+        frame_id=pge_runconfig.input_file_group.frame_id,
+        track_number=track_number,
+        orbit_direction=orbit_direction,
+        processing_datetime=processing_start_datetime,
+    )
     create_outputs(
         static_layers_paths=static_layers_paths,
         output_dir=pge_runconfig.product_path_group.output_directory,
     )
+
     return static_layers_paths
 
 
@@ -122,7 +160,7 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     # TODO: Take metadata from RTC, DISP-S1, etc.
     import shutil
 
-    from dolphin._overviews import create_overviews
+    from dolphin._overviews import Resampling, create_overviews
 
     from disp_s1.browse_image import make_browse_image_from_arr
 
@@ -131,7 +169,7 @@ def create_outputs(static_layers_paths: StaticLayersOutputs, output_dir: Path):
     create_overviews(
         file_paths=static_layers_paths,
         levels=[4, 8, 16, 32, 64],
-        resampling="nearest",
+        resampling=Resampling.NEAREST,
     )
 
     arr = io.load_gdal(static_layers_paths[0], masked=True)
@@ -205,6 +243,7 @@ def warp_dem_to_utm(
         fsdecode(temp_path),
         creationOptions=list(opera_utils.geometry.EXTRA_COMPRESSED_TIFF_OPTIONS),
     )
+    io.set_raster_units(output_path, "meters")
 
     return output_path
 
@@ -307,3 +346,226 @@ def create_single_band_gtiff(
         dtype=gdal_dtype,
         driver_name="GTiff",
     )
+
+
+def get_static_layers_metadata(
+    pge_runconfig: StaticLayersRunConfig,
+    processing_datetime: datetime,
+    frame_id: int,
+    track_number: int,
+    orbit_direction: Literal["ascending", "descending"],
+) -> list[tuple[str, str, str]]:
+    """Create static layers metadata dictionary.
+
+    Parameters
+    ----------
+    pge_runconfig : StaticLayersRunConfig
+        PGE runconfig containing processing parameters
+    processing_datetime : datetime
+        Processing datetime object
+    frame_id : int
+        Frame ID for this product
+    track_number : int
+        Track Number for this product
+    orbit_direction : Literal["ascending", "descending"]
+        Orbit direction for this product
+
+    Returns
+    -------
+    list[tuple[str, str, str]]
+        Metadata dict organized for static layers product
+
+    """
+    # Product type
+    # Product version
+    product_version = pge_runconfig.product_path_group.product_version
+
+    # Data access URLs
+    product_data_access = (
+        "https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=DISP-S1-STATIC"
+    )
+    source_data_access = "https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=CSLC-S1-STATIC,RTC-S1-STATIC"
+
+    common_metadata = [
+        ("platform", "Sentinel-1", "Platform name"),
+        (
+            "instrument_name",
+            "Sentinel-1 CSAR",
+            "Name of the instrument used to collect the remote sensing data",
+        ),
+        ("project", "OPERA", ""),
+        ("institution", "NASA JPL", ""),
+        (
+            "contact_information",
+            "opera-sds-ops@jpl.nasa.gov",
+            "Contact information for producer of this product",
+        ),
+        ("product_version", str(product_version), ""),
+        ("product_specification_version", str(product_version), ""),
+        ("radar_band", "C", "Acquired radar frequency band"),
+        ("processing_facility", "NASA Jet Propulsion Laboratory on AWS", ""),
+        (
+            "ceos_analysis_ready_data_document_identifier",
+            "https://ceos.org/ard/files/PFS/SAR/v1.2/CEOS-ARD_PFS_Synthetic_Aperture_Radar_v1.2.pdf",
+            "CEOS Analysis Ready Data (CARD) document identifier",
+        ),
+        (
+            "frame_id",
+            str(frame_id),
+            "OPERA DISP-S1 Frame ID of the processed frame",
+        ),
+        (
+            "track_number",
+            str(track_number),
+            "Track Number/Relative orbit number of source data of the processed frame",
+        ),
+        (
+            "orbit_direction",
+            orbit_direction,
+            "Orbit direction of the processed frame (ascending or descending)",
+        ),
+        ("acquisition_mode", "IW", "Radar acquisition mode for input products"),
+        (
+            "look_direction",
+            "right",
+            "Look direction (left or right) for input products",
+        ),
+        (
+            "imaging_geometry",
+            "Geocoded",
+            "Imaging geometry of input coregistered SLCs and Static Layer products",
+        ),
+        (
+            "processing_datetime",
+            processing_datetime.strftime(DATE_TIME_METADATA_FORMAT),
+            "",
+        ),
+        (
+            "product_data_access",
+            product_data_access,
+            (
+                "Location from where this product can be retrieved, expressed as a URL"
+                " or DOI."
+            ),
+        ),
+        (
+            "product_sample_spacing",
+            "30",
+            "Spacing between adjacent X/Y samples of product in UTM coordinates",
+        ),
+        (
+            "source_data_access",
+            source_data_access,
+            (
+                "Location from where the source data can be retrieved, expressed as a"
+                " URL or DOI."
+            ),
+        ),
+        (
+            "source_data_original_institution",
+            "European Space Agency Copernicus Program",
+            "Original processing institution of Sentinel-1 SLC data",
+        ),
+        (
+            "disp_s1_software_version",
+            str(SOFTWARE_VERSION),
+            "Version of the disp-s1 software used to generate the product.",
+        ),
+        ("product_landing_page_doi", "https://doi.org/10.5067/SNWG/OPL3DISPS1-V1", ""),
+    ]
+    return common_metadata
+
+
+def metadata_items_to_geotiff_metadata_dict(metadata_items: list[tuple[str, str, str]]):
+    """Convert metadata dict to GeoTIFF metadata dict.
+
+    Parameters
+    ----------
+    metadata_items : list[tuple[str, str, str]]
+        Metadata dict with GeoTIFF keys, values, and descriptions
+
+    Returns
+    -------
+    dict
+        Metadata dict formatted for GeoTIFF files
+
+    """
+    geotiff_metadata_dict = {}
+    for key, value, description in metadata_items:
+        geotiff_metadata_dict[key.upper()] = value
+        # Some descriptions are unnecessary
+        if description:
+            geotiff_metadata_dict[key.upper() + "_DESCRIPTION"] = description
+
+    return geotiff_metadata_dict
+
+
+def add_product_metadata(
+    static_layers_paths: StaticLayersOutputs,
+    pge_runconfig: StaticLayersRunConfig,
+    frame_id: int,
+    track_number: int,
+    orbit_direction: Literal["ascending", "descending"],
+    processing_datetime: datetime,
+):
+    """Create and add metadata to all static layers products.
+
+    Parameters
+    ----------
+    static_layers_paths : StaticLayersOutputs
+        Paths to the static layers output files
+    pge_runconfig : StaticLayersRunConfig
+        PGE runconfig
+    frame_id : int
+        DISP-S1 Frame ID
+    track_number : int
+        DISP-S1 Track Number
+    orbit_direction : Literal["ascending", "descending"]
+        Orbit direction of the processed frame
+    processing_datetime : datetime
+        Processing datetime
+
+    """
+    logger.info("Creating metadata for static layers products")
+
+    metadata_items = get_static_layers_metadata(
+        pge_runconfig=pge_runconfig,
+        processing_datetime=processing_datetime,
+        frame_id=frame_id,
+        track_number=track_number,
+        orbit_direction=orbit_direction,
+    )
+
+    # Convert to GeoTIFF format
+    geotiff_metadata = metadata_items_to_geotiff_metadata_dict(metadata_items)
+
+    # Add common metadata to each file
+    for file_path in static_layers_paths:
+        _append_to_metadata(file_path, geotiff_metadata)
+
+    # Add DEM metadata
+    _append_to_metadata(static_layers_paths.dem_path, DEM_METADATA)
+
+
+def _append_to_metadata(
+    filename: Path | str, metadata: dict[str, Any], domain: str = ""
+) -> None:
+    """Add a dict of metadata to a raster file.
+
+    Parameters
+    ----------
+    filename : Path | str
+        Path to the file to load.
+    metadata : dict
+        Dictionary of metadata to add.
+    domain : str, optional
+        Domain to add metadata for. Default is "".
+
+    """
+    ds = gdal.Open(fsdecode(filename), gdal.GA_Update)
+    current_metadata = ds.GetMetadata(domain)
+    # Ensure the keys/values are written as strings
+    md_dict = {k: str(v) for k, v in metadata.items()}
+    ds.SetMetadata(current_metadata | md_dict, domain)
+    ds.FlushCache()
+    ds = None

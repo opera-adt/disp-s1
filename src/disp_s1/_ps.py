@@ -203,20 +203,7 @@ def run_combine(
     reader_mean = io.RasterReader.from_file(cur_mean, band=1)
     reader_dispersion = io.RasterReader.from_file(cur_dispersion, band=1)
 
-    num_images = 1 + len(compressed_slc_files)
-    if weight_scheme == WeightScheme.LINEAR:
-        # Increase the weights from older to newer.
-        N = np.linspace(0, 1, num=num_images) * num_slc
-    elif weight_scheme == WeightScheme.EQUAL:
-        # Increase the weights from older to newer.
-        N = num_slc * np.ones((num_images,))
-    elif weight_scheme == WeightScheme.EXPONENTIAL:
-        alpha = 0.5
-        weights = np.exp(alpha * np.arange(num_images))
-        weights /= weights.max()
-        N = weights.round().astype(int)
-    else:
-        raise ValueError(f"Unrecognized {weight_scheme = }")
+    N = _get_weighting(len(compressed_slc_files), weight_scheme, num_slc)
 
     io.write_arr(arr=None, output_name=out_dispersion, like_filename=cur_dispersion)
     io.write_arr(arr=None, output_name=out_mean, like_filename=cur_mean)
@@ -262,3 +249,30 @@ def run_combine(
         )
 
     return (out_dispersion, out_mean)
+
+
+def _get_weighting(
+    num_compressed_slc_files: int,
+    weight_scheme: WeightScheme,
+    num_slc: int,
+) -> np.ndarray:
+    # The total number of *mean*/dispersion images that we'll be averaging
+    # All current real SLCs get averaged into 1, so it's 1 more than the old means
+    num_images = num_compressed_slc_files + 1
+
+    if weight_scheme == WeightScheme.LINEAR:
+        # Increase the weights from older to newer.
+        N = np.linspace(0, 1, num=num_images) * num_slc
+    elif weight_scheme == WeightScheme.EQUAL:
+        # Increase the weights from older to newer.
+        N = num_slc * np.ones((num_images,))
+    elif weight_scheme == WeightScheme.EXPONENTIAL:
+        alpha = 0.5
+        weights = np.exp(alpha * np.arange(num_images))
+        # Normalize weights so that the oldest image weight 1
+        # More recent images count as many more than the oldest
+        weights /= weights.min()
+        N = weights.round().astype(int)
+    else:
+        raise ValueError(f"Unrecognized {weight_scheme = }")
+    return N

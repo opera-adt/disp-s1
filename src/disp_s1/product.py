@@ -273,18 +273,28 @@ def create_output_product(
         < algorithm_parameters.recommended_temporal_coherence_threshold
     )
     bad_similarity = similarity < algorithm_parameters.recommended_similarity_threshold
+
+    cor_threshold = (
+        dolphin_config.unwrap_options.preprocess_options.interpolation_cor_threshold
+    )
+    sliding_window_corr = io.load_gdal(ifg_corr_filename, masked=True)
+    is_masked_from_corr = sliding_window_corr < cor_threshold
+
     is_low_quality = bad_temporal_coherence & bad_similarity
 
     # If a pixel has any of the reasons to be bad, recommend masking
     if algorithm_parameters.recommended_use_conncomp:
         is_zero_conncomp = conncomps == 0
+        bad_pixel_mask = (
+            is_water | is_low_quality | is_zero_conncomp | is_masked_from_corr
+        )
         # An alternate way to view this:
-        # good_conncomp & is_no_water & (good_temporal_coherence | good_similarity)
-        bad_pixel_mask = is_water | is_low_quality | is_zero_conncomp
+        # good_pixels = high_quality & good_conncomp & is_not_water & is_not_masked
+        # where high_quality = good_temporal_coherence | good_similarity
     else:
+        bad_pixel_mask = is_water | is_low_quality | is_masked_from_corr
         # An alternate way to view this:
-        # is_land & (has_good_temporal_coherence or has_good_similarity)
-        bad_pixel_mask = is_water | is_low_quality
+        # good_pixels = is_not_water & high_quality & is_not_masked
 
     recommended_mask = np.logical_not(bad_pixel_mask)
     del temporal_coherence, conncomps, similarity
@@ -296,6 +306,7 @@ def create_output_product(
         "temporal_coherence_threshold": str(
             algorithm_parameters.recommended_temporal_coherence_threshold
         ),
+        "estimated_phase_quality_threshold": str(cor_threshold),
         "uses_connected_component_labels": str(
             algorithm_parameters.recommended_use_conncomp
         ),

@@ -94,7 +94,7 @@ unwrap_options:
     # Threshold on the correlation raster to use for interpolation. Pixels with less than this
     #   value are replaced by a weighted combination of neighboring pixels.
     #   Type: number.
-    interpolation_cor_threshold: 0.3
+    interpolation_cor_threshold: 0.2
     # Threshold on the correlation raster to use for interpolation. Pixels with less than this
     #   value are replaced by a weighted combination of neighboring pixels.
     #   Type: number.

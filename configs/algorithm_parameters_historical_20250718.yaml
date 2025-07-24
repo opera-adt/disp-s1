@@ -16,7 +16,7 @@ phase_linking:
   half_window:
     # Half window size (in pixels) for x direction.
     #   Type: integer.
-    x: 17
+    x: 16
     # Half window size (in pixels) for y direction.
     #   Type: integer.
     y: 8

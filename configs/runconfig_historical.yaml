@@ -8,7 +8,7 @@ input_file_group:
 dynamic_ancillary_file_group:
   # REQUIRED: Path to file containing SAS algorithm parameters.
   #   Type: string.
-  algorithm_parameters_file: algorithm_parameters_historical_20250617.yaml
+  algorithm_parameters_file: algorithm_parameters_historical_20250718.yaml
   # Paths to the CSLC static_layer files (1 per burst) with line-of-sight unit vectors. If
   #   none provided, corrections using CSLC static_layer are skipped.
   #   Type: array.

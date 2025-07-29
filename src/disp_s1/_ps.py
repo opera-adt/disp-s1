@@ -56,33 +56,26 @@ def precompute_ps(cfg: DisplacementWorkflow) -> tuple[list[Path], list[Path]]:
     # ######################################
     # 1. Burst-wise Wrapped phase estimation
     # ######################################
-    if len(grouped_slc_files) > 1:
-        logger.info(f"Found SLC files from {len(grouped_slc_files)} bursts")
-        wrapped_phase_cfgs = [
-            (
-                burst,  # Include the burst for logging purposes
-                _create_burst_cfg(
-                    cfg,
-                    burst,
-                    grouped_slc_files,
-                    grouped_amp_mean_files,
-                    grouped_amp_dispersion_files,
-                    grouped_layover_shadow_mask_files,
-                ),
-            )
-            for burst in grouped_slc_files
-        ]
-        for _, burst_cfg in wrapped_phase_cfgs:
-            burst_cfg.create_dir_tree()
-        # Remove the mid-level directories which will be empty due to re-grouping
-        _remove_dir_if_empty(cfg.phase_linking._directory)
-        _remove_dir_if_empty(cfg.ps_options._directory)
-
-    else:
-        # grab the only key (either a burst, or "") and use that
-        cfg.create_dir_tree()
-        b = next(iter(grouped_slc_files.keys()))
-        wrapped_phase_cfgs = [(b, cfg)]
+    logger.info(f"Found SLC files from {len(grouped_slc_files)} bursts")
+    wrapped_phase_cfgs = [
+        (
+            burst,  # Include the burst for logging purposes
+            _create_burst_cfg(
+                cfg,
+                burst,
+                grouped_slc_files,
+                grouped_amp_mean_files,
+                grouped_amp_dispersion_files,
+                grouped_layover_shadow_mask_files,
+            ),
+        )
+        for burst in grouped_slc_files
+    ]
+    for _, burst_cfg in wrapped_phase_cfgs:
+        burst_cfg.create_dir_tree()
+    # Remove the mid-level directories which will be empty due to re-grouping
+    _remove_dir_if_empty(cfg.phase_linking._directory)
+    _remove_dir_if_empty(cfg.ps_options._directory)
 
     combined_dispersion_files: list[Path] = []
     combined_mean_files: list[Path] = []

@@ -76,6 +76,8 @@ def out_paths():
         stitched_amp_dispersion_file=Path("interferograms/amp_dispersion_looked.tif"),
         stitched_shp_count_file=Path("interferograms/shp_counts.tif"),
         stitched_similarity_file=Path("interferograms/similarity.tif"),
+        stitched_closure_phase_files=[],
+        stitched_crlb_files=[],
         unwrapped_paths=[
             Path("unwrapped/20170217_20170301.unw.tif"),
             Path("unwrapped/20170217_20170313.unw.tif"),

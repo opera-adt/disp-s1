@@ -240,6 +240,13 @@ class AlgorithmParameters(YamlModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    def model_post_init(self, context: Any) -> None:  # noqa: ARG002, D102
+        # The DISP-S1 SAS does not use this aux. rasters
+        if hasattr(self.phase_linking, "write_closure_phase"):
+            self.phase_linking.write_closure_phase = False
+        if hasattr(self.phase_linking, "write_crlb"):
+            self.phase_linking.write_crlb = False
+
 
 class RunConfig(YamlModel):
     """A SAS run configuration."""
@@ -343,6 +350,9 @@ class RunConfig(YamlModel):
         param_dict["timeseries_options"]["run_velocity"] = False
         # Always use L1 minimization for inverting unwrapped networks
         param_dict["timeseries_options"]["method"] = "L1"
+        # Always turn off CRLB/closure phase rasters
+        param_dict["phase_linking"]["write_crlb"] = False
+        param_dict["phase_linking"]["write_closure_phase"] = False
 
         # Get the current set of expected reference dates
         reference_datetimes = _parse_reference_date_json(

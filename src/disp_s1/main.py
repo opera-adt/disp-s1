@@ -171,7 +171,7 @@ def _filter_before_last_processed(
 
 
 def create_products(
-    out_paths: OutputPaths,
+    out_paths: OutputPathsWithCorrections,
     cfg: DisplacementWorkflow,
     pge_runconfig: RunConfig,
     processing_start_datetime: datetime | None = None,
@@ -514,7 +514,7 @@ def process_product(
 
 
 def create_displacement_products(
-    out_paths: OutputPaths,
+    out_paths: OutputPathsWithCorrections,
     out_dir: Path,
     date_to_cslc_files: Mapping[tuple[datetime], list[Path]],
     pge_runconfig: RunConfig,
@@ -562,9 +562,11 @@ def create_displacement_products(
         Default is 3.
 
     """
-    iono_files = out_paths.ionospheric_corrections or [None] * len(
-        out_paths.timeseries_paths
-    )
+    assert out_paths.timeseries_paths is not None
+    if out_paths.ionospheric_corrections is not None:
+        iono_files = out_paths.ionospheric_corrections
+    else:
+        iono_files = [None] * len(out_paths.timeseries_paths)
     residual_files = out_paths.timeseries_residual_paths or [None] * len(
         out_paths.timeseries_paths
     )

@@ -350,6 +350,8 @@ class RunConfig(YamlModel):
         param_dict["timeseries_options"]["run_velocity"] = False
         # Always use L1 minimization for inverting unwrapped networks
         param_dict["timeseries_options"]["method"] = "L1"
+        # Ignore the new parameter to mask outputs
+        param_dict["timeseries_options"]["apply_mask_to_timeseries"] = False
         # Always turn off CRLB/closure phase rasters
         param_dict["phase_linking"]["write_crlb"] = False
         param_dict["phase_linking"]["write_closure_phase"] = False

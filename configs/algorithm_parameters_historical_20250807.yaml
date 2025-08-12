@@ -90,7 +90,7 @@ unwrap_options:
     alpha: 0.5
     # (for interpolation) Maximum radius to find scatterers.
     #   Type: integer.
-    max_radius: 200
+    max_radius: 150
     # Threshold on the correlation raster to use for interpolation. Pixels with less than this
     #   value are replaced by a weighted combination of neighboring pixels.
     #   Type: number.
@@ -304,7 +304,7 @@ recommended_temporal_coherence_threshold: 0.7
 # When creating `recommended_mask`, pixels with similarity below this threshold and with
 #   temporal coherence below `recommended_temporal_coherence_threshold` are masked.
 #   Type: number.
-recommended_similarity_threshold: 0.55
+recommended_similarity_threshold: 0.65
 # When creating `recommended_mask`, use the `connected_component_label`"
 #   layer to hide pixels whose label == 0.
 #   Type: boolean.

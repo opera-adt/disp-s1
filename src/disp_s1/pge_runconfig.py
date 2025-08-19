@@ -369,6 +369,9 @@ class RunConfig(YamlModel):
         param_dict["phase_linking"]["output_reference_idx"] = output_reference_idx
         param_dict["output_options"]["extra_reference_date"] = extra_reference_date
 
+        if self.primary_executable.product_type == "DISP_S1_FORWARD":
+            param_dict["interferogram_network"] = _create_forward_mode_network()
+
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
         return DisplacementWorkflow(
             cslc_file_list=cslc_file_list,
@@ -569,6 +572,30 @@ def _parse_algorithm_overrides(
             else:
                 return overrides.get(str(frame_id), {})
     return {}
+
+
+def _create_forward_mode_network() -> InterferogramNetwork:
+    """Create a smaller interferogram network using only the last date.
+
+    For forward mode where we only wish to produce one new product,
+    we can unwrap just a subset of the full network (which is,
+    for 15 new CSLC dates, a network of 42 interfeorgrams).
+
+    Since we use nearest-3 unwrapping, we can just use the last 4 dates,
+    create that nearest-3 network, and unwrap it.
+    We use dolphin's "manual index" option in the `InterferogramNetwork` to
+    select the last 4 dates.
+    """
+    return InterferogramNetwork(
+        indexes=[
+            (-4, -3),
+            (-4, -2),
+            (-4, -1),
+            (-3, -2),
+            (-3, -1),
+            (-2, -1),
+        ]
+    )
 
 
 def _nested_update(base: dict, updates: dict):

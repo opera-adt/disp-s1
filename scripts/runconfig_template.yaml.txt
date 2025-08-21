@@ -3,14 +3,10 @@ input_file_group:
   frame_id: {frame_id}
 dynamic_ancillary_file_group:
   algorithm_parameters_file: algorithm_parameters_historical.yaml
-  static_layers_files:
-      - static_layers/OPERA_L2_CSLC-S1-STATIC_T034-071049-IW1_20140403_S1A_v1.0.h5
-      - static_layers/OPERA_L2_CSLC-S1-STATIC_T034-071049-IW2_20140403_S1A_v1.0.h5
-      - static_layers/OPERA_L2_CSLC-S1-STATIC_T034-071049-IW3_20140403_S1A_v1.0.h5
+  static_layers_files: "static_layers/OPERA_L2_CSLC-S1-STATIC*.h5"
   mask_file: water_mask.vrt
   dem_file:
-  ionosphere_files:
-  troposphere_files:
+  ionosphere_files: "ionosphere/*h5"
 static_ancillary_file_group:
   frame_to_burst_json: opera-s1-disp-0.5.0-frame-to-burst.json.zip
   reference_date_database_json: opera-disp-s1-reference-dates-minimal-2024-09-19.json

@@ -108,6 +108,9 @@ class DynamicAncillaryFileGroup(YamlModel):
             " correction. If none provided, ionosphere corrections are skipped."
         ),
     )
+    _check_iono_file_glob = field_validator("ionosphere_files", mode="before")(
+        _read_file_list_or_glob
+    )
 
     # Troposphere weather model
     troposphere_files: Optional[List[Path]] = Field(

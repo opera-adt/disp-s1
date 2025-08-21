@@ -14,6 +14,8 @@ from disp_s1.pge_runconfig import StaticLayersRunConfig
 
 logger = logging.getLogger("disp_s1")
 
+NAME_TEMPLATE = "OPERA_L3_DISP-S1-STATIC_F{frame_id:05d}_20140403_S1A_v1.0"
+
 
 def download_static_layers(
     frame_id: int,
@@ -149,6 +151,24 @@ def create_runconfig(
     return rc
 
 
+def _rename_outputs(runconfig: StaticLayersRunConfig) -> None:
+    frame_id = runconfig.input_file_group.frame_id
+    template = NAME_TEMPLATE.format(frame_id=frame_id)
+
+    los_file = next(
+        iter(runconfig.product_path_group.output_directory.glob("los_enu.tif"))
+    )
+    los_file.rename(los_file.parent / f"{template}_los_enu.tif")
+
+    dem_file = next(iter(runconfig.product_path_group.output_directory.glob("dem*tif")))
+    dem_file.rename(dem_file.parent / f"{template}_dem.tif")
+
+    mask_file = next(
+        iter(runconfig.product_path_group.output_directory.glob("layover*tif"))
+    )
+    mask_file.rename(mask_file.parent / f"{template}_layover_shadow_mask.tif")
+
+
 def main(frame_id: int, /, output_dir: Path | None = None) -> None:
     """Run the full static layers setup and processing workflow.
 
@@ -197,6 +217,7 @@ def main(frame_id: int, /, output_dir: Path | None = None) -> None:
 
     logging.info("\nSetup complete, running static layers processing:")
     run_static_layers(runconfig)
+    _rename_outputs(runconfig)
 
 
 if __name__ == "__main__":

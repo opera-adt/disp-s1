@@ -42,6 +42,20 @@ def create_batches(burst_to_cslc: dict[str, list[Path]], ms_size: int = 15):
     return combined_batches
 
 
+def get_forward_batch(
+    run_idx: int, burst_to_cslc: dict[str, list[Path]], ms_size: int = 15
+):
+    """Batch real CSLCs per burst (historical mode)."""
+    burst_ids = sorted(burst_to_cslc.keys())
+
+    combined_files = []
+    for burst_id in burst_ids:
+        cslc_files = sorted(burst_to_cslc[burst_id])
+        combined_files.extend(cslc_files[run_idx : run_idx + ms_size + 1])
+
+    return combined_files
+
+
 def latest_k_per_burst(burst_map: dict[str, list[Path]], k: int) -> list[Path]:
     """Return the latest k items per-burst (sorted per burst)."""
     out: list[Path] = []
@@ -137,6 +151,7 @@ def run_once_historical(
     run_idx: int,
     frame_id: int,
     ms_size: int,
+    num_compressed: int,
     docker_tag: str | None,
     template_path: Path,
 ) -> None:
@@ -223,7 +238,9 @@ def run_once_forward(
     # Real CSLCs (latest ms_size per burst)
     all_cslc_files = sorted(Path("input_slcs").resolve().glob("*.h5"))
     burst_to_cslc = opera_utils.group_by_burst(all_cslc_files)
-    latest_real = latest_k_per_burst(burst_to_cslc, ms_size)
+    cur_real_slcs = get_forward_batch(
+        run_idx=run_idx, burst_to_cslc=burst_to_cslc, ms_size=ms_size
+    )
 
     # Compressed CSLCs from bulk (latest num_compressed per burst)
     all_compressed_files = sorted(bulk_compressed_dir.glob("compressed_*.h5"))
@@ -236,7 +253,7 @@ def run_once_forward(
     )
 
     # Order: compressed first, then real
-    cur_slcs = list(latest_comp) + list(latest_real)
+    cur_slcs = list(latest_comp) + list(cur_real_slcs)
     symlink_inputs(cur_slcs, input_stage)
 
     # Run
@@ -306,6 +323,7 @@ if __name__ == "__main__":
                 run_idx=run_idx,
                 frame_id=args.frame_id,
                 ms_size=args.ms_size,
+                num_compressed=args.num_compressed,
                 docker_tag=args.docker_tag,
                 template_path=template_path,
             )

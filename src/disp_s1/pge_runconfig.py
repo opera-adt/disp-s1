@@ -82,6 +82,9 @@ class DynamicAncillaryFileGroup(YamlModel):
             " skipped."
         ),
     )
+    _check_geom_file_glob = field_validator("geometry_files", mode="before")(
+        _read_file_list_or_glob
+    )
     mask_file: Optional[Path] = Field(
         None,
         description=(

@@ -98,10 +98,18 @@ def symlink_inputs(cur_slcs: list[Path], dest_dir: Path) -> None:
 
 
 def run_local(runconfig_file: Path) -> None:
+    script_name = Path(__file__).parent / "rename_output.py"
     rc = pge_runconfig.RunConfig.from_yaml(runconfig_file)
     cfg = rc.to_workflow()
     cfg.worker_settings.gpu_enabled = True
     disp_s1.main.run(cfg, rc)
+    output_dir = rc.product_path_group.output_directory
+    comp_ouput_dir = output_dir / "compressed_slcs"
+    try:
+        subprocess.run(f"{script_name} {output_dir}/*")
+        subprocess.run(f"{script_name} {comp_ouput_dir}/*")
+    except Exception as e:
+        print(e)
 
 
 def _run_docker(docker_tag: str, runconfig_file: Path | str) -> None:
@@ -243,7 +251,7 @@ def run_once_forward(
     )
 
     # Compressed CSLCs from bulk (latest num_compressed per burst)
-    all_compressed_files = sorted(bulk_compressed_dir.glob("compressed_*.h5"))
+    all_compressed_files = sorted(bulk_compressed_dir.glob("*.h5"))
     burst_to_compressed = opera_utils.group_by_burst(all_compressed_files)
     # TODO: decide if we wanna watch for overlap in time...
     latest_comp = (

@@ -153,8 +153,18 @@ def run_once_historical(
 
     cur_real_slcs = list(batches[run_idx])
 
-    # No compressed in historical mode
-    cur_slcs = cur_real_slcs
+    all_compressed_files = sorted(
+        Path().glob("batch-*/output/compressed_slcs/compressed_*.h5")
+    )
+    burst_to_compressed = opera_utils.group_by_burst(all_compressed_files)
+    compressed_files = []
+    if burst_to_compressed:
+        burst_ids = sorted(burst_to_cslc.keys())
+        for burst_id in burst_ids:
+            # Add the last K compressed
+            compressed_files.extend(burst_to_compressed[burst_id][-num_compressed:])
+
+    cur_slcs = compressed_files + cur_real_slcs
 
     symlink_inputs(cur_slcs, batch_dir / "input_slcs")
     write_runconfig_from_template(
@@ -206,7 +216,7 @@ def run_once_forward(
         runconfig_file,
         batch_dir=batch_str,
         frame_id=frame_id,
-        mode="DISP_S1_HISTORICAL",
+        mode="DISP_S1_FORWARD",
         save_compressed_slc=save_compressed_now,
     )
 
@@ -218,6 +228,7 @@ def run_once_forward(
     # Compressed CSLCs from bulk (latest num_compressed per burst)
     all_compressed_files = sorted(bulk_compressed_dir.glob("compressed_*.h5"))
     burst_to_compressed = opera_utils.group_by_burst(all_compressed_files)
+    # TODO: decide if we wanna watch for overlap in time...
     latest_comp = (
         latest_k_per_burst(burst_to_compressed, num_compressed)
         if burst_to_compressed

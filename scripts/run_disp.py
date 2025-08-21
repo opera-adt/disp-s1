@@ -2,6 +2,7 @@ import argparse
 import shutil
 import subprocess
 from collections.abc import Iterable
+from datetime import datetime
 from itertools import chain, islice, zip_longest
 from pathlib import Path
 from typing import Iterator, Literal, TypeVar
@@ -56,14 +57,19 @@ def get_forward_batch(
     return combined_files
 
 
-def latest_k_per_burst(burst_map: dict[str, list[Path]], k: int) -> list[Path]:
+def latest_k_per_burst(
+    burst_map: dict[str, list[Path]], k: int, first_real_date: datetime
+) -> list[Path]:
     """Return the latest k items per-burst (sorted per burst)."""
     out: list[Path] = []
     for bid in sorted(burst_map.keys()):
         files = sorted(burst_map[bid])
         if not files:
             continue
-        out.extend(files[-k:])
+        valid_files = [
+            f for f in files if opera_utils.get_dates(f)[0] < first_real_date
+        ]
+        out.extend(valid_files[-k:])
     return out
 
 
@@ -249,13 +255,14 @@ def run_once_forward(
     cur_real_slcs = get_forward_batch(
         run_idx=run_idx, burst_to_cslc=burst_to_cslc, ms_size=ms_size
     )
+    first_real_date = sorted([opera_utils.get_dates(f)[0] for f in cur_real_slcs])[0]
 
     # Compressed CSLCs from bulk (latest num_compressed per burst)
     all_compressed_files = sorted(bulk_compressed_dir.glob("*.h5"))
     burst_to_compressed = opera_utils.group_by_burst(all_compressed_files)
     # TODO: decide if we wanna watch for overlap in time...
     latest_comp = (
-        latest_k_per_burst(burst_to_compressed, num_compressed)
+        latest_k_per_burst(burst_to_compressed, num_compressed, first_real_date)
         if burst_to_compressed
         else []
     )

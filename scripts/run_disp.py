@@ -127,20 +127,6 @@ def _run_docker(docker_tag: str, runconfig_file: Path | str) -> None:
     subprocess.run(cmd, shell=True, check=True)
 
 
-def _move_newest_file(src_root: Path, dst_dir: Path) -> Path | None:
-    """Find the single most recently modified file underneath src_root (recursively)
-    that is a regular file, and move it to dst_dir. Returns the new path or None.
-    """
-    candidates = [p for p in src_root.rglob("*") if p.is_file()]
-    if not candidates:
-        return None
-    newest = max(candidates, key=lambda p: p.stat().st_mtime)
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    new_path = dst_dir / newest.name
-    shutil.move(str(newest), str(new_path))
-    return new_path
-
-
 def move_compressed_to_bulk(run_output_dir: Path, bulk_dir: Path) -> int:
     """Move all files under output/compressed_slcs into a bulk directory.
 
@@ -277,10 +263,18 @@ def run_once_forward(
     else:
         run_local(runconfig_file)
 
-    # Move newest product from this run into forward outputs stash
-    moved = _move_newest_file(output_dir, forward_outputs_dir)
-    if moved:
-        print(f"[forward] staged newest product -> {moved}")
+    # Move new product from this run into forward outputs stash
+    candidates = sorted(output_dir.glob("*.nc"))
+    if len(candidates) > 1:
+        raise ValueError(f"Found more than 1 product in {output_dir} in FORWARD mode")
+    if not candidates:
+        raise ValueError(f"Found no products in {output_dir} in FORWARD mode")
+
+    cur_out = candidates[0]
+    forward_outputs_dir.mkdir(parents=True, exist_ok=True)
+    new_path = forward_outputs_dir / cur_out.name
+    shutil.move(str(cur_out), str(new_path))
+    print(f"[forward] staged newest product {cur_out} -> {new_path}")
 
     # If this is a compression run, move produced compressed files into bulk
     if save_compressed_now:

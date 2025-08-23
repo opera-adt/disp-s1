@@ -4,7 +4,7 @@ import logging
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from itertools import repeat
 from multiprocessing import get_context
 from pathlib import Path
@@ -70,6 +70,29 @@ def run(
 
     # Add a check to fail if passed duplicate dates area passed
     _assert_no_duplicate_dates(cfg.cslc_file_list)
+
+    # For forward mode, assume that the last processed was the second-to-last date
+    if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
+        # Get the dates of one of the burst IDs
+        date_to_files = group_by_date(cfg.cslc_file_list, date_idx=0)
+        datetimes_present = list(date_to_files.keys())
+        *_, (second_to_last_date,), (_last_date,) = datetimes_present
+        # Strip timezones defensively
+        second_to_last_date = second_to_last_date.replace(tzinfo=None)
+
+        if (
+            last_processed := pge_runconfig.input_file_group.last_processed
+        ) is not None:
+            last_processed = last_processed.replace(tzinfo=None)
+            if abs(last_processed - second_to_last_date).total_seconds() > 24 * 3600:
+                raise ValueError(
+                    "last_processed is set, more than 24 hours away from the"
+                    " second-to-last.This is not allowed for forward mode."
+                )
+        else:
+            pge_runconfig.input_file_group.last_processed = (
+                second_to_last_date + timedelta(days=1)
+            )
 
     # Setup the binary mask as dolphin expects
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
@@ -166,7 +189,7 @@ def _filter_before_last_processed(
     ]:
         cur_files = getattr(out_paths, attr)
         # Overwrite the attribute with the filtered files
-        out_dict[attr] = [p for p in cur_files if get_dates(p)[1] >= last_processed]
+        out_dict[attr] = [p for p in cur_files if get_dates(p)[1] > last_processed]
     return OutputPaths(**out_dict)
 
 

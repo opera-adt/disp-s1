@@ -1,0 +1,28 @@
+input_file_group:
+  cslc_file_list: "{batch_dir}/input_slcs/*"
+  frame_id: {frame_id}
+dynamic_ancillary_file_group:
+  algorithm_parameters_file: algorithm_parameters_historical.yaml
+  static_layers_files: "static_layers/OPERA_L2_CSLC-S1-STATIC*.h5"
+  mask_file: water_mask.vrt
+  dem_file:
+  ionosphere_files: "ionosphere/*h5"
+static_ancillary_file_group:
+  frame_to_burst_json: opera-s1-disp-0.5.0-frame-to-burst.json.zip
+  reference_date_database_json: opera-disp-s1-reference-dates-minimal-2024-09-19.json
+primary_executable:
+  product_type: {mode}
+product_path_group:
+  product_path: {batch_dir}/output
+  scratch_path: {batch_dir}/scratch
+  sas_output_path: {batch_dir}/output
+  product_version: '0.2'
+  save_compressed_slc: {save_compressed_slc}
+worker_settings:
+  gpu_enabled: false
+  threads_per_worker: 16
+  n_parallel_bursts: 4
+  block_shape:
+    - 512
+    - 512
+log_file: {batch_dir}/scratch/log_sas.log

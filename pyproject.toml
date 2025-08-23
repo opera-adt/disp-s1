@@ -84,6 +84,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F403"]
 "tests/**" = ["D", "N", "PTH"]
+"scripts/run_disp.py" = ["D"]
 
 [tool.mypy]
 python_version = "3.11"

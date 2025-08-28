@@ -1,0 +1,4 @@
+- `alaska-top.wkt`: Polygon over the top of Alaska (roughly the north slope) where phase similarity is very high, but some regions have lower temporal coherence (indicating possible bias from misclosure). Changes: mask unwrapping more aggressively, turn the similarity threshold very high.
+- `west-coast-green.wkt`:  Polygon at the top of California through Cascadia where more multilooking is necessary due to dense forest growth.
+
+- `manual-overrides-region123.json`: The selected frames from processing regions 1, 2, and 3 which had overrides set. Includes Hawaii, Mexico City

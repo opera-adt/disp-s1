@@ -1,0 +1,16 @@
+{
+  "recommended_similarity_threshold": 0.8,
+  "recommended_temporal_coherence_threshold": 0.8,
+  "phase_linking": {
+    "half_window": {
+      "y": 9,
+      "x": 18
+    }
+  },
+  "unwrap_options": {
+    "preprocess_options": {
+      "interpolation_cor_threshold": 0.3,
+      "interpolation_similarity_threshold": 0.6
+    }
+  }
+}

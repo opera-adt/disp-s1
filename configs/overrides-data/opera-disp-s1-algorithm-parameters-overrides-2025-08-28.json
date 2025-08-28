@@ -751,7 +751,7 @@
   },
   "1393": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -760,46 +760,43 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "1394": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "1395": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "1657": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -808,14 +805,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "1658": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -824,14 +820,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "1659": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -840,14 +835,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "1660": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -856,110 +850,103 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "1661": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "1662": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "1663": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "1664": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "3573": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "3574": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "3575": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -968,14 +955,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "3576": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -984,14 +970,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "3577": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1000,78 +985,73 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "3840": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "3841": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "3842": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "3843": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "3844": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1080,14 +1060,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "3845": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1096,14 +1075,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "3846": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1112,14 +1090,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "3847": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1128,14 +1105,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "3848": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1144,14 +1120,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "5418": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1160,14 +1135,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "5419": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1176,14 +1150,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "5420": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1192,62 +1165,58 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "5421": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "5422": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "5423": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "5684": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1256,14 +1225,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "5685": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1272,14 +1240,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "5686": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1288,14 +1255,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "5687": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1304,62 +1270,58 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "7600": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "7601": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "7602": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "7603": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1368,14 +1330,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "7604": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1384,14 +1345,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "7605": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1400,14 +1360,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "7606": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1416,14 +1375,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "9444": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1432,14 +1390,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "9445": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1448,14 +1405,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "9446": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1464,14 +1420,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "9447": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1480,78 +1435,73 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "9448": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "9449": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "9450": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "9451": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "11361": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1560,14 +1510,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "11362": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1576,14 +1525,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "11363": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1592,94 +1540,88 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "11626": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "11627": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "11628": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "11629": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "11630": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "11631": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1688,14 +1630,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "11632": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1704,14 +1645,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "11633": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1720,14 +1660,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "11634": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1736,14 +1675,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "11635": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1752,14 +1690,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13204": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1768,14 +1705,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13205": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1784,14 +1720,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13206": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1800,62 +1735,58 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13207": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "13208": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "13209": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "13469": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1864,14 +1795,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13470": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1880,14 +1810,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13471": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1896,14 +1825,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13472": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1912,14 +1840,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13473": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1928,14 +1855,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13474": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -1944,94 +1870,88 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "13475": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "13476": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "15386": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "15387": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "15388": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "15389": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2040,14 +1960,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "15390": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2056,14 +1975,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "15391": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2072,14 +1990,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "17231": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2088,14 +2005,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "17232": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2104,14 +2020,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "17233": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2120,142 +2035,133 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "17234": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "17235": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "17236": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "17237": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "19413": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "19414": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "19415": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "19416": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "19417": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2264,14 +2170,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "19418": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2280,14 +2185,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "19419": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2296,14 +2200,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "19420": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2312,14 +2215,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "19421": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2328,14 +2230,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "20991": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2344,14 +2245,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "20992": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2360,14 +2260,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "20993": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2376,46 +2275,43 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "20994": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "20995": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "21256": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2424,14 +2320,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "21257": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2440,14 +2335,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "21258": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2456,14 +2350,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "21259": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2472,14 +2365,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "21260": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2488,110 +2380,103 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "21261": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "21262": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "21263": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "23172": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "23173": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "23174": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "23175": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2600,14 +2485,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "23176": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2616,14 +2500,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "23177": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2632,62 +2515,58 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "23441": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "23442": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "23443": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "23444": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2696,14 +2575,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "23445": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2712,14 +2590,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "23446": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2728,14 +2605,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "25017": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2744,14 +2620,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "25018": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2760,14 +2635,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "25019": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2776,14 +2650,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "25020": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2792,126 +2665,118 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "25021": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "25022": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "25023": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "27199": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "27200": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "27201": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "27202": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "27203": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2920,14 +2785,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "27204": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2936,14 +2800,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "27205": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2952,14 +2815,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "27206": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2968,14 +2830,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "29043": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -2984,14 +2845,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "29044": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3000,14 +2860,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "29045": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3016,14 +2875,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "29046": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3032,110 +2890,103 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "29047": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "29048": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "29049": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "29050": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "30959": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "30960": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "30961": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3144,14 +2995,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "30962": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3160,14 +3010,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "30963": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3176,94 +3025,88 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "31226": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "31227": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "31228": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "31229": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "31230": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "31231": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3272,14 +3115,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "31232": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3288,14 +3130,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "31233": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3304,14 +3145,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "31234": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3320,14 +3160,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "31235": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3336,14 +3175,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "32804": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3352,14 +3190,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "32805": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3368,14 +3205,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "32806": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3384,62 +3220,58 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "32807": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "32808": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "32809": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "33069": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3448,14 +3280,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "33070": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3464,14 +3295,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "33071": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3480,14 +3310,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "33072": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3496,14 +3325,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "33073": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3512,14 +3340,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "33074": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3528,94 +3355,88 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "33075": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "33076": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "34986": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "34987": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "34988": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "34989": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3624,14 +3445,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "34990": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3640,14 +3460,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "34991": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3656,14 +3475,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "36831": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3672,14 +3490,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "36832": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3688,14 +3505,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "36833": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3704,158 +3520,148 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "36834": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "36835": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "36836": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "36837": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "39012": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "39013": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "39014": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "39015": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "39016": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "39017": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3864,14 +3670,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "39018": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3880,14 +3685,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "39019": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3896,14 +3700,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "39020": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3912,14 +3715,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "39021": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3928,14 +3730,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "39022": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3944,14 +3745,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40590": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3960,14 +3760,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40591": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3976,14 +3775,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40592": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -3992,62 +3790,58 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40593": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "40594": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "40595": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "40855": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4056,14 +3850,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40856": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4072,14 +3865,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40857": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4088,14 +3880,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40858": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4104,14 +3895,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40859": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4120,14 +3910,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40860": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4136,110 +3925,103 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "40861": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "40862": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "40863": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "42772": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "42773": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "42774": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "42775": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4248,14 +4030,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "42776": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4264,14 +4045,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "42777": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4280,46 +4060,43 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "43041": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "43042": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "43044": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4328,14 +4105,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "43045": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4344,14 +4120,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "44617": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4360,14 +4135,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "44618": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4376,14 +4150,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "44619": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4392,142 +4165,133 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "44620": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "44621": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "44622": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "44623": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "46799": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "46800": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "46801": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "46802": {
-    "recommended_similarity_threshold": 0.8,
+    "recommended_similarity_threshold": 0.85,
     "recommended_temporal_coherence_threshold": 0.8,
     "phase_linking": {
       "half_window": {
         "y": 9,
-        "x": 18
+        "x": 19
       }
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
         "interpolation_similarity_threshold": 0.6
       }
     }
   },
   "46803": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4536,14 +4300,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "46804": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4552,14 +4315,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "46805": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4568,14 +4330,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "46806": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4584,14 +4345,13 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },
   "46807": {
     "recommended_similarity_threshold": 0.8,
-    "recommended_temporal_coherence_threshold": 0.8,
+    "recommended_temporal_coherence_threshold": 0.75,
     "phase_linking": {
       "half_window": {
         "y": 9,
@@ -4600,8 +4360,7 @@
     },
     "unwrap_options": {
       "preprocess_options": {
-        "interpolation_cor_threshold": 0.3,
-        "interpolation_similarity_threshold": 0.6
+        "interpolation_similarity_threshold": 0.5
       }
     }
   },

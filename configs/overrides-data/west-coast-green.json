@@ -1,5 +1,5 @@
 {
-  "recommended_similarity_threshold": 0.7,
+  "recommended_similarity_threshold": 0.75,
   "recommended_temporal_coherence_threshold": 0.7,
   "phase_linking": {
     "half_window": {

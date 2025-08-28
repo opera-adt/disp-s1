@@ -1,3 +1,4 @@
+// Hawaii, Kilauea
 {
   "23210": {
     "recommended_similarity_threshold": 0.3,
@@ -35,6 +36,7 @@
       }
     }
   },
+  // Mexico, mexico city
   "20688": {
     "unwrap_options": {
       "preprocess_options": {
@@ -80,6 +82,57 @@
       "preprocess_options": {
         "interpolation_cor_threshold": 0.05,
         "interpolation_similarity_threshold": 0.25
+      }
+    }
+  },
+  // Oregon, 3 sisters
+  "16948": {
+    "recommended_similarity_threshold": 0.7,
+    "recommended_temporal_coherence_threshold": 0.55,
+    "phase_linking": {
+      "half_window": {
+        "y": 9,
+        "x": 18
+      }
+    }
+  },
+  "36547": {
+    "recommended_similarity_threshold": 0.7,
+    "recommended_temporal_coherence_threshold": 0.55,
+    "phase_linking": {
+      "half_window": {
+        "y": 9,
+        "x": 18
+      }
+    }
+  },
+  "36548": {
+    "recommended_similarity_threshold": 0.7,
+    "recommended_temporal_coherence_threshold": 0.55,
+    "phase_linking": {
+      "half_window": {
+        "y": 9,
+        "x": 18
+      }
+    }
+  },
+  "30710": {
+    "recommended_similarity_threshold": 0.7,
+    "recommended_temporal_coherence_threshold": 0.55,
+    "phase_linking": {
+      "half_window": {
+        "y": 9,
+        "x": 18
+      }
+    }
+  },
+  "30711": {
+    "recommended_similarity_threshold": 0.7,
+    "recommended_temporal_coherence_threshold": 0.55,
+    "phase_linking": {
+      "half_window": {
+        "y": 9,
+        "x": 18
       }
     }
   }

@@ -66,11 +66,13 @@ def read_override(name: str, path=OVERRIDE_PATH):
 
     """
     poly = from_wkt((path / f"{name}.wkt").read_text())
-    overrides = read_json_with_comments((path / f"{name}.json"))
+    overrides = read_json_with_comments(path / f"{name}.json")
     return poly, overrides
 
 
-def form_overrides(name: Literal["alaska-middle", "west-coast-green"]):
+def form_overrides(
+    name: Literal["alaska-middle", "alaska-north-slope", "west-coast-green"],
+):
     """Generate frame-specific overrides for a named geographic region.
 
     This function creates algorithm parameter overrides for all North American
@@ -78,7 +80,7 @@ def form_overrides(name: Literal["alaska-middle", "west-coast-green"]):
 
     Parameters
     ----------
-    name : {"alaska-middle", "west-coast-green"}
+    name : {"alaska-middle", "alaska-north-slope", "west-coast-green"}
         Name of the geographic region to process. Must be one of the
         supported region names.
 
@@ -120,20 +122,27 @@ def combine_overrides(path: Path = OVERRIDE_PATH):
     -------
     dict[str, dict]
         Combined dictionary of frame ID to override parameters.
-        Merge precedence (highest to lowest):
+        Merge precedence (lowest to highest):
         1. Manual overrides from "manual-overrides-region123.json"
-        2. Alaska middle region overrides
-        3. West coast green region overrides
+        2. Alaska North slope
+        3. Alaska middle region
+        4. West coast green region
 
     """
+    west_coast_overrides = form_overrides("west-coast-green")
+    alaska_middle_overrides = form_overrides("alaska-middle")
+    alaska_north_overrides = form_overrides("alaska-north-slope")
     manual_overrides = read_json_with_comments(
         (path / "manual-overrides-region123.json")
     )
-    alaska_overrides = form_overrides("alaska-middle")
-    west_coast_overrides = form_overrides("west-coast-green")
-    # keys from the rightmost dictionary take precedence in case of conflicts.
 
-    combined = west_coast_overrides | alaska_overrides | manual_overrides
+    # keys from the rightmost dictionary take precedence in case of conflicts.
+    combined = (
+        west_coast_overrides
+        | alaska_middle_overrides
+        | alaska_north_overrides
+        | manual_overrides
+    )
     return combined
 
 

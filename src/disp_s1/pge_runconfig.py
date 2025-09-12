@@ -202,6 +202,15 @@ class AlgorithmParameters(YamlModel):
     timeseries_options: TimeseriesOptions = Field(default_factory=TimeseriesOptions)
     output_options: OutputOptions = Field(default_factory=OutputOptions)
 
+    forward_mode_network_size: int = Field(
+        3,
+        ge=3,
+        le=4,
+        description=(
+            "When running forward mode, size of the interferogram network for form with"
+            " the latest date. Valid choices are 3 (default) and 4"
+        ),
+    )
     recommended_temporal_coherence_threshold: float = Field(
         0.6,
         description=(
@@ -376,7 +385,9 @@ class RunConfig(YamlModel):
         param_dict["output_options"]["extra_reference_date"] = extra_reference_date
 
         if self.primary_executable.product_type == "DISP_S1_FORWARD":
-            param_dict["interferogram_network"] = _create_forward_mode_network()
+            param_dict["interferogram_network"] = _create_forward_mode_network(
+                algo_params.forward_mode_network_size
+            )
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
         return DisplacementWorkflow(
@@ -580,7 +591,7 @@ def _parse_algorithm_overrides(
     return {}
 
 
-def _create_forward_mode_network() -> InterferogramNetwork:
+def _create_forward_mode_network(nearest_n: int = 3) -> InterferogramNetwork:
     """Create a smaller interferogram network using only the last date.
 
     For forward mode where we only wish to produce one new product,
@@ -592,16 +603,17 @@ def _create_forward_mode_network() -> InterferogramNetwork:
     We use dolphin's "manual index" option in the `InterferogramNetwork` to
     select the last 4 dates.
     """
-    return InterferogramNetwork(
-        indexes=[
-            (-4, -3),
-            (-4, -2),
-            (-4, -1),
-            (-3, -2),
-            (-3, -1),
-            (-2, -1),
-        ]
-    )
+    indexes = [
+        (-2, -1),
+        (-3, -1),
+        (-4, -1),
+        (-3, -2),
+        (-4, -2),
+        (-4, -3),
+    ]
+    if nearest_n == 4:
+        indexes.extend([(-5, -1), (-5, -2), (-5, -3), (-5, -2)])
+    return InterferogramNetwork(indexes=indexes)
 
 
 def _nested_update(base: dict, updates: dict):

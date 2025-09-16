@@ -162,7 +162,7 @@ def _create_correlation_images(
     return output_paths
 
 
-def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.01) -> str:
+def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.05) -> str:
     """Extract a simplified footprint from a raster file.
 
     This function opens a raster file, extracts its footprint, simplifies it,
@@ -174,7 +174,7 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.01) 
         Path to the input raster file.
     simplify_tolerance : float, optional
         Tolerance for simplification of the footprint geometry.
-        Default is 0.01.
+        Default is 0.05.
 
     Returns
     -------
@@ -199,6 +199,7 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.01) 
         fspath(raster_path),
         format="WKT",
         dstSRS="EPSG:4326",
+        convexHull=True,
         simplify=simplify_tolerance,
     )
 

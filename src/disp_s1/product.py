@@ -199,33 +199,21 @@ def create_output_product(
     # TODO: do we need all corrections/smaller grids to be same subsample factor?
     subsample = 50
     y, x = y[::subsample], x[::subsample]
-    try:
-        logger.info("Calculating perpendicular baselines subsampled by %s", subsample)
-        baseline_arr = compute_baselines(
-            reference_start_file,
-            secondary_start,
-            x=x,
-            y=y,
-            epsg=crs.to_epsg(),
-            height=0,
-        )
-    except Exception:
-        logger.error(
-            f"Failed to compute baselines for {reference_start_file},"
-            f" {secondary_start}",
-            exc_info=True,
-        )
-        baseline_arr = np.zeros((100, 100))
+    logger.info("Calculating perpendicular baselines subsampled by %s", subsample)
+    baseline_arr = compute_baselines(
+        reference_start_file,
+        secondary_start,
+        x=x,
+        y=y,
+        epsg=crs.to_epsg(),
+        height=0,
+    )
     corrections["baseline"] = _interpolate_data(baseline_arr, shape=shape).astype(
         "float32"
     )
 
     logger.info("Extracting data footprint")
-    try:
-        footprint_wkt = extract_footprint(raster_path=unw_filename)
-    except Exception:
-        logger.error("Failed to extract raster footprint", exc_info=True)
-        footprint_wkt = ""
+    footprint_wkt = extract_footprint(raster_path=unw_filename)
     # Get bounds for "Bounding box corners"
     bounds = io.get_raster_bounds(unw_filename)
 

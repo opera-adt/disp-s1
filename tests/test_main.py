@@ -136,7 +136,7 @@ def test_filter_before_last_processed(out_paths: OutputPaths):
     """Test the _filter_before_last_processed function filters OutputPaths correctly."""
 
     # Test filtering with last_processed = 2017-04-06 (middle of the date range)
-    # This should keep files with secondary date >= 2017-04-06
+    # This should keep files with secondary date > 2017-04-06
     last_processed = datetime(2017, 4, 6)
     filtered_paths = _filter_before_last_processed(out_paths, last_processed)
 
@@ -152,10 +152,7 @@ def test_filter_before_last_processed(out_paths: OutputPaths):
     # - 20170418_20170430 (Apr 30)
 
     expected_ifg_paths = [
-        Path("interferograms/20170301_20170406.int.tif"),
-        Path("interferograms/20170313_20170406.int.tif"),
         Path("interferograms/20170313_20170418.int.tif"),
-        Path("interferograms/20170325_20170406.int.tif"),
         Path("interferograms/20170325_20170418.int.tif"),
         Path("interferograms/20170325_20170430.int.tif"),
         Path("interferograms/20170406_20170418.int.tif"),
@@ -171,7 +168,6 @@ def test_filter_before_last_processed(out_paths: OutputPaths):
 
     # Timeseries paths should keep those with secondary date >= 2017-04-06
     expected_timeseries = [
-        Path("timeseries/20170217_20170406.tif"),
         Path("timeseries/20170217_20170418.tif"),
         Path("timeseries/20170217_20170430.tif"),
     ]

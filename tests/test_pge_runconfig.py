@@ -145,7 +145,7 @@ def test_runconfig_from_workflow(
     w = runconfig_minimum.to_workflow()
     frame_id = runconfig_minimum.input_file_group.frame_id
     algo_file = tmp_path / "algo_params.yaml"
-    proc_mode = "forward"
+    proc_mode = "historical"
     w2 = RunConfig.from_workflow(
         w,
         frame_id=frame_id,
@@ -444,7 +444,7 @@ def test_reference_date_last_per_ministack():
 def overrides_file():
     return (
         Path(__file__).parent.parent
-        / "configs/opera-disp-s1-algorithm-parameters-overrides-2025-06-17.json"
+        / "configs/opera-disp-s1-algorithm-parameters-overrides-2025-09-15.json"
     )
 
 

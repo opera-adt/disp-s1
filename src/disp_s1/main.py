@@ -195,6 +195,8 @@ def _filter_before_last_processed(
     """Filter `out_paths` to products with secondary datetime > `last_processed`."""
     # For the following attributes, filter based on last_processed
     out_dict = asdict(out_paths)
+    # We can add a time buffer of a day, since the minimum repeat is 6 days
+    time_buffer = timedelta(days=1)
     for attr in [
         "stitched_ifg_paths",
         "stitched_cor_paths",
@@ -204,7 +206,9 @@ def _filter_before_last_processed(
     ]:
         cur_files = getattr(out_paths, attr)
         # Overwrite the attribute with the filtered files
-        out_dict[attr] = [p for p in cur_files if get_dates(p)[1] > last_processed]
+        out_dict[attr] = [
+            p for p in cur_files if get_dates(p)[1] > (last_processed + time_buffer)
+        ]
     return OutputPaths(**out_dict)
 
 

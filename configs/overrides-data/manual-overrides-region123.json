@@ -1,7 +1,14 @@
 // Hawaii, Kilauea
 {
   "23210": {
+    "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.01,
@@ -10,7 +17,14 @@
     }
   },
   "23211": {
+    "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.01,
@@ -19,7 +33,14 @@
     }
   },
   "33038": {
+    "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.01,
@@ -28,7 +49,14 @@
     }
   },
   "33039": {
+    "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.01,
@@ -38,6 +66,13 @@
   },
   // Mexico, mexico city
   "20688": {
+    "recommended_temporal_coherence_threshold": 0.6,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.05,
@@ -46,6 +81,13 @@
     }
   },
   "1088": {
+    "recommended_temporal_coherence_threshold": 0.6,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.05,
@@ -54,6 +96,13 @@
     }
   },
   "1089": {
+    "recommended_temporal_coherence_threshold": 0.6,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.05,
@@ -62,6 +111,13 @@
     }
   },
   "10860": {
+    "recommended_temporal_coherence_threshold": 0.6,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.05,
@@ -70,6 +126,13 @@
     }
   },
   "38246": {
+    "recommended_temporal_coherence_threshold": 0.6,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.05,
@@ -78,6 +141,13 @@
     }
   },
   "38247": {
+    "recommended_temporal_coherence_threshold": 0.6,
+    "phase_linking": {
+      "half_window": {
+        "y": 6,
+        "x": 12
+      }
+    },
     "unwrap_options": {
       "preprocess_options": {
         "interpolation_cor_threshold": 0.05,

@@ -102,7 +102,7 @@ class DynamicAncillaryFileGroup(YamlModel):
     )
     # TEC file in IONEX format for ionosphere correction
     ionosphere_files: Optional[List[Path]] = Field(
-        default=None,
+        default=[],
         description=(
             "List of paths to TEC files (1 per date) in IONEX format for ionosphere"
             " correction. If none provided, ionosphere corrections are skipped."

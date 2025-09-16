@@ -71,7 +71,9 @@ def read_override(name: str, path=OVERRIDE_PATH):
 
 
 def form_overrides(
-    name: Literal["alaska-middle", "alaska-north-slope", "west-coast-green"],
+    name: Literal[
+        "alaska-middle", "alaska-north-slope", "west-coast-green", "low-vegetation-west"
+    ],
 ):
     """Generate frame-specific overrides for a named geographic region.
 
@@ -80,7 +82,9 @@ def form_overrides(
 
     Parameters
     ----------
-    name : {"alaska-middle", "alaska-north-slope", "west-coast-green"}
+    name : str,
+        choices = {"alaska-middle", "alaska-north-slope", "west-coast-green",
+            low-vegetation-west"}
         Name of the geographic region to process. Must be one of the
         supported region names.
 
@@ -123,12 +127,14 @@ def combine_overrides(path: Path = OVERRIDE_PATH):
     dict[str, dict]
         Combined dictionary of frame ID to override parameters.
         Merge precedence (lowest to highest):
-        1. Manual overrides from "manual-overrides-region123.json"
-        2. Alaska North slope
-        3. Alaska middle region
-        4. West coast green region
+        - Low coherence west
+        - Alaska North slope
+        - Alaska middle region
+        - West coast green region
+        - Manual overrides from "manual-overrides-region123.json"
 
     """
+    low_vegetation_west_overrides = form_overrides("low-vegetation-west")
     west_coast_overrides = form_overrides("west-coast-green")
     alaska_middle_overrides = form_overrides("alaska-middle")
     alaska_north_overrides = form_overrides("alaska-north-slope")
@@ -136,9 +142,12 @@ def combine_overrides(path: Path = OVERRIDE_PATH):
         (path / "manual-overrides-region123.json")
     )
 
-    # keys from the rightmost dictionary take precedence in case of conflicts.
+    # keys from the rightmost dictionary take precedence in case of conflicts (demo:)
+    # In [1]: {'a': 3} | {'a': 5}
+    # Out[2]: {'a': 5}
     combined = (
-        west_coast_overrides
+        low_vegetation_west_overrides
+        | west_coast_overrides
         | alaska_middle_overrides
         | alaska_north_overrides
         | manual_overrides

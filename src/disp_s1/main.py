@@ -10,6 +10,7 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import NamedTuple
 
+import numpy as np
 from dolphin import PathOrStr, io, stitching
 from dolphin._log import log_runtime, setup_logging
 from dolphin.unwrap._utils import create_combined_mask
@@ -71,15 +72,14 @@ def run(
     # Add a check to fail if passed duplicate dates area passed
     _assert_no_duplicate_dates(cfg.cslc_file_list)
 
+    # Get the dates for any of the burst IDs
+    date_to_files = group_by_date(cfg.cslc_file_list, date_idx=0)
+    datetimes_present = list(date_to_files.keys())
     # For forward mode, assume that the last processed was the second-to-last date
+    *_, (second_to_last_date,), (_last_date,) = datetimes_present
+    # Strip timezones defensively
+    second_to_last_date = second_to_last_date.replace(tzinfo=None)
     if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
-        # Get the dates of one of the burst IDs
-        date_to_files = group_by_date(cfg.cslc_file_list, date_idx=0)
-        datetimes_present = list(date_to_files.keys())
-        *_, (second_to_last_date,), (_last_date,) = datetimes_present
-        # Strip timezones defensively
-        second_to_last_date = second_to_last_date.replace(tzinfo=None)
-
         if (
             last_processed := pge_runconfig.input_file_group.last_processed
         ) is not None:
@@ -130,6 +130,22 @@ def run(
     # Run dolphin's displacement workflow
     out_paths = run_displacement(cfg=cfg, debug=debug)
 
+    assert out_paths.timeseries_paths is not None
+    assert out_paths.timeseries_residual_paths is not None
+    if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
+        from dolphin.timeseries import _redo_reference
+
+        logger.info(f"Re-referencing time series rasters {out_paths.timeseries_paths}")
+        logger.info(f"Setting output reference to {second_to_last_date}")
+        final_ts_paths, final_residual_paths = _redo_reference(
+            out_paths.timeseries_paths,
+            out_paths.timeseries_residual_paths,
+            second_to_last_date,
+            bad_pixel_mask=np.ma.nomask,
+        )
+        out_paths.timeseries_paths = final_ts_paths
+        out_paths.timeseries_residual_paths = final_residual_paths
+
     # Filter by last processed date
     if last_processed := pge_runconfig.input_file_group.last_processed:
         logger.info(f"Filtering outputs before {last_processed}")
@@ -144,7 +160,6 @@ def run(
         )
 
     # Run dolphin's corrections workflow
-    assert out_paths.timeseries_paths is not None
     out_corrections_paths = run_corrections(
         cfg=cfg,
         correction_options=cfg.correction_options,
@@ -180,6 +195,8 @@ def _filter_before_last_processed(
     """Filter `out_paths` to products with secondary datetime > `last_processed`."""
     # For the following attributes, filter based on last_processed
     out_dict = asdict(out_paths)
+    # We can add a time buffer of a day, since the minimum repeat is 6 days
+    time_buffer = timedelta(days=1)
     for attr in [
         "stitched_ifg_paths",
         "stitched_cor_paths",
@@ -189,7 +206,9 @@ def _filter_before_last_processed(
     ]:
         cur_files = getattr(out_paths, attr)
         # Overwrite the attribute with the filtered files
-        out_dict[attr] = [p for p in cur_files if get_dates(p)[1] > last_processed]
+        out_dict[attr] = [
+            p for p in cur_files if get_dates(p)[1] > (last_processed + time_buffer)
+        ]
     return OutputPaths(**out_dict)
 
 

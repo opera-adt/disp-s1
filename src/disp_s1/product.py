@@ -213,11 +213,7 @@ def create_output_product(
     )
 
     logger.info("Extracting data footprint")
-    try:
-        footprint_wkt = extract_footprint(raster_path=unw_filename)
-    except Exception:
-        logger.error("Failed to extract raster footprint", exc_info=True)
-        footprint_wkt = ""
+    footprint_wkt = extract_footprint(raster_path=unw_filename)
     # Get bounds for "Bounding box corners"
     bounds = io.get_raster_bounds(unw_filename)
 

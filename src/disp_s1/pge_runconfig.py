@@ -357,6 +357,7 @@ class RunConfig(YamlModel):
         # Setup the OPERA-specific options to adjust from dolphin's defaults
         # TODO: this needs to change if DISP-S1 ever processes other polarizations
         input_options = {"subdataset": "/data/VV"}
+        param_dict["output_options"]["epsg"] = bounds_epsg
         param_dict["output_options"]["bounds"] = bounds
         param_dict["output_options"]["bounds_epsg"] = bounds_epsg
         # Always turn off overviews (won't be saved in the HDF5 anyway)

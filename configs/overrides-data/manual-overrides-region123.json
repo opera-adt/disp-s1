@@ -211,8 +211,16 @@
     "recommended_temporal_coherence_threshold": 0.65,
     "phase_linking": {
       "half_window": {
-        "y": 7,
-        "x": 14
+        "y": 6,
+        "x": 12
+      }
+    },
+    "unwrap_options": {
+      "snaphu_options": {
+        "ntiles": [
+          6,
+          6
+        ]
       }
     }
   }

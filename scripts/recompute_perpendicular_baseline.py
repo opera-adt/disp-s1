@@ -11,6 +11,7 @@ Example:
     $ python scripts/recompute_perpendicular_baseline.py input.nc -o output.nc
 
 """
+
 from __future__ import annotations
 
 import logging
@@ -63,11 +64,10 @@ def load_orbit_from_netcdf(
 
     reference_epoch = datetime.fromisoformat(ref_epoch_str)
 
-    # Stack positions and velocities
     positions = np.stack([pos_x, pos_y, pos_z]).T
     velocities = np.stack([vel_x, vel_y, vel_z]).T
 
-    # Create StateVectors
+    # Create isce3 StateVectors
     orbit_svs = []
     for t, pos, vel in zip(times, positions, velocities):
         orbit_svs.append(
@@ -226,19 +226,10 @@ def interpolate_data(
         Interpolated data.
 
     """
-    # Create coordinate arrays for the original data
     orig_coords = [np.linspace(0, 1, s) for s in data.shape]
-
-    # Create coordinate arrays for the desired output shape
     new_coords = [np.linspace(0, 1, s) for s in shape]
-
-    # Create the interpolator
     interp = RegularGridInterpolator(orig_coords, data, method=method)
-
-    # Create a mesh grid for the new coordinates
     mesh = np.meshgrid(*new_coords, indexing="xy")
-
-    # Perform the interpolation
     return interp(np.array(mesh).T.astype("float32"))
 
 
@@ -296,7 +287,7 @@ def recompute_perpendicular_baseline(
     epsg = crs.to_epsg()
     logger.info(f"EPSG: {epsg}")
 
-    # Subsample the grid
+    # Subsample the grid for faster baseline computation
     x_sub = x[::subsample]
     y_sub = y[::subsample]
     logger.info(
@@ -304,7 +295,6 @@ def recompute_perpendicular_baseline(
         f" (subsample={subsample})"
     )
 
-    # Compute baselines
     baseline_arr = compute_baselines_from_orbits(
         orbit_ref=orbit_ref,
         orbit_sec=orbit_sec,
@@ -316,38 +306,17 @@ def recompute_perpendicular_baseline(
     )
     logger.info("Interpolating baselines to full resolution")
 
-    # Interpolate to full resolution
+    # Interpolate back to full resolution
     baseline_full = interpolate_data(baseline_arr, shape=shape).astype("float32")
 
-    # Copy the input file to output
+    # Copy the input file to output, so we don't overwrite the original
     logger.info(f"Copying {input_file} to {output_file}")
     shutil.copy(input_file, output_file)
 
     # Update the perpendicular_baseline dataset
     logger.info("Writing perpendicular baseline to output file")
-    with h5py.File(output_file, "a") as f:
-        # Delete existing dataset if present
-        if "/corrections/perpendicular_baseline" in f:
-            del f["/corrections/perpendicular_baseline"]
-
-        # Write the new baseline
-        corrections_group = f["/corrections"]
-        dset = corrections_group.create_dataset(
-            "perpendicular_baseline",
-            data=baseline_full,
-            dtype="float32",
-            fillvalue=np.nan,
-            compression="gzip",
-            compression_opts=4,
-            chunks=(256, 256),
-        )
-        dset.attrs["long_name"] = "Perpendicular Baseline"
-        dset.attrs["description"] = (
-            "Perpendicular baseline between reference and secondary acquisitions."
-            " May be used to correct for DEM error in the displacement imagery."
-        )
-        dset.attrs["units"] = "meters"
-        dset.attrs["grid_mapping"] = "spatial_ref"
+    with h5py.File(output_file, "a") as hf:
+        hf["/corrections/perpendicular_baseline"][:] = baseline_full
 
     logger.info(f"Successfully wrote perpendicular baseline to {output_file}")
     return output_file

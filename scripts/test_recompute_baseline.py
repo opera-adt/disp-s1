@@ -1,6 +1,5 @@
 """Tests for recomputing perpendicular baseline from saved orbit data."""
 
-# Import the function from the script
 import sys
 from pathlib import Path
 
@@ -15,9 +14,13 @@ from recompute_perpendicular_baseline import recompute_perpendicular_baseline
 @pytest.fixture
 def test_file():
     """Path to the test DISP-S1 file."""
-    return Path(
-        "./OPERA_L3_DISP-S1_IW_F11116_VV_20160705T140755Z_20160729T140756Z_v1.0_20250318T222753Z.nc"
-    )
+    url = "https://datapool.asf.alaska.edu/DISP/OPERA-S1/OPERA_L3_DISP-S1_IW_F11116_VV_20160705T140755Z_20160729T140756Z_v1.0_20250408T163512Z.nc"
+    file = Path() / Path(url).name
+    if not file.exists():
+        import subprocess
+
+        subprocess.run(["wget", url], check=True)
+    return file
 
 
 @pytest.fixture(scope="module")

@@ -20,21 +20,29 @@ def test_file():
     )
 
 
-def test_recompute_baseline_matches_original(test_file, tmp_path):
-    """Test that recomputed baseline matches the original within tolerance."""
+@pytest.fixture(scope="module")
+def recomputed_file(tmp_path_factory):
+    """Recompute the baseline once and reuse across all tests."""
+    test_file = Path(
+        "./OPERA_L3_DISP-S1_IW_F11116_VV_20160705T140755Z_20160729T140756Z_v1.0_20250318T222753Z.nc"
+    )
     if not test_file.exists():
         pytest.skip(f"Test file not found: {test_file}")
 
+    tmp_dir = tmp_path_factory.mktemp("baseline_test")
+    output_file = tmp_dir / "test_output.nc"
+    recompute_perpendicular_baseline(test_file, output_file, subsample=50)
+    return output_file
+
+
+def test_recompute_baseline_matches_original(test_file, recomputed_file):
+    """Test that recomputed baseline matches the original within tolerance."""
     # Read the original baseline
     with h5py.File(test_file) as f:
         original_baseline = f["/corrections/perpendicular_baseline"][:]
 
-    # Recompute the baseline
-    output_file = tmp_path / "test_output.nc"
-    recompute_perpendicular_baseline(test_file, output_file, subsample=50)
-
     # Read the recomputed baseline
-    with h5py.File(output_file) as f:
+    with h5py.File(recomputed_file) as f:
         recomputed_baseline = f["/corrections/perpendicular_baseline"][:]
 
     # Check that they match within tolerance
@@ -56,16 +64,10 @@ def test_recompute_baseline_matches_original(test_file, tmp_path):
     assert mean_diff < 0.1, f"Mean difference {mean_diff} m exceeds 0.1 m"
 
 
-def test_recompute_baseline_preserves_metadata(test_file, tmp_path):
+def test_recompute_baseline_preserves_metadata(test_file, recomputed_file):
     """Test that other metadata is preserved when recomputing baseline."""
-    if not test_file.exists():
-        pytest.skip(f"Test file not found: {test_file}")
-
-    output_file = tmp_path / "test_output.nc"
-    recompute_perpendicular_baseline(test_file, output_file, subsample=50)
-
     # Check that key metadata is preserved
-    with h5py.File(test_file) as f_orig, h5py.File(output_file) as f_new:
+    with h5py.File(test_file) as f_orig, h5py.File(recomputed_file) as f_new:
         # Check that the grid dimensions are the same
         assert f_orig["/x"][:].shape == f_new["/x"][:].shape
         assert f_orig["/y"][:].shape == f_new["/y"][:].shape
@@ -81,15 +83,9 @@ def test_recompute_baseline_preserves_metadata(test_file, tmp_path):
         )
 
 
-def test_recompute_baseline_attributes(test_file, tmp_path):
+def test_recompute_baseline_attributes(recomputed_file):
     """Test that the recomputed baseline has the correct attributes."""
-    if not test_file.exists():
-        pytest.skip(f"Test file not found: {test_file}")
-
-    output_file = tmp_path / "test_output.nc"
-    recompute_perpendicular_baseline(test_file, output_file, subsample=50)
-
-    with h5py.File(output_file) as f:
+    with h5py.File(recomputed_file) as f:
         baseline_dset = f["/corrections/perpendicular_baseline"]
 
         # Check attributes

@@ -233,10 +233,59 @@ def interpolate_data(
     return interp(np.array(mesh).T.astype("float32"))
 
 
+def update_metadata_timestamps(
+    output_file: Path,
+    processing_datetime: datetime | None = None,
+    update_version: bool = False,
+    new_version: str | None = None,
+) -> None:
+    """Update metadata timestamps in the corrected file.
+
+    Parameters
+    ----------
+    output_file : Path
+        Path to the output file to update.
+    processing_datetime : datetime, optional
+        Processing datetime to use. If None, uses current time.
+    update_version : bool
+        Whether to update the product version.
+    new_version : str, optional
+        New version string. If None and update_version=True, appends ".1".
+
+    """
+    if processing_datetime is None:
+        processing_datetime = datetime.now()
+
+    with h5py.File(output_file, "a") as f:
+        # Update processing_start_datetime
+        old_datetime = f["/identification/processing_start_datetime"][()].decode(
+            "utf-8"
+        )
+        logger.info(
+            f"Updating processing_start_datetime from {old_datetime} to "
+            f"{processing_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+
+        # Delete and recreate the dataset with new value
+        f["/identification/processing_start_datetime"] = processing_datetime.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        # Optionally update product version
+        if update_version:
+            if new_version is None:
+                raise ValueError("new_version must be specified if update_version=True")
+
+            old_version = f["/identification/product_version"][()].decode("utf-8")
+            logger.info(f"Updating product_version from {old_version} to {new_version}")
+            f["/identification/product_version"][()] = new_version
+
+
 def recompute_perpendicular_baseline(
     input_file: Path,
     output_file: Path | None = None,
     subsample: int = 50,
+    new_version: str | None = None,
 ) -> Path:
     """Recompute perpendicular baseline from saved orbit data.
 
@@ -248,6 +297,8 @@ def recompute_perpendicular_baseline(
         Path to the output file. If not provided, will add "_corrected" suffix.
     subsample : int
         Subsampling factor for baseline computation, default 50.
+    new_version : str
+        New version string to replace in /identification/product_version.
 
     Returns
     -------
@@ -309,7 +360,7 @@ def recompute_perpendicular_baseline(
     # Interpolate back to full resolution
     baseline_full = interpolate_data(baseline_arr, shape=shape).astype("float32")
 
-    # Copy the input file to output, so we don't overwrite the original
+    # Copy the input file to output so we don't overwrite the original
     logger.info(f"Copying {input_file} to {output_file}")
     shutil.copy(input_file, output_file)
 
@@ -318,29 +369,16 @@ def recompute_perpendicular_baseline(
     with h5py.File(output_file, "a") as hf:
         hf["/corrections/perpendicular_baseline"][:] = baseline_full
 
+    logger.info("Updating metadata timestamps")
+    update_metadata_timestamps(
+        output_file,
+        processing_datetime=datetime.now(),
+        new_version=new_version,
+    )
+
     logger.info(f"Successfully wrote perpendicular baseline to {output_file}")
     return output_file
 
 
-def main(
-    input_file: Path,
-    output_file: Path | None = None,
-    subsample: int = 50,
-) -> None:
-    """Recompute perpendicular baseline from saved orbit data.
-
-    Parameters
-    ----------
-    input_file : Path
-        Path to the input OPERA DISP-S1 NetCDF file.
-    output_file : Path, optional
-        Path to the output file. If not provided, will add "_corrected" suffix.
-    subsample : int
-        Subsampling factor for baseline computation, default 50.
-
-    """
-    recompute_perpendicular_baseline(input_file, output_file, subsample)
-
-
 if __name__ == "__main__":
-    tyro.cli(main)
+    tyro.cli(recompute_perpendicular_baseline)

@@ -34,7 +34,10 @@ def recomputed_file(tmp_path_factory):
 
     tmp_dir = tmp_path_factory.mktemp("baseline_test")
     output_file = tmp_dir / "test_output.nc"
-    recompute_perpendicular_baseline(test_file, output_file, subsample=50)
+    # Don't update metadata in tests to keep tests deterministic
+    recompute_perpendicular_baseline(
+        test_file, output_file, subsample=50, update_metadata=False
+    )
     return output_file
 
 
@@ -99,6 +102,59 @@ def test_recompute_baseline_attributes(recomputed_file):
             units = units.decode("utf-8")
         assert units == "meters"
         assert "grid_mapping" in baseline_dset.attrs
+
+
+def test_metadata_update(test_file, tmp_path):
+    """Test that metadata timestamps are updated correctly."""
+    output_file = tmp_path / "test_metadata.nc"
+
+    # Get original metadata
+    with h5py.File(test_file) as f:
+        original_datetime = f["/identification/processing_start_datetime"][()].decode(
+            "utf-8"
+        )
+        original_version = f["/identification/product_version"][()].decode("utf-8")
+
+    # Recompute with metadata update
+    recompute_perpendicular_baseline(
+        test_file, output_file, subsample=50, update_metadata=True, update_version=False
+    )
+
+    # Check that processing_start_datetime was updated
+    with h5py.File(output_file) as f:
+        new_datetime = f["/identification/processing_start_datetime"][()].decode(
+            "utf-8"
+        )
+        new_version = f["/identification/product_version"][()].decode("utf-8")
+
+    assert new_datetime != original_datetime
+    assert new_version == original_version
+
+
+def test_version_update(test_file, tmp_path):
+    """Test that product version is updated correctly."""
+    output_file = tmp_path / "test_version.nc"
+
+    # Get original version
+    with h5py.File(test_file) as f:
+        original_version = f["/identification/product_version"][()].decode("utf-8")
+
+    # Recompute with version update
+    recompute_perpendicular_baseline(
+        test_file,
+        output_file,
+        subsample=50,
+        update_metadata=True,
+        update_version=True,
+        new_version="1.1",
+    )
+
+    # Check that version was updated
+    with h5py.File(output_file) as f:
+        new_version = f["/identification/product_version"][()].decode("utf-8")
+
+    assert new_version == "1.1"
+    assert new_version != original_version
 
 
 if __name__ == "__main__":

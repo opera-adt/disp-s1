@@ -267,9 +267,9 @@ def update_metadata_timestamps(
         )
 
         # Delete and recreate the dataset with new value
-        f["/identification/processing_start_datetime"] = processing_datetime.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        f["/identification/processing_start_datetime"][()] = (
+            processing_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        ).encode("utf-8")
 
         # Optionally update product version
         if update_version:
@@ -278,7 +278,7 @@ def update_metadata_timestamps(
 
             old_version = f["/identification/product_version"][()].decode("utf-8")
             logger.info(f"Updating product_version from {old_version} to {new_version}")
-            f["/identification/product_version"][()] = new_version
+            f["/identification/product_version"][()] = new_version.encode("utf-8")
 
 
 def recompute_perpendicular_baseline(

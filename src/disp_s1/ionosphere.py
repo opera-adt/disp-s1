@@ -203,7 +203,7 @@ def get_archive_name(
     if legacy:
         return f"{ionosphere_type.value}{archive_date.doy}0.{archive_date.year[2:]}i.Z"
 
-    product_type = "RAP" if ionosphere_type == "jprg" else "FIN"
+    product_type = "RAP" if ionosphere_type == IonosphereType.JPRG else "FIN"
     return f"JPL0OPS{product_type}_{archive_date.year}{archive_date.doy}0000_01D_02H_GIM.INX.gz"  # noqa: E501
 
 
@@ -230,82 +230,118 @@ def download_ionosphere_file(
     ------
     requests.exceptions.HTTPError
         If download fails
+    subprocess.CalledProcessError
+        If `gunzip` command fails
 
     """
+    logger.debug(f"Attempting to download from: {url}")
     response = session.get(url, stream=True)
     response.raise_for_status()
 
     archive_path = output_dir / Path(url).name
+    logger.debug(f"Saving compressed file to: {archive_path}")
     with open(archive_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=1024 * 1024):
             f.write(chunk)
 
     # Extract the downloaded file
-    result = subprocess.run(
-        ["gunzip", "-c", str(archive_path)], check=True, capture_output=True
-    )
+    logger.debug(f"Uncompressing {archive_path}")
+    try:
+        result = subprocess.run(
+            ["gunzip", "-c", str(archive_path)], check=True, capture_output=True
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        logger.error(f"Failed to uncompress {archive_path}: {e}")
+        # Clean up the failed download
+        if archive_path.exists():
+            archive_path.unlink()
+        raise
 
     output_path = archive_path.with_suffix("")
     output_path.write_bytes(result.stdout)
+    logger.info(f"Successfully created uncompressed file: {output_path}")
 
     # Clean up compressed file
+    logger.debug(f"Removing compressed file: {archive_path}")
     archive_path.unlink()
 
     return output_path
 
 
-@dataclass
-class DownloadConfig:
-    """Configuration for ionosphere file download."""
-
-    input_files: list[Path]
-    output_dir: Path
-    ionosphere_type: IonosphereType = IonosphereType("jplg")
-    username: str | None = None
-    password: str | None = None
-    download_endpoint: str = DEFAULT_DOWNLOAD_ENDPOINT
-
-
-def download_ionosphere_files(config: DownloadConfig) -> list[Path]:
+def download_ionosphere_files(
+    input_files: list[Path],
+    output_dir: Path,
+    ionosphere_type: IonosphereType = IonosphereType("jplg"),
+    username: str | None = None,
+    password: str | None = None,
+    download_endpoint: str = DEFAULT_DOWNLOAD_ENDPOINT,
+) -> list[Path]:
     """Download ionosphere files for multiple input files.
+
+    This function processes a list of Sentinel-1 SAFE or OPERA CSLC files,
+    determines the unique acquisition dates, and downloads the corresponding
+    ionosphere correction files from the NASA CDDIS archive.
+
+    It avoids re-downloading files that already exist in the output directory
+    and processes each unique date only once.
 
     Parameters
     ----------
-    config : DownloadConfig
-        Download configuration parameters
+    input_files : list[Path]
+        A list of paths to input SAFE or CSLC files.
+    output_dir : Path
+        Directory to save downloaded and uncompressed ionosphere files.
+    ionosphere_type : IonosphereType, optional
+        Type of ionosphere file to download (e.g., 'jplg', 'jprg').
+        Defaults to IonosphereType("jplg").
+    username : str, optional
+        EarthData Login username. If not provided, it will be sought in
+        the user's .netrc file.
+    password : str, optional
+        EarthData Login password. If not provided, it will be sought in
+        the user's .netrc file.
+    download_endpoint : str, optional
+        The base URL for the CDDIS ionosphere archive.
+        Defaults to DEFAULT_DOWNLOAD_ENDPOINT.
 
     Returns
     -------
     list[Path]
-        Paths to downloaded ionosphere files
+        A list of paths to the downloaded (or existing) uncompressed
+        ionosphere files, corresponding one-to-one with the `input_files`.
 
     Raises
     ------
     ValueError
-        If authentication credentials are missing
+        If authentication credentials are missing (and not in .netrc) or
+        if an input file does not match SAFE or CSLC naming conventions.
     IonosphereFileNotFoundError
-        If a required ionosphere file cannot be found
+        If a required ionosphere file for a specific date cannot be
+        found in the archive.
 
     """
     # Get credentials if not provided
-    username = config.username
-    password = config.password
+    username_val = username
+    password_val = password
 
-    if not (username and password):
+    if not (username_val and password_val):
         try:
             parsed = netrc.netrc().authenticators(DEFAULT_EDL_ENDPOINT)
-            assert parsed is not None
-            username, _, password = parsed
+            if parsed is None:
+                raise TypeError
+            username_val, _, password_val = parsed
         except (FileNotFoundError, TypeError):
             raise ValueError(
                 "No authentication credentials provided and none found in .netrc"
             )
 
-    session = SessionWithHeaderRedirection(username, password)
-    downloaded_files = []
+    session = SessionWithHeaderRedirection(username_val, password_val)
 
-    for input_file in config.input_files:
-        # Try parsing as SAFE first, then CSLC
+    # 1. Find all unique acquisition dates from the input files
+    dates_to_process = set()
+    # Map ArchiveDate back to a YYYYMMDD string for errors/logging
+    date_str_map = {}
+    for input_file in input_files:
         try:
             date_str = parse_safe_date(input_file)
         except ValueError:
@@ -317,25 +353,74 @@ def download_ionosphere_files(config: DownloadConfig) -> list[Path]:
                 )
 
         archive_date = ArchiveDate.from_date_str(date_str)
+        dates_to_process.add(archive_date)
+        if archive_date not in date_str_map:
+            date_str_map[archive_date] = date_str
 
-        # Try both naming conventions
-        found = False
+    # Loop over unique dates and download files if they don't exist
+    # Map the processed date to its final local path
+    date_to_path_map: dict[ArchiveDate, Path] = {}
+    for archive_date in dates_to_process:
+        found_or_exists = False
+        date_str = date_str_map[archive_date]
+
+        # Try both naming conventions (legacy and new)
         for legacy in (True, False):
-            archive_name = get_archive_name(
-                config.ionosphere_type, archive_date, legacy
-            )
-            url = f"{config.download_endpoint}/{archive_date.year}/{archive_date.doy}/{archive_name}"  # noqa: E501
+            archive_name = get_archive_name(ionosphere_type, archive_date, legacy)
 
-            response = session.head(url)
-            if response.status_code == 200:
-                output_file = download_ionosphere_file(url, config.output_dir, session)
-                downloaded_files.append(output_file)
-                found = True
-                break
+            # This is the path to the final uncompressed file
+            expected_output_path = output_dir / Path(archive_name).with_suffix("")
 
-        if not found:
+            # Check if the uncompressed file already exists
+            if expected_output_path.exists():
+                logger.info(
+                    f"Using existing ionosphere file for date {date_str}: "
+                    f"{expected_output_path}"
+                )
+                date_to_path_map[archive_date] = expected_output_path
+                found_or_exists = True
+                break  # Found it, no need to check other format or download
+
+            # If not, check the remote archive
+            url = f"{download_endpoint}/{archive_date.year}/{archive_date.doy}/{archive_name}"  # noqa: E501
+
+            try:
+                response = session.head(url)
+                response.raise_for_status()
+
+                # HEAD was successful
+                logger.info(
+                    f"Downloading ionosphere file for date {date_str} from {url}"
+                )
+                output_file = download_ionosphere_file(url, output_dir, session)
+                date_to_path_map[archive_date] = output_file
+                found_or_exists = True
+                break  # Downloaded, stop checking formats
+
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    logger.debug(f"File not found at {url}, trying next format.")
+                    continue  # Try the next format (legacy=False)
+                else:
+                    logger.error(f"HTTP error checking {url}: {e}")
+                    raise  # Re-raise other HTTP errors
+
+        if not found_or_exists:
             raise IonosphereFileNotFoundError(
-                f"No ionosphere file found for date {date_str}"
+                f"No ionosphere file found for date {date_str} (Year: "
+                f"{archive_date.year}, DoY: {archive_date.doy})"
             )
 
-    return downloaded_files
+    # Map the original input files to their corresponding (now local) iono paths
+    output_paths = []
+    for input_file in input_files:
+        # We know these parse because they did in the first loop
+        try:
+            date_str = parse_safe_date(input_file)
+        except ValueError:
+            date_str = parse_cslc_date(input_file)
+
+        archive_date = ArchiveDate.from_date_str(date_str)
+        output_paths.append(date_to_path_map[archive_date])
+
+    return output_paths

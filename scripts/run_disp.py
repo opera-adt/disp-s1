@@ -107,6 +107,7 @@ def run_local(runconfig_file: Path) -> None:
     script_name = Path(__file__).parent / "rename_output.py"
     rc = pge_runconfig.RunConfig.from_yaml(runconfig_file)
     cfg = rc.to_workflow()
+    # BAD:
     cfg.worker_settings.gpu_enabled = True
     disp_s1.main.run(cfg, rc)
     output_dir = rc.product_path_group.output_directory
@@ -310,13 +311,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--bulk-compressed-dir",
         type=Path,
-        default=Path("compressed_slcs_bulk"),
+        default=Path("compressed_slcs"),
         help="Folder accumulating all compressed_*.h5 across runs (forward mode)",
     )
     parser.add_argument(
         "--forward-outputs-dir",
         type=Path,
-        default=Path("forward_outputs"),
+        default=Path("outputs"),
         help="Where to stage the single newest product per forward run",
     )
 

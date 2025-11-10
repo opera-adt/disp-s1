@@ -133,8 +133,8 @@ def parse_safe_date(filename: Path | str) -> str:
     safe_name = Path(filename).stem
 
     pattern = (
-        r"(?P<mission_id>S1A|S1B)_(?P<beam_mode>IW)_(?P<product_type>SLC)(?P<resolution>_)_"
-        r"(?P<level>1)(?P<class>S)(?P<pol>SH|SV|DH|DV)_(?P<start_ts>\d{8}T\d{6})_"
+        r"(?P<mission_id>S1A|S1B|S1C)_(?P<beam_mode>IW)_(?P<product_type>SLC|GRD|ETA)(?P<resolution>_)_"
+        r"(?P<level>1|A)(?P<class>S|X)(?P<pol>SH|SV|DH|DV)_(?P<start_ts>\d{8}T\d{6})_"
         r"(?P<stop_ts>\d{8}T\d{6})_(?P<orbit_num>\d{6})_(?P<data_take_id>[0-9A-F]{6})_"
         r"(?P<product_id>[0-9A-F]{4})"
     )

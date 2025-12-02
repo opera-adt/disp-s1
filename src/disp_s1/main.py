@@ -25,7 +25,7 @@ from opera_utils.geometry import get_incidence_angles
 from disp_s1 import __version__, product
 from disp_s1._masking import create_layover_shadow_masks, create_mask_from_distance
 from disp_s1._ps import precompute_ps
-from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig, StaticLayersRunConfig
+from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig
 
 from ._reference import ReferencePoint, read_reference_point
 from ._utils import (
@@ -48,7 +48,7 @@ class OutputPathsWithCorrections(OutputPaths):
 @log_runtime
 def run(
     cfg: DisplacementWorkflow,
-    pge_runconfig: RunConfig | StaticLayersRunConfig,
+    pge_runconfig: RunConfig,
     debug: bool = False,
 ) -> None:
     """Run the displacement workflow on a stack of SLCs.

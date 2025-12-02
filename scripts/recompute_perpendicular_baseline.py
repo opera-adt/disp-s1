@@ -236,6 +236,7 @@ def interpolate_data(
 def update_metadata_timestamps(
     output_file: Path,
     processing_datetime: datetime | None = None,
+    update_processing_time: bool = True,
     update_version: bool = False,
     new_version: str | None = None,
 ) -> None:
@@ -247,6 +248,9 @@ def update_metadata_timestamps(
         Path to the output file to update.
     processing_datetime : datetime, optional
         Processing datetime to use. If None, uses current time.
+    update_processing_time : bool
+        Whether to update the processing_start_datetime field.
+        Default = True
     update_version : bool
         Whether to update the product version.
     new_version : str, optional
@@ -258,18 +262,19 @@ def update_metadata_timestamps(
 
     with h5py.File(output_file, "a") as f:
         # Update processing_start_datetime
-        old_datetime = f["/identification/processing_start_datetime"][()].decode(
-            "utf-8"
-        )
-        logger.info(
-            f"Updating processing_start_datetime from {old_datetime} to "
-            f"{processing_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
-        )
+        if update_processing_time:
+            old_datetime = f["/identification/processing_start_datetime"][()].decode(
+                "utf-8"
+            )
+            logger.info(
+                f"Updating processing_start_datetime from {old_datetime} to "
+                f"{processing_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
 
-        # Delete and recreate the dataset with new value
-        f["/identification/processing_start_datetime"][()] = (
-            processing_datetime.strftime("%Y-%m-%d %H:%M:%S")
-        ).encode("utf-8")
+            proc_str = (processing_datetime.strftime("%Y-%m-%d %H:%M:%S")).encode(
+                "utf-8"
+            )
+            f["/identification/processing_start_datetime"][()] = proc_str
 
         # Optionally update product version
         if update_version:
@@ -285,6 +290,7 @@ def recompute_perpendicular_baseline(
     input_file: Path,
     output_file: Path | None = None,
     subsample: int = 50,
+    update_processing_time: bool = True,
     new_version: str | None = None,
 ) -> Path:
     """Recompute perpendicular baseline from saved orbit data.
@@ -297,7 +303,10 @@ def recompute_perpendicular_baseline(
         Path to the output file. If not provided, will add "_corrected" suffix.
     subsample : int
         Subsampling factor for baseline computation, default 50.
-    new_version : str
+    update_processing_time : bool
+        Whether to update the processing_start_datetime field.
+        Default = True
+    new_version : str, optional
         New version string to replace in /identification/product_version.
 
     Returns
@@ -373,6 +382,8 @@ def recompute_perpendicular_baseline(
     update_metadata_timestamps(
         output_file,
         processing_datetime=datetime.now(),
+        update_processing_time=update_processing_time,
+        update_version=new_version is not None,
         new_version=new_version,
     )
 

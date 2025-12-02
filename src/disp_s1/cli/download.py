@@ -12,6 +12,7 @@ from disp_s1._dem import stage_dem as stage_dem
 from disp_s1._water import create_water_mask
 from disp_s1.ionosphere import (
     DEFAULT_DOWNLOAD_ENDPOINT,
+    DownloadConfig,
     IonosphereType,
     download_ionosphere_files,
 )
@@ -64,7 +65,7 @@ def ionosphere(
     INPUT_FILES: One or more SAFE or CSLC files to download ionosphere data for.
     Multiple files can be specified as space-separated arguments.
     """
-    downloaded_files = download_ionosphere_files(
+    config = DownloadConfig(
         input_files=list(input_files),
         output_dir=output_dir,
         ionosphere_type=IonosphereType(ionosphere_type),
@@ -72,6 +73,7 @@ def ionosphere(
         password=password,
         download_endpoint=download_endpoint,
     )
+    downloaded_files = download_ionosphere_files(config)
 
     for file in downloaded_files:
         click.echo(f"Downloaded: {file}")

@@ -1,7 +1,6 @@
 {
   // Hawaii, Kilauea
   "23210": {
-    "forward_mode_network_size": 3,
     "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
     "phase_linking": {
@@ -18,7 +17,6 @@
     }
   },
   "23211": {
-    "forward_mode_network_size": 3,
     "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
     "phase_linking": {
@@ -35,7 +33,6 @@
     }
   },
   "33038": {
-    "forward_mode_network_size": 3,
     "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
     "phase_linking": {
@@ -52,7 +49,6 @@
     }
   },
   "33039": {
-    "forward_mode_network_size": 3,
     "recommended_temporal_coherence_threshold": 0.6,
     "recommended_similarity_threshold": 0.3,
     "phase_linking": {

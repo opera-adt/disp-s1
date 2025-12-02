@@ -169,7 +169,7 @@ def polygon_from_bounding_box(
 # ============================================================================
 def set_aws_env_from_saml(profile_name="saml-pub", region='us-west-2'):
     """
-    Reads temporary AWS credentials from a SAML/SSO profile and sets them as environment variables.
+    Reads temporary AWS credentials from a SAML/SSO profile.
     """
     session = Session(profile=profile_name)
     creds = session.get_credentials().get_frozen_credentials()
@@ -353,7 +353,11 @@ def create_water_mask(
         Buffer in km to add to land water regions (reduces masking), by default 1
     ocean_buffer : int, optional
         Buffer in km to add to ocean water regions (reduces masking), by default 1
-
+    aws_profile : str, optional
+        AWS CLI profile used to access S3 data. Default is "saml-pub".
+    aws_region : str, optional
+        AWS region where the S3 data resides. Default is "us-west-2".
+        
     Raises
     ------
     ValueError

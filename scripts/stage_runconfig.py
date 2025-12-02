@@ -18,17 +18,14 @@ import argparse
 import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import requests
 import s3fs
 import yaml
 from botocore.session import Session
 from osgeo import gdal
-from shapely.geometry import box
 
 # Import OPERA utilities
 import opera_utils
@@ -94,6 +91,7 @@ class DataStager:
     """Handles staging of OPERA DISP-S1 data."""
 
     def __init__(self, runconfig_path: Path, output_dir: Path, aws_profile: str = "saml-pub"):
+        "Initialize the staging object with configuration paths and AWS profile."""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.runconfig_path = runconfig_path
         self.output_dir = output_dir
@@ -467,7 +465,7 @@ class DataStager:
         return staged_files
 
     def _stage_dem_basic(self, output_file: Path, bbox: tuple) -> None:
-        """Basic DEM staging using GDAL directly (fallback when disp_s1 not installed)."""
+        """Stage basic DEM using GDAL directly (fallback when disp_s1 not installed)."""
         from osgeo import gdal
         
         x_min, y_min, x_max, y_max = bbox

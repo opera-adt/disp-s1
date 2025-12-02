@@ -9,6 +9,7 @@ from opera_utils import get_burst_ids_for_frame
 
 from disp_s1._dem import S3_DEM_BUCKET, S3_LONLAT_VRT_KEY
 from disp_s1._dem import stage_dem as stage_dem
+from disp_s1._water import create_water_mask
 from disp_s1.ionosphere import (
     DEFAULT_DOWNLOAD_ENDPOINT,
     DownloadConfig,
@@ -185,4 +186,82 @@ def dem(
         s3_bucket=s3_bucket,
         s3_key=s3_key,
         debug=debug,
+    )
+
+@download_group.command()
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=Path),
+    default="water_binary_mask.tif",
+    help="Output water mask filepath (TIF format)",
+)
+@click.option("--frame-id", type=int, help="Sentinel-1 OPERA Frame ID")
+@click.option(
+    "-b", "--bbox", type=float, nargs=4, help="Bounding box (WSEN, decimal degrees)"
+)
+@click.option(
+    "-m", "--margin", type=int, default=5, help="Margin for bounding box in km"
+)
+@click.option(
+    "--land-buffer",
+    type=int,
+    default=0,
+    help="Buffer in km for land water regions (reduces masking).",
+    show_default=True,
+)
+@click.option(
+    "--ocean-buffer",
+    type=int,
+    default=0,
+    help="Buffer in km for ocean water regions (reduces masking).",
+    show_default=True,
+)
+@click.option(
+    "--aws-profile",
+    type=str,
+    default="saml-pub",
+    help="AWS profile",
+    show_default=True,
+)
+@click.option(
+    "--aws-region",
+    type=str,
+    default="us-west-2",
+    help="AWS region",
+    show_default=True,
+)
+@click.option("--debug/--no-debug", default=False, help="Enable debug logging")
+def water(
+    output: Path,
+    frame_id: int | None,
+    bbox: Bbox | None,
+    margin: int,
+    land_buffer: int,
+    ocean_buffer: int,
+    aws_profile: str,
+    aws_region: str,
+    debug:bool,
+) -> None:
+    """Stage a water mask for local processing."""
+    if frame_id is None and bbox is None:
+        raise ValueError("Must provide --frame-id or --bbox")
+    if frame_id is not None:
+        if bbox is not None:
+            raise ValueError("Only may provide --frame-id or --bbox")
+        # bbox = opera_utils.get_frame_bbox(frame_id=frame_id)
+        utm_epsg, utm_bounds = opera_utils.get_frame_bbox(frame_id=frame_id)
+        bbox = opera_utils.reproject_bounds(
+            utm_bounds, src_epsg=utm_epsg, dst_epsg=4326
+        )
+
+    return create_water_mask(
+        output=output,
+        bbox=bbox,
+        margin=margin,
+        land_buffer=land_buffer,
+        ocean_buffer=ocean_buffer,
+        aws_profile=aws_profile,
+        aws_region=aws_region,
+        debug=debug
     )

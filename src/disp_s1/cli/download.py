@@ -188,6 +188,7 @@ def dem(
         debug=debug,
     )
 
+
 @download_group.command()
 @click.option(
     "-o",
@@ -241,7 +242,7 @@ def water(
     ocean_buffer: int,
     aws_profile: str,
     aws_region: str,
-    debug:bool,
+    debug: bool,
 ) -> None:
     """Stage a water mask for local processing."""
     if frame_id is None and bbox is None:
@@ -263,5 +264,5 @@ def water(
         ocean_buffer=ocean_buffer,
         aws_profile=aws_profile,
         aws_region=aws_region,
-        debug=debug
+        debug=debug,
     )

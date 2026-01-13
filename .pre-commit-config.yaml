@@ -33,6 +33,7 @@ repos:
         additional_dependencies:
         - types-setuptools
         - types-requests
+        - types-PyYAML
         - "pydantic>=2.4"
 
 

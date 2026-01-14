@@ -8,3 +8,4 @@ pytest-randomly
 pytest-recording
 pytest-xdist
 ruff
+types-PyYAML

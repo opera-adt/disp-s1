@@ -1,5 +1,4 @@
-"""
-Water mask creation utilities for OPERA data.
+"""Water mask creation utilities for OPERA data.
 
 This module provides tools for creating water masks for specific geographic regions
 by downloading data from S3 and processing it with GDAL.
@@ -48,6 +47,7 @@ def margin_km_to_deg(margin_in_km: float) -> float:
     -------
     float
         Margin in degrees
+
     """
     km_to_deg_at_equator = 1000.0 / (EARTH_APPROX_CIRCUMFERENCE / 360.0)
     return margin_in_km * km_to_deg_at_equator
@@ -67,6 +67,7 @@ def margin_km_to_longitude_deg(margin_in_km: float, lat: float = 0) -> float:
     -------
     float
         Margin in longitude degrees
+
     """
     delta_lon = (
         180 * 1000 * margin_in_km / (np.pi * EARTH_RADIUS * np.cos(np.pi * lat / 180))
@@ -87,6 +88,7 @@ def check_dateline(poly: Polygon) -> list[Polygon]:
     list[Polygon]
         List containing either the original polygon (if no crossing) or
         two polygons split at the dateline
+
     """
     x_min, _, x_max, _ = poly.bounds
 
@@ -138,6 +140,7 @@ def polygon_from_bounding_box(
     -------
     Polygon
         Polygon in EPSG:4326 coordinates with margin applied
+
     """
     lon_min, lat_min, lon_max, lat_max = bounding_box
     logger.info(f"Creating polygon from bounding box: {bounding_box}")
@@ -167,18 +170,16 @@ def polygon_from_bounding_box(
 # ============================================================================
 # Water Mask Creation
 # ============================================================================
-def set_aws_env_from_saml(profile_name="saml-pub", region='us-west-2'):
-    """
-    Reads temporary AWS credentials from a SAML/SSO profile and sets them as environment variables.
-    """
+def set_aws_env_from_saml(profile_name="saml-pub", region="us-west-2"):
+    """Set AWS credentials from SAML/SSO profile as environment variables."""
     session = Session(profile=profile_name)
     creds = session.get_credentials().get_frozen_credentials()
 
-    gdal.SetConfigOption('AWS_REGION', region)
-    gdal.SetConfigOption('AWS_SECRET_ACCESS_KEY', creds.secret_key)
-    gdal.SetConfigOption('AWS_ACCESS_KEY_ID', creds.access_key)
-    gdal.SetConfigOption('AWS_SESSION_TOKEN', creds.token)
-    
+    gdal.SetConfigOption("AWS_REGION", region)
+    gdal.SetConfigOption("AWS_SECRET_ACCESS_KEY", creds.secret_key)
+    gdal.SetConfigOption("AWS_ACCESS_KEY_ID", creds.access_key)
+    gdal.SetConfigOption("AWS_SESSION_TOKEN", creds.token)
+
     print("AWS credentials loaded into environment from profile:", profile_name)
 
 
@@ -214,6 +215,7 @@ def download_map(polys: list[Polygon], outfile: Path) -> list[Path]:
         If GDAL cannot open the S3 data
     Exception
         If download fails after retries
+
     """
     logger.info(f"Creating water mask VRT: {outfile}")
 
@@ -275,52 +277,53 @@ def create_mask_from_distance(
         Buffer in km to add to land water regions (reduces masking), by default 1
     ocean_buffer : int, optional
         Buffer in km to add to ocean water regions (reduces masking), by default 1
+
     """
     logger.info(f"Creating binary mask from distance raster: {water_distance_file}")
-    
+
     # Open the distance raster
     ds = gdal.Open(str(water_distance_file), gdal.GA_ReadOnly)
     if ds is None:
         raise RuntimeError(f"Failed to open water distance file: {water_distance_file}")
-    
+
     band = ds.GetRasterBand(1)
     distance_data = band.ReadAsArray()
-    
+
     # Create binary mask
     # Negative values = land water (lakes, rivers) - keep if > -land_buffer km
     # Positive values = ocean water - keep if < ocean_buffer km
     # Convert km to same units as distance raster (typically meters)
     land_threshold = -land_buffer * 1000
     ocean_threshold = ocean_buffer * 1000
-    
+
     # Create mask: 1 = keep (not water), 0 = mask (water)
     mask = np.ones_like(distance_data, dtype=np.uint8)
     mask[(distance_data >= land_threshold) & (distance_data <= ocean_threshold)] = 0
-    
+
     # Write output
-    driver = gdal.GetDriverByName('GTiff')
+    driver = gdal.GetDriverByName("GTiff")
     out_ds = driver.Create(
         str(output_file),
         ds.RasterXSize,
         ds.RasterYSize,
         1,
         gdal.GDT_Byte,
-        options=['COMPRESS=LZW']
+        options=["COMPRESS=LZW"],
     )
-    
+
     out_ds.SetGeoTransform(ds.GetGeoTransform())
     out_ds.SetProjection(ds.GetProjection())
-    
+
     out_band = out_ds.GetRasterBand(1)
     out_band.WriteArray(mask)
     out_band.SetNoDataValue(255)
-    
+
     # Close datasets
     out_band = None
     out_ds = None
     band = None
     ds = None
-    
+
     logger.info(f"Binary mask created: {output_file}")
 
 
@@ -333,7 +336,7 @@ def create_water_mask(
     ocean_buffer: int = 1,
     debug: bool = False,
     aws_profile: str = "saml-pub",
-    aws_region: str = "us-west-2"
+    aws_region: str = "us-west-2",
 ) -> None:
     """Create a binary water mask for a geographic region.
 
@@ -353,6 +356,12 @@ def create_water_mask(
         Buffer in km to add to land water regions (reduces masking), by default 1
     ocean_buffer : int, optional
         Buffer in km to add to ocean water regions (reduces masking), by default 1
+    debug : bool, optional
+        Enable debug logging, by default False
+    aws_profile : str, optional
+        AWS profile name for authentication, by default "saml-pub"
+    aws_region : str, optional
+        AWS region to use, by default "us-west-2"
 
     Raises
     ------
@@ -360,13 +369,13 @@ def create_water_mask(
         If neither frame_id nor bbox is provided
     RuntimeError
         If S3 data cannot be accessed
+
     """
     if debug:
         logger.setLevel(logging.DEBUG)
 
     # Auth
-    set_aws_env_from_saml(profile_name=aws_profile,
-                          region=aws_region)
+    set_aws_env_from_saml(profile_name=aws_profile, region=aws_region)
 
     # Validate inputs
     if frame_id is None and bbox is None:
@@ -383,6 +392,7 @@ def create_water_mask(
     logger.info(f"Using S3 data from: {MASK_S3_URL}")
 
     # Create polygon from bounding box
+    assert bbox is not None  # bbox is guaranteed to be set by now
     poly = polygon_from_bounding_box(bbox, margin)
 
     # Handle dateline crossing

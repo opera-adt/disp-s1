@@ -70,7 +70,7 @@ RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 RUN pip install git+https://github.com/isce-framework/spurt@v0.1.1
 # --no-deps because they are installed with conda
-RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.25.3
+RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.25.4
 RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.42.3
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .

@@ -197,6 +197,11 @@ def compute_baselines_from_orbits(
 
         pos_ref, velocity = orbit_ref.interpolate(az_time_ref)
         pos_sec, _ = orbit_sec.interpolate(az_time_sec)
+
+        # Accounting for along-track shift
+        rvelunit = velocity / np.linalg.norm(velocity)
+        pos_sec = pos_sec - np.dot(pos_sec - pos_ref, rvelunit) * rvelunit
+
         b = baseline.compute(
             llh_rad, pos_ref, pos_sec, range_ref, range_sec, velocity, ellipsoid
         )
@@ -290,7 +295,8 @@ def recompute_perpendicular_baseline(
     input_file: Path,
     output_file: Path | None = None,
     subsample: int = 50,
-    update_processing_time: bool = True,
+    update_metadata: bool = True,
+    update_version: bool = False,
     new_version: str | None = None,
 ) -> Path:
     """Recompute perpendicular baseline from saved orbit data.
@@ -303,11 +309,15 @@ def recompute_perpendicular_baseline(
         Path to the output file. If not provided, will add "_corrected" suffix.
     subsample : int
         Subsampling factor for baseline computation, default 50.
-    update_processing_time : bool
+    update_metadata : bool
         Whether to update the processing_start_datetime field.
         Default = True
+    update_version : bool
+        Whether to update the product version field.
+        Default = False
     new_version : str, optional
         New version string to replace in /identification/product_version.
+        Required if update_version=True.
 
     Returns
     -------
@@ -382,8 +392,8 @@ def recompute_perpendicular_baseline(
     update_metadata_timestamps(
         output_file,
         processing_datetime=datetime.now(),
-        update_processing_time=update_processing_time,
-        update_version=new_version is not None,
+        update_processing_time=update_metadata,
+        update_version=update_version,
         new_version=new_version,
     )
 

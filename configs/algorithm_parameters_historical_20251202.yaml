@@ -57,7 +57,7 @@ interferogram_network:
   reference_idx:
   # Max `n` to form the nearest-`n` interferograms by index.
   #   Type: integer | null.
-  max_bandwidth: 4
+  max_bandwidth: 3
   # Maximum temporal baseline of interferograms.
   #   Type: integer | null.
   max_temporal_baseline:

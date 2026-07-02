@@ -1,5 +1,4 @@
-"""
-Standalone DISP-S1 processing pipeline (Sentinel-1), driven from the CLI.
+r"""Standalone DISP-S1 processing pipeline (Sentinel-1), driven from the CLI.
 
 Given a directory of CSLC/GSLC bursts, this runs the full local pipeline for an
 arbitrary site/track/frame:
@@ -14,7 +13,7 @@ All site-specific values (input dir, work dir, frame id, spatial extent,
 ministack size, ...) are command-line arguments; nothing is hardcoded to a
 particular acquisition. Run ``python disp_s1_process.py --help`` for options.
 
-Example
+Example:
 -------
     python disp_s1_process.py \\
         --cslc-dir /path/to/gslcs/t161_343970_iw2 \\
@@ -22,39 +21,33 @@ Example
         --frame-id 42997 \\
         --extent "4.3561,51.0951 : 4.373,51.1031" \\
         --ministack-size 15 --buffer 500
+
 """
 
 from __future__ import annotations
 
 import argparse
 import contextlib
-import io
 import logging
 import os
 import re
 import shutil
 import sys
 import time
-import warnings
 from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from types import SimpleNamespace
 
 import h5py
 import numpy as np
 import pandas as pd
 import rasterio
-import rioxarray  # noqa: F401
 import xarray as xr
 import zarr
-from pyproj import CRS, Transformer
-from rasterio.windows import from_bounds
-
 from dolphin._log import setup_logging
 from dolphin.stack import CompressedSlcPlan
-from dolphin.timeseries import estimate_velocity, datetime_to_float
+from dolphin.timeseries import datetime_to_float, estimate_velocity
 from dolphin.utils import get_max_memory_usage
 from dolphin.workflows import PreprocessOptions, SnaphuOptions
 from dolphin.workflows.config import (
@@ -70,9 +63,11 @@ from dolphin.workflows.config import (
 )
 from dolphin.workflows.corrections import CorrectionOptions
 from dolphin.workflows.displacement import run as run_displacement
+from opera_utils import OPERA_DATASET_NAME, group_by_burst, group_by_date
+from pyproj import CRS, Transformer
+from rasterio.windows import from_bounds
 
 from disp_s1 import __version__
-from disp_s1 import main as disp_s1_main
 from disp_s1._masking import create_mask_from_distance
 from disp_s1._ps import precompute_ps
 from disp_s1.main import (
@@ -92,31 +87,15 @@ from disp_s1.pge_runconfig import (
     StaticAncillaryFileGroup,
 )
 
-from opera_utils import OPERA_DATASET_NAME, group_by_burst
-from opera_utils.disp._enums import (
-    CorrectionDataset,
-    DisplacementDataset,
-    QualityDataset,
-    ReferenceMethod,
-)
-from opera_utils.disp._netcdf import create_virtual_stack
-from opera_utils.disp._rebase import NaNPolicy, create_rebased_displacement
-from opera_utils.disp._reference import _get_reference_row_col, get_reference_values
-from opera_utils.disp._reformat import (
-    _get_zarr_encoding,
-    _get_transform,
-    _to_shard_dict,
-    _write_rebased_stack,
-    combine_quality_masks,
-)
-from opera_utils.disp._utils import _clamp_chunk_dict, _get_netcdf_encoding, round_mantissa
-from opera_utils import group_by_date
+# NOTE: the whole `opera_utils.disp` subpackage (and rioxarray) is imported lazily
+# inside reformat_stack_custom so the `process` stage can run in environments that
+# lack the reformat toolchain (e.g. disp-patch-env without rioxarray).
 
 # ── DEFAULTS ──────────────────────────────────────────────────────────────────
 # Site-specific values now come from the CLI (see build_parser / main).
-DEFAULT_MS_SIZE = 15        # acquisitions per ministack
-DEFAULT_BUFFER = 500.0      # metres of padding around the requested extent
-DEFAULT_MAX_COMP = 5        # compressed SLCs carried forward per burst (historical)
+DEFAULT_MS_SIZE = 15  # acquisitions per ministack
+DEFAULT_BUFFER = 500.0  # metres of padding around the requested extent
+DEFAULT_MAX_COMP = 5  # compressed SLCs carried forward per burst (historical)
 DEFAULT_FORWARD_WINDOW = 5  # real SLCs per forward run: n-4, n-3, n-2, n-1, n
 DEFAULT_GSLC_GLOB = "t*.h5"  # pattern matching (G)SLC HDF5 files, any burst id
 
@@ -124,6 +103,7 @@ DEFAULT_GSLC_GLOB = "t*.h5"  # pattern matching (G)SLC HDF5 files, any burst id
 os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.1")
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
+
 
 def make_cfg(
     cslc_files: list[Path],
@@ -152,7 +132,7 @@ def make_cfg(
             use_evd=False,
             beta=0.0,
             zero_correlation_threshold=0.0,
-            shp_method='glrt',
+            shp_method="glrt",
             shp_alpha=0.001,
             mask_input_ps=False,
             baseline_lag=None,
@@ -181,7 +161,11 @@ def make_cfg(
                 single_tile_reoptimize=False,
             ),
         ),
-        worker_settings={"gpu_enabled": gpu, "threads_per_worker": 8, "n_parallel_bursts": 1},
+        worker_settings={
+            "gpu_enabled": gpu,
+            "threads_per_worker": 8,
+            "n_parallel_bursts": 1,
+        },
     )
 
 
@@ -276,7 +260,9 @@ def _ensure_correction_options(cfg):
         cfg.correction_options = CorrectionOptions()
 
 
-def run_no_corrections(cfg: DisplacementWorkflow, pge_runconfig: RunConfig, debug: bool = False):
+def run_no_corrections(
+    cfg: DisplacementWorkflow, pge_runconfig: RunConfig, debug: bool = False
+):
     """Run disp_s1 without the corrections workflow (no geometry files available)."""
     cfg.work_directory.mkdir(exist_ok=True, parents=True)
     if cfg.log_file is None:
@@ -322,6 +308,7 @@ def run_no_corrections(cfg: DisplacementWorkflow, pge_runconfig: RunConfig, debu
 
         if is_forward:
             from dolphin.timeseries import _redo_reference
+
             final_ts_paths, final_residual_paths = _redo_reference(
                 out_paths.timeseries_paths,
                 out_paths.timeseries_residual_paths,
@@ -377,7 +364,7 @@ def reformat_stack_custom(
     apply_ionospheric_corrections: bool = False,
     quality_datasets: Sequence[str] | None = ["recommended_mask"],
     quality_thresholds: Sequence[float] | None = [0.5],
-    reference_method: ReferenceMethod = ReferenceMethod.HIGH_COHERENCE,
+    reference_method: "ReferenceMethod | None" = None,
     reference_row: int | None = None,
     reference_col: int | None = None,
     reference_lon: float | None = None,
@@ -388,6 +375,26 @@ def reformat_stack_custom(
     do_round: bool = True,
 ) -> None:
     """Reformat per-ministack .nc outputs into a unified zarr/netcdf stack."""
+    import rioxarray  # noqa: F401  (registers the .rio xarray accessor)
+    from opera_utils.disp._enums import (
+        CorrectionDataset,
+        DisplacementDataset,
+        QualityDataset,
+        ReferenceMethod,
+    )
+    from opera_utils.disp._netcdf import create_virtual_stack
+    from opera_utils.disp._reference import _get_reference_row_col
+    from opera_utils.disp._reformat import (
+        _get_transform,
+        _get_zarr_encoding,
+        _to_shard_dict,
+        _write_rebased_stack,
+    )
+    from opera_utils.disp._utils import _get_netcdf_encoding, round_mantissa
+
+    if reference_method is None:
+        reference_method = ReferenceMethod.HIGH_COHERENCE
+
     start_time = time.time()
 
     if Path(output_name).suffix == ".nc":
@@ -406,7 +413,7 @@ def reformat_stack_custom(
     if apply_ionospheric_corrections:
         corrections.append(CorrectionDataset.IONOSPHERIC_DELAY)
 
-    out_chunk_dict = dict(zip(["time", "y", "x"], out_chunks))
+    dict(zip(["time", "y", "x"], out_chunks))
     out_shard_dict = _to_shard_dict(out_chunks, shard_factors)
 
     input_files = sorted(input_files, key=lambda p: _parse_dates_from_filename(p))
@@ -415,7 +422,11 @@ def reformat_stack_custom(
         [_parse_dates_from_filename(p)[0].replace(tzinfo=None) for p in input_files]
     )
 
-    process_chunk_dict = {"time": 1, "y": process_chunk_size[0], "x": process_chunk_size[1]}
+    process_chunk_dict = {
+        "time": 1,
+        "y": process_chunk_size[0],
+        "x": process_chunk_size[1],
+    }
 
     ds = xr.open_mfdataset(input_files, engine="h5netcdf", chunks=process_chunk_dict)
     ds_corrections = xr.open_mfdataset(
@@ -435,24 +446,33 @@ def reformat_stack_custom(
 
     if out_format == "zarr":
         encoding = _get_zarr_encoding(ds_minimal, out_chunks, add_coords=True)
-        ds_minimal.chunk(out_shard_dict).to_zarr(output_name, encoding=encoding, mode="w", consolidated=False)
+        ds_minimal.chunk(out_shard_dict).to_zarr(
+            output_name, encoding=encoding, mode="w", consolidated=False
+        )
     else:
         encoding = _get_netcdf_encoding(ds_minimal, out_chunks)
-        ds_minimal.to_netcdf(output_name, engine="h5netcdf", encoding=encoding, mode="w")
+        ds_minimal.to_netcdf(
+            output_name, engine="h5netcdf", encoding=encoding, mode="w"
+        )
     print(f"Wrote minimal dataset in {time.time() - start_time:.1f}s")
 
     QUALITY_DATASETS = list(QualityDataset)
     remaining_dsets = [
-        str(d) for d in QUALITY_DATASETS
+        str(d)
+        for d in QUALITY_DATASETS
         if d != "water_mask" and str(d) not in drop_vars
     ]
-    ds_remaining = ds[remaining_dsets].chunk({
-        "time": out_shard_dict["time"],
-        "y": process_chunk_dict["y"],
-        "x": process_chunk_dict["x"],
-    })
+    ds_remaining = ds[remaining_dsets].chunk(
+        {
+            "time": out_shard_dict["time"],
+            "y": process_chunk_dict["y"],
+            "x": process_chunk_dict["x"],
+        }
+    )
     da_temp_coh = ds.temporal_coherence[::15]
-    avg_coherence = da_temp_coh.shape[0] / (1.0 / da_temp_coh).sum(dim="time", skipna=False, min_count=1)
+    avg_coherence = da_temp_coh.shape[0] / (1.0 / da_temp_coh).sum(
+        dim="time", skipna=False, min_count=1
+    )
     ds_remaining["average_temporal_coherence"] = xr.DataArray(
         avg_coherence, dims=("y", "x"), coords={"y": ds.y, "x": ds.x}
     )
@@ -464,11 +484,19 @@ def reformat_stack_custom(
     print(f"Writing remaining variables: {list(ds_remaining.data_vars)}")
     if out_format == "zarr":
         encoding = _get_zarr_encoding(ds_remaining, out_chunks)
-        ds_remaining.to_zarr(output_name, encoding=encoding, mode="a", consolidated=False)
+        ds_remaining.to_zarr(
+            output_name, encoding=encoding, mode="a", consolidated=False
+        )
     else:
-        create_virtual_stack(input_files=input_files, output=output_name, dataset_names=remaining_dsets)
-        encoding = _get_netcdf_encoding(ds_remaining[["average_temporal_coherence"]], out_chunks)
-        ds_remaining[["average_temporal_coherence"]].to_netcdf(output_name, engine="h5netcdf", encoding=encoding, mode="a")
+        create_virtual_stack(
+            input_files=input_files, output=output_name, dataset_names=remaining_dsets
+        )
+        encoding = _get_netcdf_encoding(
+            ds_remaining[["average_temporal_coherence"]], out_chunks
+        )
+        ds_remaining[["average_temporal_coherence"]].to_netcdf(
+            output_name, engine="h5netcdf", encoding=encoding, mode="a"
+        )
     print(f"Wrote remaining at {time.time() - start_time:.1f}s")
 
     if reference_method == ReferenceMethod.HIGH_COHERENCE:
@@ -478,9 +506,12 @@ def reformat_stack_custom(
         transform = _get_transform(ds)
         crs = CRS.from_wkt(ds.spatial_ref.crs_wkt)
         ref_row, ref_col = _get_reference_row_col(
-            row=reference_row, col=reference_col,
-            lon=reference_lon, lat=reference_lat,
-            crs=crs, transform=transform,
+            row=reference_row,
+            col=reference_col,
+            lon=reference_lon,
+            lat=reference_lat,
+            crs=crs,
+            transform=transform,
         )
         good_pixel_mask = np.asarray(ds.water_mask) == 1
     elif reference_method in (ReferenceMethod.BORDER, ReferenceMethod.MEDIAN):
@@ -491,11 +522,14 @@ def reformat_stack_custom(
 
     correction_names = [str(c).split("/")[-1] for c in corrections]
     _write_rebased_stack(
-        ds, output_name, out_chunks=out_chunks,
+        ds,
+        output_name,
+        out_chunks=out_chunks,
         reference_datetimes=reference_datetimes,
         data_var=DisplacementDataset.DISPLACEMENT,
         reference_method=reference_method,
-        reference_row=ref_row, reference_col=ref_col,
+        reference_row=ref_row,
+        reference_col=ref_col,
         border_pixels=reference_border_pixels,
         good_pixel_mask=good_pixel_mask,
         out_format=out_format,
@@ -510,7 +544,9 @@ def reformat_stack_custom(
 
     if str(DisplacementDataset.SHORT_WAVELENGTH) in ds.data_vars:
         _write_rebased_stack(
-            ds, output_name, out_chunks=out_chunks,
+            ds,
+            output_name,
+            out_chunks=out_chunks,
             reference_datetimes=reference_datetimes,
             data_var=DisplacementDataset.SHORT_WAVELENGTH,
             out_format=out_format,
@@ -526,6 +562,7 @@ def reformat_stack_custom(
 
 
 # ── VELOCITY ──────────────────────────────────────────────────────────────────
+
 
 def add_velocity_to_zarr(zarr_path: str, weight_by_coherence: bool = True) -> None:
     """Estimate linear LOS velocity from displacement and append to zarr."""
@@ -550,13 +587,16 @@ def add_velocity_to_zarr(zarr_path: str, weight_by_coherence: bool = True) -> No
     print("Estimating velocity with dolphin...")
     vel = np.array(estimate_velocity(x_arr, disp, weight_stack))
 
-    ds_out = xr.Dataset({
-        "velocity": xr.DataArray(
-            vel.astype(np.float32), dims=("y", "x"),
-            coords={"y": ds.y, "x": ds.x},
-            attrs={"units": "m/yr", "long_name": "Linear LOS velocity"},
-        ),
-    })
+    ds_out = xr.Dataset(
+        {
+            "velocity": xr.DataArray(
+                vel.astype(np.float32),
+                dims=("y", "x"),
+                coords={"y": ds.y, "x": ds.x},
+                attrs={"units": "m/yr", "long_name": "Linear LOS velocity"},
+            ),
+        }
+    )
 
     encoding = {"velocity": {"compressors": [], "chunks": (256, 256)}}
     ds_out.to_zarr(zarr_path, mode="a", consolidated=False, encoding=encoding)
@@ -565,6 +605,7 @@ def add_velocity_to_zarr(zarr_path: str, weight_by_coherence: bool = True) -> No
 
 
 # ── RECHUNK ───────────────────────────────────────────────────────────────────
+
 
 def rechunk_zarr(zarr_path: str, out_path: str, chunks: dict = None) -> None:
     """Rechunk zarr store for efficient spatial access."""
@@ -589,7 +630,9 @@ def rechunk_zarr(zarr_path: str, out_path: str, chunks: dict = None) -> None:
 S1_WAVELENGTH_M = 0.05546576
 
 
-def _crop_tif(path: str | Path, xmin: float, ymin: float, xmax: float, ymax: float) -> np.ndarray:
+def _crop_tif(
+    path: str | Path, xmin: float, ymin: float, xmax: float, ymax: float
+) -> np.ndarray:
     """Read and crop a GeoTIFF to the given bounding box, returning a 2-D float32 array.
 
     nodata (0) is replaced with NaN.
@@ -623,19 +666,38 @@ def _to_db(amp: np.ndarray) -> np.ndarray:
     return np.where(amp > 0, 20.0 * np.log10(amp), np.nan).astype(np.float32)
 
 
-def _write_2d(zarr_path: str, name: str, data: np.ndarray, y, x, attrs: dict, chunks=(256, 256)):
-    da = xr.DataArray(data.astype(np.float32), dims=("y", "x"), coords={"y": y, "x": x}, attrs=attrs)
-    enc = {name: {"compressors": [], "chunks": chunks}}
-    da.to_dataset(name=name).to_zarr(zarr_path, mode="a", consolidated=False, encoding=enc)
-
-
-def _write_3d(zarr_path: str, name: str, data: np.ndarray, time_coords, y, x, attrs: dict, chunks=(4, 256, 256)):
+def _write_2d(
+    zarr_path: str, name: str, data: np.ndarray, y, x, attrs: dict, chunks=(256, 256)
+):
     da = xr.DataArray(
-        data.astype(np.float32), dims=("time", "y", "x"),
-        coords={"time": time_coords, "y": y, "x": x}, attrs=attrs,
+        data.astype(np.float32), dims=("y", "x"), coords={"y": y, "x": x}, attrs=attrs
     )
     enc = {name: {"compressors": [], "chunks": chunks}}
-    da.to_dataset(name=name).to_zarr(zarr_path, mode="a", consolidated=False, encoding=enc)
+    da.to_dataset(name=name).to_zarr(
+        zarr_path, mode="a", consolidated=False, encoding=enc
+    )
+
+
+def _write_3d(
+    zarr_path: str,
+    name: str,
+    data: np.ndarray,
+    time_coords,
+    y,
+    x,
+    attrs: dict,
+    chunks=(4, 256, 256),
+):
+    da = xr.DataArray(
+        data.astype(np.float32),
+        dims=("time", "y", "x"),
+        coords={"time": time_coords, "y": y, "x": x},
+        attrs=attrs,
+    )
+    enc = {name: {"compressors": [], "chunks": chunks}}
+    da.to_dataset(name=name).to_zarr(
+        zarr_path, mode="a", consolidated=False, encoding=enc
+    )
 
 
 def append_extra_layers(
@@ -683,53 +745,83 @@ def append_extra_layers(
     if not comp_slcs:
         print("  WARNING: no compressed SLC HDF5 found, skipping.")
     else:
+
         def _comp_dates(f: Path) -> tuple[str, str]:
             """Return (date_first, date_last) from compressed SLC filename."""
             m = re.search(r"compressed_\S+?_\d{8}_(\d{8})_(\d{8})\.h5", f.name)
             return (m.group(1), m.group(2)) if m else ("", "")
 
-        comp_info = [(d1, d2, f) for f in comp_slcs if "" not in (d := _comp_dates(f)) for d1, d2 in [d]]
+        comp_info = [
+            (d1, d2, f)
+            for f in comp_slcs
+            if "" not in (d := _comp_dates(f))
+            for d1, d2 in [d]
+        ]
         comp_info.sort(key=lambda t: t[0])
 
         # Crop indices (same for all files — shared grid)
         with h5py.File(comp_info[0][2]) as h:
-            xc = h["data/x_coordinates"][:]   # 5 m spacing
-            yc = h["data/y_coordinates"][:]   # 10 m spacing
+            xc = h["data/x_coordinates"][:]  # 5 m spacing
+            yc = h["data/y_coordinates"][:]  # 10 m spacing
         xi = np.where((xc >= xmin) & (xc <= xmax))[0]
         yi = np.where((yc >= ymin) & (yc <= ymax))[0]
         xi_s, xi_e = int(xi[0]), int(xi[-1]) + 1
         yi_s, yi_e = int(yi[0]), int(yi[-1]) + 1
-        xi_e -= (xi_e - xi_s) % 2   # ensure even length for ×2 multilook
+        xi_e -= (xi_e - xi_s) % 2  # ensure even length for ×2 multilook
 
         # Build full-time-axis arrays: each date gets the value of the ministack
         # that contains it; last ministack wins if ranges overlap.
-        mean_amp_3d  = np.full((len(sorted_dates), ny, nx), np.nan, dtype=np.float32)
-        adisp_3d     = np.full((len(sorted_dates), ny, nx), np.nan, dtype=np.float32)
+        mean_amp_3d = np.full((len(sorted_dates), ny, nx), np.nan, dtype=np.float32)
+        adisp_3d = np.full((len(sorted_dates), ny, nx), np.nan, dtype=np.float32)
 
         for date_first, date_last, f in comp_info:
             with h5py.File(f) as h:
-                vv    = h["data/VV"][yi_s:yi_e, xi_s:xi_e]
+                vv = h["data/VV"][yi_s:yi_e, xi_s:xi_e]
                 adisp = h["data/amplitude_dispersion"][yi_s:yi_e, xi_s:xi_e]
             amp = np.abs(vv).astype(np.float32)
-            amp_ml   = (amp[:,0::2]   + amp[:,1::2])   / 2
-            adisp_ml = (adisp[:,0::2] + adisp[:,1::2]) / 2
+            amp_ml = (amp[:, 0::2] + amp[:, 1::2]) / 2
+            adisp_ml = (adisp[:, 0::2] + adisp[:, 1::2]) / 2
             adisp_ml = adisp_ml.astype(np.float32)
             adisp_ml[adisp_ml <= 0] = np.nan
 
             for t_idx, d in enumerate(sorted_dates):
                 if date_first <= d <= date_last:
-                    mean_amp_3d[t_idx]  = _to_db(amp_ml)[:ny, :nx]
-                    adisp_3d[t_idx]     = adisp_ml[:ny, :nx]
+                    mean_amp_3d[t_idx] = _to_db(amp_ml)[:ny, :nx]
+                    adisp_3d[t_idx] = adisp_ml[:ny, :nx]
 
-        _write_3d(zarr_path, "mean_amplitude", mean_amp_3d, time_coords, y_coords, x_coords,
-                  {"long_name": "Compressed-SLC mean amplitude (|VV|, multilooked ×2 in x)",
-                   "units": "dB  (20*log10(linear amplitude))",
-                   "note": "constant within each ministack [date_first, date_last]"})
-        _write_3d(zarr_path, "amplitude_dispersion", adisp_3d, time_coords, y_coords, x_coords,
-                  {"long_name": "Amplitude dispersion (std/mean) from compressed SLC ministack",
-                   "note": "constant within each ministack [date_first, date_last]"})
-        print(f"  Written mean_amplitude, amplitude_dispersion  "
-              f"({len(comp_info)} ministacks → {len(sorted_dates)} time steps)")
+        _write_3d(
+            zarr_path,
+            "mean_amplitude",
+            mean_amp_3d,
+            time_coords,
+            y_coords,
+            x_coords,
+            {
+                "long_name": (
+                    "Compressed-SLC mean amplitude (|VV|, multilooked ×2 in x)"
+                ),
+                "units": "dB  (20*log10(linear amplitude))",
+                "note": "constant within each ministack [date_first, date_last]",
+            },
+        )
+        _write_3d(
+            zarr_path,
+            "amplitude_dispersion",
+            adisp_3d,
+            time_coords,
+            y_coords,
+            x_coords,
+            {
+                "long_name": (
+                    "Amplitude dispersion (std/mean) from compressed SLC ministack"
+                ),
+                "note": "constant within each ministack [date_first, date_last]",
+            },
+        )
+        print(
+            "  Written mean_amplitude, amplitude_dispersion  "
+            f"({len(comp_info)} ministacks → {len(sorted_dates)} time steps)"
+        )
 
     # ── 2. Stack quality summary metrics (2-D, from zarr variables) ───────────
     print("\n[2/6] Stack quality summary metrics (from zarr)...")
@@ -738,19 +830,42 @@ def append_extra_layers(
         return np.nanmedian(da.values.astype(np.float32), axis=0)
 
     med_tc = _nanmedian_2d(ds.temporal_coherence)
-    _write_2d(zarr_path, "median_temporal_coherence", med_tc, y_coords, x_coords,
-              {"long_name": "Median temporal coherence across stack", "units": "0-1"})
+    _write_2d(
+        zarr_path,
+        "median_temporal_coherence",
+        med_tc,
+        y_coords,
+        x_coords,
+        {"long_name": "Median temporal coherence across stack", "units": "0-1"},
+    )
 
     med_ps = _nanmedian_2d(ds.phase_similarity)
-    _write_2d(zarr_path, "median_phase_similarity", med_ps, y_coords, x_coords,
-              {"long_name": "Median phase similarity across stack", "units": "0-1"})
+    _write_2d(
+        zarr_path,
+        "median_phase_similarity",
+        med_ps,
+        y_coords,
+        x_coords,
+        {"long_name": "Median phase similarity across stack", "units": "0-1"},
+    )
 
-    sum_res = np.nansum(np.abs(ds.timeseries_inversion_residuals.values.astype(np.float32)), axis=0)
+    sum_res = np.nansum(
+        np.abs(ds.timeseries_inversion_residuals.values.astype(np.float32)), axis=0
+    )
     sum_res[sum_res == 0] = np.nan
-    _write_2d(zarr_path, "sum_inversion_residuals", sum_res, y_coords, x_coords,
-              {"long_name": "Sum of absolute timeseries inversion residuals", "units": "rad"})
+    _write_2d(
+        zarr_path,
+        "sum_inversion_residuals",
+        sum_res,
+        y_coords,
+        x_coords,
+        {"long_name": "Sum of absolute timeseries inversion residuals", "units": "rad"},
+    )
 
-    print("  Written median_temporal_coherence, median_phase_similarity, sum_inversion_residuals")
+    print(
+        "  Written median_temporal_coherence, median_phase_similarity,"
+        " sum_inversion_residuals"
+    )
 
     # ── 3. CRLB (time, y, x) ─────────────────────────────────────────────────
     print("\n[3/6] CRLB (phase std in rad + displacement uncertainty)...")
@@ -766,10 +881,10 @@ def append_extra_layers(
             for cf in sorted((ms_dir / "crlb").glob("crlb_*.tif")):
                 m = re.search(r"crlb_(\d{8})\.tif", cf.name)
                 if m:
-                    date_to_crlb[m.group(1)] = cf   # last batch wins
+                    date_to_crlb[m.group(1)] = cf  # last batch wins
 
     # Build time-ordered arrays aligned to zarr time axis
-    crlb_rad   = np.full((len(zarr_dates), ny, nx), np.nan, dtype=np.float32)
+    crlb_rad = np.full((len(zarr_dates), ny, nx), np.nan, dtype=np.float32)
     for t_idx, (date_str, _) in enumerate(sorted(zarr_dates.items())):
         cf = date_to_crlb.get(date_str)
         if cf is None:
@@ -778,16 +893,38 @@ def append_extra_layers(
         arr = _crop_tif(cf, xmin, ymin, xmax, ymax)
         crlb_rad[t_idx] = arr[:ny, :nx]
 
-    _write_3d(zarr_path, "crlb_rad", crlb_rad, time_coords, y_coords, x_coords,
-              {"long_name": "Cramér-Rao lower bound — phase std", "units": "rad"})
+    _write_3d(
+        zarr_path,
+        "crlb_rad",
+        crlb_rad,
+        time_coords,
+        y_coords,
+        x_coords,
+        {"long_name": "Cramér-Rao lower bound — phase std", "units": "rad"},
+    )
 
     # Convert to displacement uncertainty: sigma_d = (wavelength / 4π) * sigma_phi
     factor = wavelength / (4 * np.pi)
     crlb_disp = crlb_rad * factor
-    _write_3d(zarr_path, "crlb_displacement", crlb_disp, time_coords, y_coords, x_coords,
-              {"long_name": "Cramér-Rao lower bound — displacement uncertainty", "units": "m",
-               "wavelength_m": wavelength, "conversion": "wavelength / (4*pi) * crlb_rad"})
-    print(f"  Written crlb_rad, crlb_displacement ({sum(v is not None for v in [date_to_crlb.get(d) for d in zarr_dates])} dates matched)")
+    _write_3d(
+        zarr_path,
+        "crlb_displacement",
+        crlb_disp,
+        time_coords,
+        y_coords,
+        x_coords,
+        {
+            "long_name": "Cramér-Rao lower bound — displacement uncertainty",
+            "units": "m",
+            "wavelength_m": wavelength,
+            "conversion": "wavelength / (4*pi) * crlb_rad",
+        },
+    )
+    print(
+        "  Written crlb_rad, crlb_displacement"
+        f" ({sum(v is not None for v in [date_to_crlb.get(d) for d in zarr_dates])}"
+        " dates matched)"
+    )
 
     # ── 4. Per-date amplitude (dB) + stack amplitude dispersion from GSLC ──────
     print("\n[4/6] Per-date amplitude (dB) from GSLC HDF5...")
@@ -822,9 +959,18 @@ def append_extra_layers(
         amplitude[t_idx] = _to_db(amp_ml)[:ny, :nx]
         matched += 1
 
-    _write_3d(zarr_path, "amplitude", amplitude, time_coords, y_coords, x_coords,
-              {"long_name": "Per-date amplitude from GSLC (multilook ×2 in x)",
-               "units": "dB  (20*log10(linear amplitude))"})
+    _write_3d(
+        zarr_path,
+        "amplitude",
+        amplitude,
+        time_coords,
+        y_coords,
+        x_coords,
+        {
+            "long_name": "Per-date amplitude from GSLC (multilook ×2 in x)",
+            "units": "dB  (20*log10(linear amplitude))",
+        },
+    )
     print(f"  Written amplitude (dB) ({matched}/{len(sorted_dates)} dates matched)")
 
     # ── 5. Stack amplitude dispersion + mean amplitude dB from zarr (2-D) ──────
@@ -832,26 +978,44 @@ def append_extra_layers(
     # All stats computed in linear space; mean amplitude also stored in dB.
     print("\n[5/6] Stack amplitude dispersion + mean amplitude dB from zarr...")
     ds2 = xr.open_zarr(zarr_path)
-    amp_db = ds2["amplitude"].values.astype(np.float32)        # (time, y, x)
+    amp_db = ds2["amplitude"].values.astype(np.float32)  # (time, y, x)
     amp_lin = np.where(np.isfinite(amp_db), 10.0 ** (amp_db / 20.0), np.nan)
     with np.errstate(invalid="ignore", divide="ignore"):
         amp_mean_lin = np.nanmean(amp_lin, axis=0)
-        amp_std      = np.nanstd(amp_lin, axis=0, ddof=1)
+        amp_std = np.nanstd(amp_lin, axis=0, ddof=1)
         stack_amp_disp = np.where(amp_mean_lin > 0, amp_std / amp_mean_lin, np.nan)
-        amp_mean_db    = np.where(amp_mean_lin > 0, 20.0 * np.log10(amp_mean_lin), np.nan)
+        amp_mean_db = np.where(amp_mean_lin > 0, 20.0 * np.log10(amp_mean_lin), np.nan)
 
-    _write_2d(zarr_path, "mean_amplitude_db", amp_mean_db.astype(np.float32),
-              y_coords, x_coords,
-              {"long_name": "Time-mean amplitude from full GSLC stack",
-               "units": "dB  (20*log10(mean linear amplitude))",
-               "note": f"mean computed in linear space, then converted to dB ({matched} dates)"})
-    _write_2d(zarr_path, "stack_amplitude_dispersion", stack_amp_disp.astype(np.float32),
-              y_coords, x_coords,
-              {"long_name": "Amplitude dispersion from full GSLC stack (std/mean, linear)",
-               "units": "dimensionless",
-               "note": f"computed from zarr amplitude variable ({matched} dates)"})
+    _write_2d(
+        zarr_path,
+        "mean_amplitude_db",
+        amp_mean_db.astype(np.float32),
+        y_coords,
+        x_coords,
+        {
+            "long_name": "Time-mean amplitude from full GSLC stack",
+            "units": "dB  (20*log10(mean linear amplitude))",
+            "note": (
+                f"mean computed in linear space, then converted to dB ({matched} dates)"
+            ),
+        },
+    )
+    _write_2d(
+        zarr_path,
+        "stack_amplitude_dispersion",
+        stack_amp_disp.astype(np.float32),
+        y_coords,
+        x_coords,
+        {
+            "long_name": "Amplitude dispersion from full GSLC stack (std/mean, linear)",
+            "units": "dimensionless",
+            "note": f"computed from zarr amplitude variable ({matched} dates)",
+        },
+    )
     print(f"  Written mean_amplitude_db (mean={np.nanmean(amp_mean_db):.1f} dB)")
-    print(f"  Written stack_amplitude_dispersion (mean={np.nanmean(stack_amp_disp):.3f})")
+    print(
+        f"  Written stack_amplitude_dispersion (mean={np.nanmean(stack_amp_disp):.3f})"
+    )
 
     # ── 6. Consolidate ────────────────────────────────────────────────────────
     print("\n[6/6] Consolidating zarr metadata...")
@@ -897,9 +1061,9 @@ def run_processing(
     # Number of acquisition dates common to all bursts (indices align across bursts).
     n_dates = min(len(v) for v in reals_by_burst.values())
 
-    n_hist = n_dates // ms_size          # full historical ministacks
-    hist_count = n_hist * ms_size        # real dates consumed by historical
-    n_forward = n_dates - hist_count     # leftover dates → one forward run each
+    n_hist = n_dates // ms_size  # full historical ministacks
+    hist_count = n_hist * ms_size  # real dates consumed by historical
+    n_forward = n_dates - hist_count  # leftover dates → one forward run each
     print(
         f"{n_bursts} burst(s), {n_dates} date(s): {n_hist} historical ministack(s) "
         f"of {ms_size} + {n_forward} forward product(s), {len(files)} total CSLCs"
@@ -984,8 +1148,9 @@ def run_processing(
             f"[historical {ms_i + 1}/{n_hist}] date idx {s}-{e - 1}  "
             f"reals={len(batch_cslcs)}  ccslc_in={len(comp_slc_files)}"
         )
-        _run_batch(batch_cslcs, comp_slc_files, work_dir, output_dir,
-                   ProcessingMode.HISTORICAL)
+        _run_batch(
+            batch_cslcs, comp_slc_files, work_dir, output_dir, ProcessingMode.HISTORICAL
+        )
         _harvest_compressed(output_dir, work_dir)
 
         new_amp_disp = sorted(work_dir.rglob("*_amp_dispersion.tif"))
@@ -994,7 +1159,10 @@ def run_processing(
             amp_disp_files = new_amp_disp
         if new_amp_mean:
             amp_mean_files = new_amp_mean
-        print(f"  → compressed store: {len(_pick_comp(max_comp))} (latest {max_comp}/burst)")
+        print(
+            f"  → compressed store: {len(_pick_comp(max_comp))} (latest"
+            f" {max_comp}/burst)"
+        )
         run_idx += 1
 
     # ── Forward products (one run per leftover date) ──────────────────────────
@@ -1002,7 +1170,7 @@ def run_processing(
     # run_no_corrections keeps only the newest date's product, so one product/run.
     for k, n in enumerate(range(hist_count, n_dates)):
         s = max(0, n - (forward_window - 1))
-        batch_cslcs = [f for b in burst_ids for f in reals_by_burst[b][s:n + 1]]
+        batch_cslcs = [f for b in burst_ids for f in reals_by_burst[b][s : n + 1]]
         comp_fwd = _pick_comp(1)  # exactly 1 ccslc per burst
         if not comp_fwd:
             raise SystemExit("No compressed SLC available for forward mode.")
@@ -1015,8 +1183,7 @@ def run_processing(
             f"window reals idx {s}-{n} ({len(batch_cslcs)} files)  "
             f"ccslc={len(comp_fwd)}"
         )
-        _run_batch(batch_cslcs, comp_fwd, work_dir, output_dir,
-                   ProcessingMode.FORWARD)
+        _run_batch(batch_cslcs, comp_fwd, work_dir, output_dir, ProcessingMode.FORWARD)
         run_idx += 1
 
 
@@ -1047,43 +1214,65 @@ def build_parser() -> argparse.ArgumentParser:
     )
     # ── Optional processing knobs ──
     p.add_argument(
-        "-ms", "--ministack-size", type=int, default=DEFAULT_MS_SIZE,
+        "-ms",
+        "--ministack-size",
+        type=int,
+        default=DEFAULT_MS_SIZE,
         help="Number of acquisitions per ministack.",
     )
     p.add_argument(
-        "--num-compressed", type=int, default=DEFAULT_MAX_COMP,
+        "--num-compressed",
+        type=int,
+        default=DEFAULT_MAX_COMP,
         help="Compressed SLCs carried forward per burst (historical).",
     )
     p.add_argument(
-        "--forward-window", type=int, default=DEFAULT_FORWARD_WINDOW,
-        help="Real SLCs per forward run (window ending at the product date, e.g. "
-             "5 → n-4,n-3,n-2,n-1,n). Each forward run also uses 1 compressed SLC.",
+        "--forward-window",
+        type=int,
+        default=DEFAULT_FORWARD_WINDOW,
+        help=(
+            "Real SLCs per forward run (window ending at the product date, e.g. "
+            "5 → n-4,n-3,n-2,n-1,n). Each forward run also uses 1 compressed SLC."
+        ),
     )
     p.add_argument(
-        "--buffer", type=float, default=DEFAULT_BUFFER,
+        "--buffer",
+        type=float,
+        default=DEFAULT_BUFFER,
         help="Padding (metres) added around the extent bbox.",
     )
     p.add_argument("--gpu", action="store_true", help="Enable GPU (JAX) processing.")
     p.add_argument(
-        "--gslc-glob", default=DEFAULT_GSLC_GLOB,
+        "--gslc-glob",
+        default=DEFAULT_GSLC_GLOB,
         help="Glob for (G)SLC HDF5 files under --cslc-dir (any burst id by default).",
     )
     p.add_argument(
-        "--zarr-out", type=Path, default=None,
+        "--zarr-out",
+        type=Path,
+        default=None,
         help="Output zarr path (default: <work-dir>/disp.zarr).",
     )
     p.add_argument(
-        "--reference-coherence-threshold", type=float, default=0.7,
+        "--reference-coherence-threshold",
+        type=float,
+        default=0.7,
         help="Coherence threshold for HIGH_COHERENCE reference selection.",
     )
     p.add_argument(
-        "--weight-by-coherence", action="store_true",
+        "--weight-by-coherence",
+        action="store_true",
         help="Weight the velocity fit by average temporal coherence.",
     )
     p.add_argument(
-        "--stages", nargs="+", choices=STAGES, default=list(STAGES),
-        help="Which pipeline stages to run (default: all). Later stages reuse "
-             "existing outputs, so you can re-run e.g. only 'velocity extra'.",
+        "--stages",
+        nargs="+",
+        choices=STAGES,
+        default=list(STAGES),
+        help=(
+            "Which pipeline stages to run (default: all). Later stages reuse "
+            "existing outputs, so you can re-run e.g. only 'velocity extra'."
+        ),
     )
     return p
 
@@ -1127,14 +1316,16 @@ def main(argv: list[str] | None = None) -> None:
             apply_ionospheric_corrections=False,
             quality_datasets=None,
             quality_thresholds=None,
-            reference_method=ReferenceMethod.HIGH_COHERENCE,
+            reference_method=None,  # -> HIGH_COHERENCE (resolved inside)
             reference_coherence_threshold=args.reference_coherence_threshold,
             out_chunks=(4, 256, 256),
         )
 
     if "velocity" in args.stages:
         print("\nEstimating velocity...")
-        add_velocity_to_zarr(str(zarr_out), weight_by_coherence=args.weight_by_coherence)
+        add_velocity_to_zarr(
+            str(zarr_out), weight_by_coherence=args.weight_by_coherence
+        )
 
     if "extra" in args.stages:
         print("\nAppending extra layers...")

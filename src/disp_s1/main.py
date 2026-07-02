@@ -27,6 +27,7 @@ from disp_s1._masking import create_layover_shadow_masks, create_mask_from_dista
 from disp_s1._ps import precompute_ps
 from disp_s1.pge_runconfig import AlgorithmParameters, RunConfig, StaticLayersRunConfig
 
+from ._log import InputValidationError
 from ._reference import ReferencePoint, read_reference_point
 from ._utils import (
     _convert_meters_to_radians,
@@ -36,6 +37,8 @@ from ._utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["InputValidationError"]
 
 
 @dataclass
@@ -74,6 +77,13 @@ def run(
 
     # Get the dates for any of the burst IDs
     date_to_files = group_by_date(cfg.cslc_file_list, date_idx=0)
+
+    # Fail fast on a malformed input stack before the expensive workflow runs.
+    if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
+        _assert_forward_mode_compressed(cfg.cslc_file_list)
+
+    _assert_no_large_temporal_gaps(date_to_files)
+
     datetimes_present = list(date_to_files.keys())
     # For forward mode, assume that the last processed was the second-to-last date
     *_, (second_to_last_date,), (_last_date,) = datetimes_present
@@ -414,6 +424,88 @@ def _assert_no_duplicate_dates(input_file_list: Sequence[Path]) -> None:
             file_string = "\n".join(file_list)
             msg += file_string
             raise ValueError(msg)
+
+
+def _assert_no_large_temporal_gaps(
+    date_to_files: Mapping[Sequence[datetime], Sequence[Path]] | Sequence[Path],
+    max_gap_days: float = 2 * 365.25,
+) -> None:
+    """Assert no gap larger than ~2 years between consecutive real SLC dates.
+
+    A multi-year gap in the input stack destroys interferometric coherence and
+    almost always indicates a malformed input list, so we fail fast. Compressed
+    SLCs are excluded here; only the real-SLC acquisition dates are checked.
+
+    Parameters
+    ----------
+    date_to_files : Mapping[Sequence[datetime], Sequence[Path]] | Sequence[Path]
+        Either a mapping from date tuple to the files acquired on that date, as
+        produced by ``group_by_date(cfg.cslc_file_list, date_idx=0)``, or a plain
+        file list (``cfg.cslc_file_list``) which is grouped internally. A date
+        whose files are all compressed SLCs is excluded from the gap check.
+    max_gap_days : float
+        Maximum allowed gap between consecutive real SLC dates, in days.
+        Default = 2 * 365.25 (two years).
+
+    Raises
+    ------
+    ValueError
+        If any consecutive pair of real SLC dates is more than ``max_gap_days``
+        apart.
+
+    """
+    if not isinstance(date_to_files, Mapping):
+        date_to_files = group_by_date(date_to_files, date_idx=0)
+    real_dates = sorted(
+        date_tuple[0]
+        for date_tuple, files in date_to_files.items()
+        if not all("compressed" in str(f).lower() for f in files)
+    )
+    for earlier, later in zip(real_dates, real_dates[1:]):
+        gap_days = (later - earlier).total_seconds() / 86400
+        if gap_days > max_gap_days:
+            msg = (
+                f"Temporal gap of {gap_days / 365.25:.2f} years between"
+                f" {earlier:%Y-%m-%d} and {later:%Y-%m-%d} exceeds the"
+                f" {max_gap_days / 365.25:.0f}-year limit for input SLCs."
+            )
+            raise InputValidationError(msg, error_code=1000)
+
+
+def _assert_forward_mode_compressed(
+    input_file_list: Sequence[Path],
+) -> None:
+    """Assert forward-mode inputs include a compressed SLC connected to the stack.
+
+    Forward mode is incremental, so it must be passed at least one compressed SLC
+    (CCSLC) summarizing the prior ministack. Each compressed SLC must also be
+    connected to the stack: its reference date must overlap the date coverage of
+    one of the input CSLCs — a real SLC's acquisition date, or another compressed
+    SLC's ``[start_date, end_date]`` group. A reference date that overlaps nothing
+    means the CCSLC belongs to a different reference epoch than the stack.
+
+    A compressed SLC is named ``compressed_<ref>_<start>_<end>``, so
+    ``get_dates`` returns ``(reference_date, start_date, end_date)``.
+
+    Parameters
+    ----------
+    input_file_list : Sequence[Path]
+        The input CSLC file list (``cfg.cslc_file_list``).
+
+    Raises
+    ------
+    ValueError
+        If no compressed SLC is present, or a compressed SLC's reference date
+        does not overlap any input CSLC.
+
+    """
+    compressed = [f for f in input_file_list if "compressed" in str(f).lower()]
+    if not compressed:
+        raise InputValidationError(
+            "Forward mode requires at least one compressed SLC (CCSLC) in the"
+            " input CSLC list, but none was found.",
+            error_code=2000,
+        )
 
 
 def _get_near_far_incidence_angles(geometry_files: list[Path]) -> tuple[float, float]:

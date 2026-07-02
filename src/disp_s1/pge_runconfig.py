@@ -32,6 +32,7 @@ from opera_utils import (
 )
 from pydantic import ConfigDict, Field, field_validator
 
+from ._log import InputValidationError
 from .enums import ProcessingMode
 
 
@@ -387,7 +388,8 @@ class RunConfig(YamlModel):
 
         if self.primary_executable.product_type == "DISP_S1_FORWARD":
             param_dict["interferogram_network"] = _create_forward_mode_network(
-                algo_params.forward_mode_network_size
+                algo_params.forward_mode_network_size,
+                cslc_file_list=cslc_file_list,
             )
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
@@ -592,7 +594,10 @@ def _parse_algorithm_overrides(
     return {}
 
 
-def _create_forward_mode_network(nearest_n: int = 3) -> InterferogramNetwork:
+def _create_forward_mode_network(
+    nearest_n: int = 3,
+    cslc_file_list: Iterable[PathOrStr] | None = None,
+) -> InterferogramNetwork:
     """Create a smaller interferogram network using only the last date.
 
     For forward mode where we only wish to produce one new product,
@@ -603,7 +608,28 @@ def _create_forward_mode_network(nearest_n: int = 3) -> InterferogramNetwork:
     create that nearest-3 network, and unwrap it.
     We use dolphin's "manual index" option in the `InterferogramNetwork` to
     select the last 4 dates.
+
+    When ``cslc_file_list`` is given, assert the stack is deep enough: the
+    manual indexes reach back ``nearest_n + 1`` positions from the last date,
+    so the ministack must contain at least that many SLCs.
     """
+    # The deepest index used is ``-(nearest_n + 1)`` (e.g. -4 for nearest-3),
+    # so the phase-linked stack needs at least ``nearest_n + 1`` SLCs.
+    min_slc = nearest_n + 1
+    if cslc_file_list is not None:
+        # Use a single burst as the template for the stack depth (all bursts
+        # share the same set of acquisition dates).
+        burst_to_file_list = group_by_burst(cslc_file_list)
+        burst_id = next(iter(burst_to_file_list))
+        num_slc = len(sort_files_by_date(burst_to_file_list[burst_id])[0])
+        if num_slc < min_slc:
+            raise InputValidationError(
+                f"Forward mode nearest-{nearest_n} network requires at least"
+                f" {min_slc} CSLCs in the input stack (including compressed CSLCs),"
+                f" but only {num_slc} were found.",
+                error_code=2002,
+            )
+
     indexes = [
         (-2, -1),
         (-3, -1),
@@ -613,7 +639,7 @@ def _create_forward_mode_network(nearest_n: int = 3) -> InterferogramNetwork:
         (-4, -3),
     ]
     if nearest_n == 4:
-        indexes.extend([(-5, -1), (-5, -2), (-5, -3), (-5, -2)])
+        indexes.extend([(-5, -1), (-5, -2), (-5, -3), (-5, -4)])
     return InterferogramNetwork(indexes=indexes)
 
 

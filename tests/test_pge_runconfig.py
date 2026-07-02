@@ -9,6 +9,10 @@ import pytest
 from dolphin.stack import CompressedSlcPlan
 
 from disp_s1 import pge_runconfig
+from disp_s1.main import (
+    _assert_forward_mode_compressed,
+    _assert_no_large_temporal_gaps,
+)
 from disp_s1.pge_runconfig import (
     AlgorithmParameters,
     DynamicAncillaryFileGroup,
@@ -490,3 +494,124 @@ def test_input_file_group_last_processed():
         cslc_file_list=["test_file.h5"], frame_id=12345, last_processed=last_proc_date
     )
     assert file_group_with_date.last_processed == last_proc_date
+
+
+def _make_cslc_names(n, burst="T042-088905-IW1"):
+    """Build ``n`` synthetic, burst-parseable CSLC filenames (one burst, distinct dates)."""
+    return [Path(f"{burst}_202201{i + 1:02d}_20240624.h5") for i in range(n)]
+
+
+class TestCreateForwardModeNetwork:
+    """Tests for `_create_forward_mode_network` and its stack-depth guard."""
+
+    def test_nearest_3_indexes(self):
+        net = pge_runconfig._create_forward_mode_network(3)
+        assert net.indexes == [
+            (-2, -1),
+            (-3, -1),
+            (-4, -1),
+            (-3, -2),
+            (-4, -2),
+            (-4, -3),
+        ]
+
+    def test_nearest_4_indexes(self):
+        # nearest-4 extends the nearest-3 network off the last date with the -5 date;
+        # the final pair must be (-5, -4), not a duplicate of (-5, -2).
+        net = pge_runconfig._create_forward_mode_network(4)
+        assert net.indexes == [
+            (-2, -1),
+            (-3, -1),
+            (-4, -1),
+            (-3, -2),
+            (-4, -2),
+            (-4, -3),
+            (-5, -1),
+            (-5, -2),
+            (-5, -3),
+            (-5, -4),
+        ]
+        # No duplicated pairs snuck in
+        assert len(net.indexes) == len(set(net.indexes))
+
+    def test_no_file_list_skips_guard(self):
+        # Without a file list there is nothing to count, so no assertion runs.
+        net = pge_runconfig._create_forward_mode_network(3, cslc_file_list=None)
+        assert len(net.indexes) == 6
+
+    @pytest.mark.parametrize("nearest_n", [3, 4])
+    def test_enough_slcs_passes(self, nearest_n):
+        # A stack with exactly nearest_n + 1 SLCs is the minimum that works.
+        files = _make_cslc_names(nearest_n + 1)
+        net = pge_runconfig._create_forward_mode_network(
+            nearest_n, cslc_file_list=files
+        )
+        assert net.indexes  # built successfully
+
+    @pytest.mark.parametrize("nearest_n", [3, 4])
+    def test_too_few_slcs_raises(self, nearest_n):
+        # One short of the minimum -> InputValidationError with code 2002.
+        files = _make_cslc_names(nearest_n)  # nearest_n < nearest_n + 1
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            pge_runconfig._create_forward_mode_network(
+                nearest_n, cslc_file_list=files
+            )
+        assert exc_info.value.error_code == 2002
+
+    def test_counts_across_multiple_bursts(self):
+        # Depth is measured from a single burst; extra bursts don't inflate the count.
+        files = _make_cslc_names(3, burst="T042-088905-IW1") + _make_cslc_names(
+            3, burst="T042-088906-IW2"
+        )
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            pge_runconfig._create_forward_mode_network(3, cslc_file_list=files)
+        assert exc_info.value.error_code == 2002
+
+
+class TestAssertNoLargeTemporalGaps:
+    """Tests for `_assert_no_large_temporal_gaps` (error 1000)."""
+
+    def test_contiguous_stack_passes(self):
+        files = [Path("s_20200101.h5"), Path("s_20200601.h5"), Path("s_20210101.h5")]
+        # No return value; simply must not raise.
+        assert _assert_no_large_temporal_gaps(files) is None
+
+    def test_large_gap_raises(self):
+        files = [Path("s_20160101.h5"), Path("s_20190301.h5")]  # ~3.1 year gap
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            _assert_no_large_temporal_gaps(files)
+        assert exc_info.value.error_code == 1000
+
+    def test_compressed_dates_excluded_from_gap(self):
+        # A compressed SLC sitting inside the gap must not "fill" it: only real-SLC
+        # dates are scanned, so the >2-year gap between the reals still raises.
+        files = [
+            Path("s_20160101.h5"),
+            Path("compressed_20170101_20160101_20170101.tif"),
+            Path("s_20190301.h5"),
+        ]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            _assert_no_large_temporal_gaps(files)
+        assert exc_info.value.error_code == 1000
+
+    def test_gap_just_under_limit_passes(self):
+        # ~1.9 years apart -> under the 2-year limit.
+        files = [Path("s_20200101.h5"), Path("s_20211101.h5")]
+        assert _assert_no_large_temporal_gaps(files) is None
+
+
+class TestAssertForwardModeCompressed:
+    """Tests for `_assert_forward_mode_compressed` (error 2000)."""
+
+    def test_no_compressed_raises(self):
+        files = [Path("s_20200101.h5"), Path("s_20200113.h5")]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            _assert_forward_mode_compressed(files)
+        assert exc_info.value.error_code == 2000
+
+    def test_with_compressed_passes(self):
+        files = [
+            Path("compressed_20170430_20170217_20170430.tif"),
+            Path("s_20200101.h5"),
+        ]
+        assert _assert_forward_mode_compressed(files) is None

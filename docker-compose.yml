@@ -1,0 +1,43 @@
+# Local development / smoke-testing of the disp-s1 image.
+#
+#   docker compose build
+#   docker compose run --rm disp_s1                       # `disp-s1 --help`
+#   docker compose run --rm disp_s1 bash                  # interactive shell
+#   docker compose run --rm disp_s1 \
+#       disp-s1 run /work/runconfig.yaml                  # run a PGE runconfig
+#
+# Mounts ./src/disp_s1 over the installed package so code edits are picked up
+# without rebuilding (the image installs disp-s1 non-editable), ./configs for the
+# runconfig/algorithm-parameter YAMLs, and ./data as the scratch/output area
+# (mirrors `-v $PWD:/work` from docker/build-docker-image.sh).
+# Credentials are mounted read-only: ~/.aws for S3 (and the ASF role), ~/.netrc
+# for Earthdata (machine urs.earthdata.nasa.gov) ancillary downloads.
+services:
+  disp_s1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: opera-adt/disp-s1:latest
+    container_name: disp_s1
+    # Run as the host user so files written to the mounted ./data are owned by
+    # you, not root (mirrors `--user $(id -u):$(id -g)` in the build script).
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      # Live code: overlay the source tree onto the installed package (py3.13).
+      - ./src/disp_s1:/opt/conda/lib/python3.13/site-packages/disp_s1
+      - ./configs:/work/configs
+      - ./data:/work
+      - ${HOME}/.aws:/root/.aws:ro
+      - ${HOME}/.netrc:/root/.netrc:ro
+    environment:
+      - AWS_PROFILE=${AWS_PROFILE:-saml-pub}
+      - AWS_DEFAULT_REGION=us-west-2
+      - PYTHONUNBUFFERED=1
+      # ASF temporary S3 creds for reading CSLC/ancillary buckets directly
+      # (normally injected by the submitter on AWS; set here for local testing).
+      - ASF_ACCESS_KEY_ID=${ASF_ACCESS_KEY_ID:-}
+      - ASF_SECRET_ACCESS_KEY=${ASF_SECRET_ACCESS_KEY:-}
+      - ASF_SESSION_TOKEN=${ASF_SESSION_TOKEN:-}
+    working_dir: /work
+    stdin_open: true
+    tty: true

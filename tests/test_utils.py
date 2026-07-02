@@ -1,7 +1,9 @@
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pytest
+import shapely
 from dolphin import io
 from dolphin.workflows import UnwrapOptions
 from shapely import MultiPolygon, from_wkt
@@ -12,6 +14,7 @@ from disp_s1._utils import (
     _create_correlation_images,
     _update_snaphu_conncomps,
     _update_spurt_conncomps,
+    extract_footprint,
     split_on_antimeridian,
 )
 
@@ -177,6 +180,101 @@ def test_update_spurt_conncomps(setup_test_files):
         ts_stem = ts_p.stem  # e.g. "20160708_20170603"
         assert cc_p.stem.startswith(ts_stem)
         assert cc_p.name.endswith(".unw.conncomp.tif"), f"Wrong extension for {cc_p}"
+
+
+def test_extract_footprint_gdal_canary(tmp_path):
+    """GDAL-version canary for ``extract_footprint``.
+
+    Writes a synthetic raster with a *diagonal* band of valid pixels (an
+    axis-aligned block would hide orientation/rotation bugs) and asserts the
+    footprint is a single rotated-rectangle MULTIPOLYGON that contains every
+    valid cell. If a future GDAL changes ``gdal.Footprint`` -- re-introducing
+    simplification, flipping orientation, or altering the convex hull so the box
+    no longer covers the data -- this test will flag it.
+    """
+    n = 30
+    arr = np.zeros((n, n), dtype="uint8")
+    rr, cc = np.mgrid[0:n, 0:n]
+    arr[np.abs(rr - cc) < 4] = 1  # diagonal stripe
+
+    # Simple north-up EPSG:4326 georeferencing (1 px = 0.01 deg).
+    gt = (-120.0, 0.01, 0.0, 40.0, 0.0, -0.01)
+    tif = tmp_path / "synthetic.tif"
+    io.write_arr(
+        arr=arr,
+        output_name=tif,
+        geotransform=gt,
+        projection="EPSG:4326",
+        dtype="uint8",
+        nodata=0,
+    )
+
+    geom = from_wkt(extract_footprint(tif))
+    assert geom.geom_type == "MultiPolygon"
+    assert len(geom.geoms[0].exterior.coords) == 5  # rotated rectangle
+
+    vy, vx = np.where(arr)
+    lon = gt[0] + (vx + 0.5) * gt[1]
+    lat = gt[3] + (vy + 0.5) * gt[5]
+    assert shapely.contains(geom, shapely.points(lon, lat)).all()
+
+
+def test_recompute_matches_forward_footprint(tmp_path):
+    """The recompute script reproduces the forward bounding polygon.
+
+    Wraps one synthetic array into a GeoTIFF (the forward ``unw`` input that
+    ``product.py`` footprints) and a CF NetCDF (the product the recompute script
+    reads back), then asserts the two bounding polygons are identical. This locks
+    in forward/recompute parity and fails if a future GDAL's NetCDF y-flip ever
+    leaks through the h5py read path. No external data needed.
+    """
+    import sys
+
+    from pyproj import CRS
+
+    sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+    from recompute_product_bounds import compute_bounding_polygon
+
+    # Small diagonal valid band (value 1, else 0) -> non-trivial rotated rect.
+    n = 30
+    arr = np.zeros((n, n), dtype="float32")
+    rr, cc = np.mgrid[0:n, 0:n]
+    arr[np.abs(rr - cc) < 4] = 1.0
+
+    gt = (302070.0, 10.0, 0.0, 4058360.0, 0.0, -10.0)
+    crs = CRS.from_epsg(32638)
+
+    # Forward "unw" GeoTIFF (footprinted directly by product.py).
+    geotiff = tmp_path / "unw.tif"
+    io.write_arr(
+        arr=arr,
+        output_name=geotiff,
+        geotransform=gt,
+        projection=crs.to_wkt(),
+        dtype="float32",
+        nodata=0,
+    )
+
+    # Product NetCDF wrapping the same data in CF (y, x) layout.
+    x = gt[0] + (np.arange(n) + 0.5) * gt[1]
+    y = gt[3] + (np.arange(n) + 0.5) * gt[5]
+    nc = tmp_path / "product.nc"
+    with h5py.File(nc, "w") as f:
+        f.attrs["Conventions"] = "CF-1.8"
+        xds = f.create_dataset("x", data=x)
+        xds.make_scale()
+        yds = f.create_dataset("y", data=y)
+        yds.make_scale()
+        dds = f.create_dataset("displacement", data=arr)
+        dds.dims[0].attach_scale(yds)
+        dds.dims[1].attach_scale(xds)
+        dds.attrs["grid_mapping"] = "spatial_ref"
+        sr = f.create_dataset("spatial_ref", data=0)
+        sr.attrs["crs_wkt"] = crs.to_wkt()
+
+    forward = from_wkt(extract_footprint(geotiff))
+    recompute = from_wkt(compute_bounding_polygon(nc))
+    assert forward.equals(recompute)
 
 
 def test_check_split_on_antimeridian():

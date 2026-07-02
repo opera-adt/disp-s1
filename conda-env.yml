@@ -25,6 +25,7 @@ dependencies:
   - isce3-cpu>=0.16.0 # For baseline
   - tophu
   # - cxx-compiler # for whirlwind
-  - dolphin>=0.35.0
+  - dolphin>=0.42.7
+  - opera-utils>=0.25.7  # dolphin>=0.42.7 needs is_remote_url (added in 0.25.7)
   - pip:
     - spurt>=0.1.0

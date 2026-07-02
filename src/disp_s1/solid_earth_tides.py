@@ -26,9 +26,15 @@ def resample_to_target(
     if array.shape == target_shape:
         return array
     zoom_factors = (target_shape[0] / array.shape[0], target_shape[1] / array.shape[1])
-    out = zoom(array, zoom_factors, order=1)  # Linear interpolation
+    # scipy.ndimage.zoom's C backend rejects float16 ("data type not supported");
+    # the LOS rasters are stored as float16, so upcast before interpolating.
+    data = np.asarray(array)
+    if data.dtype == np.float16:
+        data = data.astype(np.float32)
+    out = zoom(data, zoom_factors, order=1)  # Linear interpolation
     if isinstance(array, np.ma.MaskedArray):
-        mask_out = zoom(array.mask, zoom_factors, order=1).astype(bool)
+        # zoom also rejects bool masks; interpolate as float32 then re-threshold.
+        mask_out = zoom(array.mask.astype(np.float32), zoom_factors, order=1) > 0.5
         out = np.ma.MaskedArray(data=out, mask=mask_out)
     return out
 

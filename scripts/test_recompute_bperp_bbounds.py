@@ -67,9 +67,7 @@ def test_baseline_recomputed(test_file, recomputed_file):
     assert np.isfinite(recomputed).any()
     # A fresh computation (here on a coarser grid) is not bit-identical to the
     # stored layer, confirming it was actually recomputed rather than copied.
-    assert not np.array_equal(
-        np.nan_to_num(original), np.nan_to_num(recomputed)
-    )
+    assert not np.array_equal(np.nan_to_num(original), np.nan_to_num(recomputed))
 
 
 def test_bounding_polygon_is_rotated_rectangle(recomputed_file):
@@ -84,9 +82,7 @@ def test_bounding_polygon_is_rotated_rectangle(recomputed_file):
 def test_displacement_preserved(test_file, recomputed_file):
     """The displacement layer is untouched by the combined recompute."""
     with h5py.File(test_file) as o, h5py.File(recomputed_file) as c:
-        np.testing.assert_array_equal(
-            o["/displacement"][:], c["/displacement"][:]
-        )
+        np.testing.assert_array_equal(o["/displacement"][:], c["/displacement"][:])
 
 
 def test_both_layers_updated_in_one_pass(test_file, recomputed_file):
@@ -95,9 +91,7 @@ def test_both_layers_updated_in_one_pass(test_file, recomputed_file):
         baseline_changed = not np.array_equal(
             np.nan_to_num(o[BASELINE_PATH][:]), np.nan_to_num(c[BASELINE_PATH][:])
         )
-        polygon_changed = (
-            o[BOUNDING_POLYGON_PATH][()] != c[BOUNDING_POLYGON_PATH][()]
-        )
+        polygon_changed = o[BOUNDING_POLYGON_PATH][()] != c[BOUNDING_POLYGON_PATH][()]
     assert baseline_changed and polygon_changed
 
 
@@ -105,9 +99,7 @@ def test_metadata_update(test_file, tmp_path):
     """processing_start_datetime is bumped once when update_metadata=True."""
     output_file = tmp_path / "meta.nc"
     with h5py.File(test_file) as f:
-        original_dt = f["/identification/processing_start_datetime"][()].decode(
-            "utf-8"
-        )
+        original_dt = f["/identification/processing_start_datetime"][()].decode("utf-8")
 
     recompute_bperp_bbounds(
         test_file, output_file, subsample=_SUBSAMPLE, update_metadata=True

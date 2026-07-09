@@ -38,6 +38,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import h5py
 import numpy as np
@@ -87,6 +88,9 @@ from disp_s1.pge_runconfig import (
     StaticAncillaryFileGroup,
 )
 
+if TYPE_CHECKING:
+    from opera_utils.disp._enums import ReferenceMethod
+
 # NOTE: the whole `opera_utils.disp` subpackage (and rioxarray) is imported lazily
 # inside reformat_stack_custom so the `process` stage can run in environments that
 # lack the reformat toolchain (e.g. disp-patch-env without rioxarray).
@@ -112,12 +116,13 @@ def make_cfg(
     amp_disp_files: list[Path],
     amp_mean_files: list[Path],
     epsg=None,
-    bounds: list = None,
+    bounds: list | None = None,
     gpu: bool = False,
     compressed_slc_plan: CompressedSlcPlan = CompressedSlcPlan.LAST_PER_MINISTACK,
-    output_reference_idx: int = None,
+    output_reference_idx: int | None = None,
     ministack_size: int = DEFAULT_MS_SIZE,
 ) -> DisplacementWorkflow:
+    """Build a `DisplacementWorkflow` config for one ministack batch."""
     return DisplacementWorkflow(
         cslc_file_list=comp_slc_files + cslc_files,
         input_options=InputOptions(subdataset=OPERA_DATASET_NAME),
@@ -177,6 +182,7 @@ def make_pge_runconfig(
     output_dir: Path,
     save_compressed_slc: bool = True,
 ) -> RunConfig:
+    """Build a PGE `RunConfig` wrapping the dolphin workflow config."""
     alg_params_file = work_dir / "algorithm_parameters.yaml"
     algo_keys = set(AlgorithmParameters.model_fields.keys())
     alg_params = AlgorithmParameters(
@@ -209,7 +215,7 @@ def make_pge_runconfig(
 
 
 def extent_to_projected_bbox(extent_str: str, gslc_file: Path):
-    """Convert 'minlon,minlat : maxlon,maxlat' extent to projected bbox from GSLC CRS."""
+    """Convert 'minlon,minlat : maxlon,maxlat' extent to a projected bbox."""
     left, right = extent_str.split(" : ")
     minlon, minlat = map(float, left.split(","))
     maxlon, maxlat = map(float, right.split(","))
@@ -325,7 +331,7 @@ def run_no_corrections(
 
         out_paths_with_corr = OutputPathsWithCorrections(
             **asdict(out_paths),
-            ionospheric_corrections=None,
+            ionospheric_corrections=[],
         )
 
         create_products(
@@ -607,7 +613,7 @@ def add_velocity_to_zarr(zarr_path: str, weight_by_coherence: bool = True) -> No
 # ── RECHUNK ───────────────────────────────────────────────────────────────────
 
 
-def rechunk_zarr(zarr_path: str, out_path: str, chunks: dict = None) -> None:
+def rechunk_zarr(zarr_path: str, out_path: str, chunks: dict | None = None) -> None:
     """Rechunk zarr store for efficient spatial access."""
     if chunks is None:
         chunks = {"time": 1, "y": 512, "x": 512}
@@ -754,8 +760,8 @@ def append_extra_layers(
         comp_info = [
             (d1, d2, f)
             for f in comp_slcs
-            if "" not in (d := _comp_dates(f))
-            for d1, d2 in [d]
+            if "" not in (date_pair := _comp_dates(f))
+            for d1, d2 in [date_pair]
         ]
         comp_info.sort(key=lambda t: t[0])
 
@@ -886,11 +892,11 @@ def append_extra_layers(
     # Build time-ordered arrays aligned to zarr time axis
     crlb_rad = np.full((len(zarr_dates), ny, nx), np.nan, dtype=np.float32)
     for t_idx, (date_str, _) in enumerate(sorted(zarr_dates.items())):
-        cf = date_to_crlb.get(date_str)
-        if cf is None:
+        crlb_file = date_to_crlb.get(date_str)
+        if crlb_file is None:
             continue
-        # CRLB tif stores std in rad directly (dolphin _crlb_from_x returns sqrt(diag(Sigma)))
-        arr = _crop_tif(cf, xmin, ymin, xmax, ymax)
+        # CRLB tif stores std in rad (dolphin _crlb_from_x returns sqrt(diag(Sigma)))
+        arr = _crop_tif(crlb_file, xmin, ymin, xmax, ymax)
         crlb_rad[t_idx] = arr[:ny, :nx]
 
     _write_3d(
@@ -1278,6 +1284,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Run the standalone DISP-S1 processing pipeline from the CLI."""
     args = build_parser().parse_args(argv)
 
     work_base: Path = args.work_dir

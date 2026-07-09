@@ -454,11 +454,14 @@ def _assert_no_large_temporal_gaps(
         apart.
 
     """
-    if not isinstance(date_to_files, Mapping):
-        date_to_files = group_by_date(date_to_files, date_idx=0)
+    grouped = (
+        date_to_files
+        if isinstance(date_to_files, Mapping)
+        else group_by_date(date_to_files, date_idx=0)
+    )
     real_dates = sorted(
         date_tuple[0]
-        for date_tuple, files in date_to_files.items()
+        for date_tuple, files in grouped.items()
         if not all("compressed" in str(f).lower() for f in files)
     )
     for earlier, later in zip(real_dates, real_dates[1:]):

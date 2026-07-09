@@ -497,7 +497,7 @@ def test_input_file_group_last_processed():
 
 
 def _make_cslc_names(n, burst="T042-088905-IW1"):
-    """Build ``n`` synthetic, burst-parseable CSLC filenames (one burst, distinct dates)."""
+    """Build ``n`` synthetic, burst-parseable CSLC filenames (distinct dates)."""
     return [Path(f"{burst}_202201{i + 1:02d}_20240624.h5") for i in range(n)]
 
 
@@ -553,9 +553,7 @@ class TestCreateForwardModeNetwork:
         # One short of the minimum -> InputValidationError with code 2002.
         files = _make_cslc_names(nearest_n)  # nearest_n < nearest_n + 1
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
-            pge_runconfig._create_forward_mode_network(
-                nearest_n, cslc_file_list=files
-            )
+            pge_runconfig._create_forward_mode_network(nearest_n, cslc_file_list=files)
         assert exc_info.value.error_code == 2002
 
     def test_counts_across_multiple_bursts(self):

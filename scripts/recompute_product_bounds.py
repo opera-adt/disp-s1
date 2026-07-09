@@ -33,9 +33,10 @@ from pathlib import Path
 import h5py
 import numpy as np
 import tyro
-from disp_s1._utils import extract_footprint
 from dolphin import io
 from pyproj import CRS
+
+from disp_s1._utils import extract_footprint
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -85,8 +86,14 @@ def compute_bounding_polygon(input_file: Path) -> str:
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         mask_tif = Path(tmp_dir) / "valid_mask.tif"
-        io.write_arr(arr=mask, output_name=mask_tif, geotransform=geotransform,
-                     projection=crs.to_wkt(), dtype="uint8", nodata=0)
+        io.write_arr(
+            arr=mask,
+            output_name=mask_tif,
+            geotransform=geotransform,
+            projection=crs.to_wkt(),
+            dtype="uint8",
+            nodata=0,
+        )
         return extract_footprint(mask_tif)
 
 

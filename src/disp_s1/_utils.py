@@ -187,7 +187,7 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.0) -
     Notes
     -----
     This function uses GDAL to open the raster and extract the footprint,
-    and Shapely to process the geometry. 
+    and Shapely to process the geometry.
 
 
     """
@@ -206,7 +206,7 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.0) -
         simplify=simplify_tolerance,
     )
 
-    # Get rectangular footprint 
+    # Get rectangular footprint
     footprint_geom = shapely.from_wkt(wkt).minimum_rotated_rectangle
 
     # Split on antimeridian and return the WKT string

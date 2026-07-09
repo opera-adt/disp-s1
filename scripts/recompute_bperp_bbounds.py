@@ -13,7 +13,7 @@ OPERA DISP-S1 NetCDF in a single output file:
 The input is copied to the output once, both layers are rewritten, and the
 metadata timestamps / version are updated a single time at the end.
 
-Example
+Example:
 -------
     $ python scripts/recompute_bperp_bbounds.py input.nc -o output.nc
 
@@ -27,7 +27,6 @@ from pathlib import Path
 
 import h5py
 import tyro
-
 from recompute_perpendicular_baseline import recompute_perpendicular_baseline
 from recompute_product_bounds import (
     BOUNDING_POLYGON_PATH,
@@ -111,9 +110,7 @@ def recompute_bperp_bbounds(
         new_version=new_version,
     )
 
-    logger.info(
-        f"Successfully recomputed baseline + bounding polygon -> {output_file}"
-    )
+    logger.info(f"Successfully recomputed baseline + bounding polygon -> {output_file}")
     return output_file
 
 

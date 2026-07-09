@@ -39,7 +39,7 @@ jobs:
           password: ${{ secrets.EARTHDATA_PASSWORD }}
 
       - name: Setup environment
-        uses: mamba-org/setup-micromamba@v1
+        uses: mamba-org/setup-micromamba@v3
         with:
           environment-file: conda-env.yml
           environment-name: disp-s1-env

@@ -162,19 +162,21 @@ def _create_correlation_images(
     return output_paths
 
 
-def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.05) -> str:
-    """Extract a simplified footprint from a raster file.
+def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.0) -> str:
+    """Extract the minimum rotated rectangle footprint of a raster file.
 
-    This function opens a raster file, extracts its footprint, simplifies it,
-    and returns the a Polygon from the exterior ring as a WKT string.
+    This function opens a raster file, extracts its convex-hull footprint, takes
+    the minimum rotated rectangle, and returns it as a WKT string.
 
     Parameters
     ----------
     raster_path : str
         Path to the input raster file.
     simplify_tolerance : float, optional
-        Tolerance for simplification of the footprint geometry.
-        Default is 0.05.
+        Tolerance for simplification of the convex hull before taking the
+        minimum rotated rectangle. Default is 0.0 (no simplification): the
+        rectangle is defined by the hull's extreme points, and simplifying pulls
+        them inward, shrinking the box below the data.
 
     Returns
     -------
@@ -186,6 +188,7 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.05) 
     -----
     This function uses GDAL to open the raster and extract the footprint,
     and Shapely to process the geometry.
+
 
     """
     from os import fspath
@@ -203,8 +206,11 @@ def extract_footprint(raster_path: PathOrStr, simplify_tolerance: float = 0.05) 
         simplify=simplify_tolerance,
     )
 
+    # Get rectangular footprint
+    footprint_geom = shapely.from_wkt(wkt).minimum_rotated_rectangle
+
     # Split on antimeridian and return the WKT string
-    return split_on_antimeridian(shapely.from_wkt(wkt)).wkt
+    return split_on_antimeridian(footprint_geom).wkt
 
 
 def split_on_antimeridian(geometry: Polygon | MultiPolygon) -> MultiPolygon:

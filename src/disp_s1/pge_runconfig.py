@@ -612,22 +612,36 @@ def _create_forward_mode_network(
     When ``cslc_file_list`` is given, assert the stack is deep enough: the
     manual indexes reach back ``nearest_n + 1`` positions from the last date,
     so the ministack must contain at least that many SLCs.
+
+    That depth is counted in *real* SLCs only, not compressed ones. When
+    compressed SLCs are present, `dolphin.workflows.wrapped_phase.run` phase-
+    links each real date against them and collects the manual-index network's
+    input list by globbing only the real-date outputs (`"2*.tif"`) --
+    compressed-SLC outputs are globbed separately (`"compressed*.tif"`) and
+    never enter that list. So a compressed SLC doesn't add depth toward the
+    manual indexes; only real dates do, regardless of how many compressed
+    SLCs (0-5) are also in the stack. Undercounting this by including
+    compressed SLCs in the depth produces an `IndexError` deep in
+    `dolphin.interferogram._make_ifg_pairs` instead of failing here.
     """
     # The deepest index used is ``-(nearest_n + 1)`` (e.g. -4 for nearest-3),
-    # so the phase-linked stack needs at least ``nearest_n + 1`` SLCs.
+    # so the phase-linked (real-only) stack needs at least ``nearest_n + 1`` SLCs.
     min_slc = nearest_n + 1
     if cslc_file_list is not None:
         # Use a single burst as the template for the stack depth (all bursts
         # share the same set of acquisition dates).
         burst_to_file_list = group_by_burst(cslc_file_list)
         burst_id = next(iter(burst_to_file_list))
-        num_slc = len(sort_files_by_date(burst_to_file_list[burst_id])[0])
-        if num_slc < min_slc:
+        burst_files = sort_files_by_date(burst_to_file_list[burst_id])[0]
+        num_real_slc = sum(
+            1 for f in burst_files if "compressed" not in str(f).lower()
+        )
+        if num_real_slc < min_slc:
             raise InputValidationError(
                 f"Forward mode nearest-{nearest_n} network requires at least"
-                f" {min_slc} CSLCs in the input stack (including compressed CSLCs),"
-                f" but only {num_slc} were found.",
-                error_code=2002,
+                f" {min_slc} real CSLCs (compressed SLCs don't count toward this"
+                f" depth) in the input stack, but only {num_real_slc} were found.",
+                error_code=2001,
             )
 
     indexes = [

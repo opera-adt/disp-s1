@@ -26,8 +26,11 @@ Numbering convention: **1xxx** = checks that apply regardless of
 
 ```
 Temporal gap(s) exceeding the {N}-year limit for input SLCs:
-burst {burst_id}: {gap:.2f}-year gap between {earlier} and {later}
+burst {burst_id}: {gap}-day ({gap:.2f}-year) gap between {earlier} and {later}
 ```
+
+(The limit is rendered in days rather than years when `max_gap_days` is set
+below one year, so a short threshold doesn't report itself as a "0-year limit".)
 
 A multi-year gap between consecutive real SLC dates in the same burst
 destroys interferometric coherence and almost always indicates a malformed
@@ -69,11 +72,23 @@ that already covers it.
 
 ## 1002 — CCSLC reference date later than allowed
 
+Forward mode:
+
 ```
 Compressed SLC reference date is later than the latest real SLC in the same
 burst (the latest acquisition must always be real):
 burst {burst_id}: compressed SLC reference date {ref} is later than
-{the latest|the earliest} real SLC date {boundary}
+the latest real SLC date {boundary}
+```
+
+Historical mode:
+
+```
+Compressed SLC reference date is later than the earliest real SLC in the same
+burst (historical mode outputs a product for every real date, so compressed
+SLCs must cover only prior history):
+burst {burst_id}: compressed SLC reference date {ref} is later than
+the earliest real SLC date {boundary}
 ```
 
 A compressed SLC must summarize *prior* history — it should never reach

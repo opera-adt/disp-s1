@@ -479,13 +479,21 @@ def _assert_no_large_temporal_gaps(
             gap_days = (later - earlier).total_seconds() / 86400
             if gap_days > max_gap_days:
                 messages.append(
-                    f"burst {burst_id}: {gap_days / 365.25:.2f}-year gap between"
+                    f"burst {burst_id}: {gap_days:.0f}-day"
+                    f" ({gap_days / 365.25:.2f}-year) gap between"
                     f" {earlier:%Y-%m-%d} and {later:%Y-%m-%d}"
                 )
 
     if messages:
+        # Render the limit in whichever unit reads sensibly, so a sub-year
+        # threshold doesn't report itself as a "0-year limit".
+        limit = (
+            f"{max_gap_days / 365.25:.0f}-year"
+            if max_gap_days >= 365.25
+            else f"{max_gap_days:.0f}-day"
+        )
         msg = (
-            f"Temporal gap(s) exceeding the {max_gap_days / 365.25:.0f}-year limit"
+            f"Temporal gap(s) exceeding the {limit} limit"
             " for input SLCs:\n" + "\n".join(messages)
         )
         raise InputValidationError(msg, error_code=1000)
@@ -608,10 +616,25 @@ def _assert_no_compressed_slc_conflicts(
             error_code=1001,
         )
     if future_ref_messages:
+        # Which real date the CCSLC has to predate depends on the mode:
+        # historical emits a product for every real date, so the CCSLC must
+        # predate the earliest of them; forward emits only the newest product,
+        # so it need only predate the latest.
+        if product_type == "DISP_S1_FORWARD":
+            summary = (
+                "Compressed SLC reference date is later than the latest real"
+                " SLC in the same burst (the latest acquisition must always be"
+                " real)"
+            )
+        else:
+            summary = (
+                "Compressed SLC reference date is later than the earliest real"
+                " SLC in the same burst (historical mode outputs a product for"
+                " every real date, so compressed SLCs must cover only prior"
+                " history)"
+            )
         raise InputValidationError(
-            "Compressed SLC reference date is later than the latest real SLC"
-            " in the same burst (the latest acquisition must always be"
-            " real):\n" + "\n".join(future_ref_messages),
+            summary + ":\n" + "\n".join(future_ref_messages),
             error_code=1002,
         )
 

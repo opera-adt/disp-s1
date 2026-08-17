@@ -547,7 +547,7 @@ def _assert_no_large_temporal_gaps(
         )
         msg = (
             f"Temporal gap(s) exceeding the {limit} limit"
-            " for input SLCs:\n" + "\n".join(messages)
+            " for input CSLCs:\n" + "\n".join(messages)
         )
         raise InputValidationError(msg, error_code=1000)
 
@@ -560,17 +560,20 @@ def _assert_no_compressed_slc_conflicts(
 
     Applies in every processing mode, whenever compressed SLCs (CCSLCs) are
     present in the input list — historical mode accepts CCSLCs as prior
-    baselines too (up to 5), not just forward mode. A CCSLC's reference date
-    must not collide with a real SLC's acquisition date in the same burst
-    (checked against its reference date), and its covered history must not
-    extend past the real SLCs it's paired with (checked against its end
-    date — see `product_type` below for how far past is allowed). Both are
+    baselines too (0-5 per burst, bounded by the triggering logic that builds
+    the input list rather than by anything here), not just forward mode. A
+    CCSLC's reference date must not collide with a real CSLC's acquisition
+    date in the same burst (checked against its reference date), and its
+    covered history must not extend past the real CSLCs it's paired with
+    (checked against its end date — see `product_type` below for how far past
+    is allowed). Both are
     silently accepted by disp_s1 today but crash deep in the workflow with a
-    pydantic ValidationError from `dolphin`'s ministack construction
-    (`dolphin.stack.Ministack` in forward mode, `MiniStackPlanner` in
-    historical/sequential mode) — historical mode burns real processing time
-    (mask extraction, PS pixels, EMI setup) before hitting it, since that
-    construction happens mid-workflow rather than at the CLI entry point.
+    pydantic ValidationError from `dolphin.stack.BaseStack._check_no_date_overlap`,
+    raised when `run_wrapped_phase_sequential` constructs its
+    `MiniStackPlanner`. Both modes take that same path (`run_displacement` ->
+    `wrapped_phase.run`), and it sits *after* mask extraction, PS pixels and
+    EMI setup — so neither forward nor historical fails at the CLI entry
+    point without this precheck; both burn that setup time first.
     No-ops if there are no compressed SLCs in `input_file_list`.
 
     A compressed SLC is named ``compressed_<ref>_<start>_<end>``, so
@@ -621,18 +624,20 @@ def _assert_no_compressed_slc_conflicts(
         # A compressed SLC is named ``compressed_<ref>_<start>_<end>``, so
         # get_dates returns (reference_date, start_date, end_date, ...).
         # A CCSLC's reference date is always its own end date by construction:
-        # dolphin's default `compressed_slc_plan` is "last_per_ministack", i.e.
-        # the compressed SLC's reference/output date is defined as the last
-        # (most recent) date in the ministack it summarizes -- which is also
-        # its end date. So one value serves both the overlap check below and
-        # the boundary check after it.
+        # disp-s1's `compressed_slc_plan` is "last_per_ministack" (set by every
+        # delivered `algorithm_parameters_*.yaml`; only a hand-built
+        # `AlgorithmParameters()` falls back to dolphin's "always_first"), i.e.
+        # the compressed SLC's reference/output date is the last (most recent)
+        # date in the ministack it summarizes -- which is also its end date. So
+        # one value serves both the overlap check below and the boundary check
+        # after it.
         ranges = [get_dates(f)[:3] for f in compressed_by_burst[burst_id]]
         ref_date, _start_date, _end_date = max(ranges, key=lambda r: r[2])
         real_dates = {get_dates(f)[0] for f in non_compressed_by_burst[burst_id]}
         if ref_date in real_dates:
             overlap_messages.append(
-                f"{_burst_prefix(burst_id)}real SLC date {ref_date:%Y-%m-%d}"
-                " overlaps with its most recent compressed SLC's reference date"
+                f"{_burst_prefix(burst_id)}real CSLC date {ref_date:%Y-%m-%d}"
+                " overlaps with its most recent CCSLC's reference date"
             )
 
         # `main.py`'s own `date_to_files = group_by_date(cslc_file_list, date_idx=0)`
@@ -659,16 +664,16 @@ def _assert_no_compressed_slc_conflicts(
                     else "the earliest"
                 )
                 future_ref_messages.append(
-                    f"{_burst_prefix(burst_id)}compressed SLC reference date"
-                    f" {ref_date:%Y-%m-%d} is later than {which} real SLC date"
+                    f"{_burst_prefix(burst_id)}CCSLC reference date"
+                    f" {ref_date:%Y-%m-%d} is later than {which} real CSLC date"
                     f" {boundary_date:%Y-%m-%d}"
                 )
     if overlap_messages:
         raise InputValidationError(
-            "Input CSLC list has real SLC(s) sharing a date with their own"
-            " burst's compressed SLC reference date. The compressed SLC already"
-            " represents that epoch, so no real SLC for the same date should"
-            " also be included:\n" + "\n".join(overlap_messages),
+            "Input CSLC list has real CSLC(s) sharing a date with their own"
+            " burst's CCSLC reference date. The CCSLC already represents that"
+            " epoch, so no real CSLC for the same date should also be"
+            " included:\n" + "\n".join(overlap_messages),
             error_code=1001,
         )
     if future_ref_messages:
@@ -678,16 +683,14 @@ def _assert_no_compressed_slc_conflicts(
         # so it need only predate the latest.
         if product_type == "DISP_S1_FORWARD":
             summary = (
-                "Compressed SLC reference date is later than the latest real"
-                " SLC in the same burst (the latest acquisition must always be"
-                " real)"
+                "CCSLC reference date is later than the latest real CSLC in the"
+                " same burst (the latest acquisition must always be real)"
             )
         else:
             summary = (
-                "Compressed SLC reference date is later than the earliest real"
-                " SLC in the same burst (historical mode outputs a product for"
-                " every real date, so compressed SLCs must cover only prior"
-                " history)"
+                "CCSLC reference date is later than the earliest real CSLC in"
+                " the same burst (historical mode outputs a product for every"
+                " real date, so CCSLCs must cover only prior history)"
             )
         raise InputValidationError(
             summary + ":\n" + "\n".join(future_ref_messages),
@@ -723,7 +726,7 @@ def _assert_forward_mode_compressed(
     compressed = [f for f, c in zip(input_file_list, is_compressed) if c]
     if not compressed:
         raise InputValidationError(
-            "Forward mode requires at least one compressed SLC (CCSLC) in the"
+            "Forward mode requires at least one compressed CSLC (CCSLC) in the"
             " input CSLC list, but none was found.",
             error_code=2000,
         )
@@ -737,7 +740,7 @@ def _assert_forward_mode_compressed(
     missing_burst_ids = sorted(real_burst_ids - compressed_burst_ids)
     if missing_burst_ids:
         raise InputValidationError(
-            "Forward mode requires a compressed SLC (CCSLC) for every burst in"
+            "Forward mode requires a compressed CSLC (CCSLC) for every burst in"
             " the input CSLC list, but no CCSLC was found for burst(s):"
             f" {', '.join(missing_burst_ids)}.",
             error_code=2000,

@@ -637,7 +637,7 @@ def _create_forward_mode_network(
         if num_real_slc < min_slc:
             raise InputValidationError(
                 f"Forward mode nearest-{nearest_n} network requires at least"
-                f" {min_slc} real CSLCs (compressed SLCs don't count toward this"
+                f" {min_slc} real CSLCs (CCSLCs don't count toward this"
                 f" depth) in the input stack, but only {num_real_slc} were found.",
                 error_code=2001,
             )

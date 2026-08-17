@@ -43,110 +43,109 @@ intentional and raise `max_gap_days` when calling `disp_s1.main.run`.
 ## 1001 — real SLC overlaps its CCSLC's reference date
 
 ```
-Input CSLC list has real SLC(s) sharing a date with their own burst's
-compressed SLC reference date. The compressed SLC already represents that
-epoch, so no real SLC for the same date should also be included:
-burst {burst_id}: real SLC date {date} overlaps with its most recent
-compressed SLC's reference date
+Input CSLC list has real CSLC(s) sharing a date with their own burst's CCSLC
+reference date. The CCSLC already represents that epoch, so no real CSLC for
+the same date should also be included:
+burst {burst_id}: real CSLC date {date} overlaps with its most recent
+CCSLC's reference date
 ```
 
 The compressed SLC's reference date *is* that epoch already — a real SLC
 for the same date is ambiguous with it. Uncaught, this crashes deep inside
-`dolphin`'s ministack construction with a `pydantic.ValidationError`
-(`dolphin.stack.Ministack` in forward mode; `MiniStackPlanner` in
-historical/sequential mode — confirmed by direct reproduction against
+`dolphin`'s ministack construction with a `pydantic.ValidationError` raised
+by `dolphin.stack.BaseStack._check_no_date_overlap` (reached from the
+`_check_lengths` model validator), confirmed by direct reproduction against
 `delivery_data_official`'s official archived CCSLC, ref=2017-05-24, paired
-with a real SLC for the same date). Historical mode burns real processing
-time (mask extraction, PS pixels, EMI setup — observed ~90s) before hitting
-it, since ministack construction happens mid-workflow rather than at the
-CLI entry point; forward mode fails immediately.
+with a real SLC for the same date.
 
-**Known gap**: only checked against the CCSLC's exact reference date, not
-its full `[start, end]` coverage range. A real SLC dated strictly *inside*
-that range (not equal to the reference date) is not currently caught — see
-the operational-cadence note in
-[compressed-slc-operations.md](compressed-slc-operations.md).
+**This is mid-workflow in both modes, not just historical.** `disp_s1.main`
+routes forward and historical alike through `dolphin.workflows.displacement`
+→ `wrapped_phase.run`, which builds the nodata mask, creates the PS file and
+multilooks it *before* calling `run_wrapped_phase_sequential` — and it's that
+function's `MiniStackPlanner(...)` construction that trips the validator
+(`MiniStackInfo` objects from `.plan()` inherit the same check). There is no
+forward-only early construction, so neither mode fails at the CLI entry
+point: both burn the same setup time first (~90s observed in historical).
+That's exactly why this precheck exists up front in `disp_s1.main.run`.
 
-**Fix**: drop the redundant real SLC for that date, or don't include a CCSLC
-that already covers it.
+All of the above is conditional on a CCSLC actually being in the input list.
+`_check_no_date_overlap` builds its candidate ranges from entries with three
+or more dates, and `_get_input_dates` hands real CSLCs only `dates[:1]`
+against compressed files' `dates[:3]` — so with no CCSLC present the
+validator returns before comparing anything, and `_assert_no_compressed_slc_conflicts`
+short-circuits the same way (`if not compressed: return`). A CCSLC-free
+historical run can neither raise 1001 nor hit the crash it guards against;
+forward mode never reaches that state, since error 2000 rejects it first.
+
 
 ## 1002 — CCSLC reference date later than allowed
 
 Forward mode:
 
 ```
-Compressed SLC reference date is later than the latest real SLC in the same
-burst (the latest acquisition must always be real):
-burst {burst_id}: compressed SLC reference date {ref} is later than
-the latest real SLC date {boundary}
+CCSLC reference date is later than the latest real CSLC in the same burst
+(the latest acquisition must always be real):
+burst {burst_id}: CCSLC reference date {ref} is later than the latest real
+CSLC date {boundary}
 ```
 
 Historical mode:
 
 ```
-Compressed SLC reference date is later than the earliest real SLC in the same
-burst (historical mode outputs a product for every real date, so compressed
-SLCs must cover only prior history):
-burst {burst_id}: compressed SLC reference date {ref} is later than
-the earliest real SLC date {boundary}
+CCSLC reference date is later than the earliest real CSLC in the same burst
+(historical mode outputs a product for every real date, so CCSLCs must cover
+only prior history):
+burst {burst_id}: CCSLC reference date {ref} is later than the earliest real
+CSLC date {boundary}
 ```
 
-A compressed SLC must summarize *prior* history — it should never reach
+A compressed CSLC must summarize *prior* history — it should never reach
 into (or past) the real dates it's paired with in the same run. The
 boundary depends on `product_type`, because the two modes produce different
 numbers of output products (see
 [compressed-slc-operations.md](compressed-slc-operations.md) for why):
 
 - **`DISP_S1_FORWARD`**: the CCSLC's reference date must predate the
-  **latest** real SLC date in its burst. Forward mode only ever outputs one
+  **latest** real CSLC date in its burst. Forward mode only ever outputs one
   product (for the latest date), so earlier real dates in the same batch
   are just context.
 - **Any other `product_type`** (historical, including the "catch-up"
   scenario where a CCSLC leads a batch of new real dates): the CCSLC's
-  reference date must predate the **earliest** real SLC date in its burst.
+  reference date must predate the **earliest** real CSLC date in its burst.
   Historical mode outputs one product per new real date, so if the CCSLC's
   reference fell between two new dates, the earlier one would effectively
   be double-counted — once as real data, once as part of the CCSLC's
   claimed history.
 
-Uncaught, this reproduces the same crash class as 1001 — confirmed by two
-separate cases: the abandoned S3-CCSLC dead end (official CCSLC ref
-2017-05-24 with no real SLC past 2017-04-30 in `delivery_data_small`), and
-a self-inflicted reproduction using a compressed SLC referenced at the
-latest available date.
-
-**Fix**: use a CCSLC referenced earlier in time, or (for historical) confirm
-every new real date genuinely postdates the CCSLC's coverage — not just the
-newest one.
 
 ## 2000 — forward mode requires CCSLC coverage
 
 Two related messages, same code:
 
 ```
-Forward mode requires at least one compressed SLC (CCSLC) in the input CSLC
+Forward mode requires at least one compressed CSLC (CCSLC) in the input CSLC
 list, but none was found.
 ```
 ```
-Forward mode requires a compressed SLC (CCSLC) for every burst in the input
+Forward mode requires a compressed CSLC (CCSLC) for every burst in the input
 CSLC list, but no CCSLC was found for burst(s): {burst_ids}.
 ```
 
 Forward mode is incremental — it must be handed at least one CCSLC to
 process against, and since each burst is processed independently, a burst
-with real SLCs but no CCSLC of its own would silently produce an empty
+with real CSLCs but no CCSLC of its own would silently produce an empty
 compressed-SLC reader for that burst downstream (observed: `IndexError` in
 `disp_s1._ps.run_combine`). This check does **not** apply to historical
 mode — running with zero CCSLCs is historical mode's normal/default case.
 
-**Fix**: supply at least one CCSLC per burst that has real SLCs in the input
+**Fix**: supply at least one CCSLC per burst that has real CSLCs in the input
 list.
 
 ## 2001 — insufficient stack depth for the forward-mode network
 
 ```
 Forward mode nearest-{N} network requires at least {N+1} real CSLCs
-(compressed SLCs don't count toward this depth) in the input stack, but
+(CCSLCs don't count toward this depth) in the input stack, but
 only {count} were found.
 ```
 
@@ -155,16 +154,20 @@ Forward mode's manual-index network (nearest-3 or nearest-4, from
 latest date — but only into `dolphin`'s **real-date-only** phase-linked
 list (compressed SLCs are globbed separately and never enter it; see
 [compressed-slc-operations.md](compressed-slc-operations.md)). So the
-required depth is counted in real SLCs alone, regardless of how many
-compressed SLCs (0–5) are also present.
+required depth is counted in real CSLCs alone, regardless of how many
+compressed SLCs (0–5 operationally) are also present. That 0–5 is set by the
+triggering logic that assembles the input list, not by the SAS: the
+delivered algorithm parameters leave `phase_linking.max_num_compressed: 100`,
+so nothing inside disp_s1 enforces the bound — the reference driver mirrors
+the trigger with `--num-compressed` (default 5, latest-k per burst).
 
 This check previously counted *all* CSLCs (real + compressed) toward the
-depth, undercounting by the number of compressed SLCs present. That bug
+depth, undercounting by the number of compressed CSLCs present. That bug
 produced an `IndexError` in `dolphin.interferogram._make_ifg_pairs` instead
 of failing at input validation — reproduced directly against
 `delivery_data_official` (1 CCSLC + 4 real dates passed the old check but
 crashed; nearest-4 actually needs 5 *real* dates). Fixed to count only real
-SLCs.
+CSLCs.
 
 **Fix**: include more real trailing dates (`nearest_n + 1` per burst,
 compressed SLCs don't count), or lower `forward_mode_network_size` (valid

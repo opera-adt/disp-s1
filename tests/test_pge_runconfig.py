@@ -8,7 +8,7 @@ import opera_utils
 import pytest
 from dolphin.stack import CompressedSlcPlan
 
-from disp_s1 import pge_runconfig
+from disp_s1 import main, pge_runconfig
 from disp_s1.main import (
     _assert_forward_mode_compressed,
     _assert_no_large_temporal_gaps,
@@ -550,11 +550,11 @@ class TestCreateForwardModeNetwork:
 
     @pytest.mark.parametrize("nearest_n", [3, 4])
     def test_too_few_slcs_raises(self, nearest_n):
-        # One short of the minimum -> InputValidationError with code 2002.
+        # One short of the minimum -> InputValidationError with code 2001.
         files = _make_cslc_names(nearest_n)  # nearest_n < nearest_n + 1
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
             pge_runconfig._create_forward_mode_network(nearest_n, cslc_file_list=files)
-        assert exc_info.value.error_code == 2002
+        assert exc_info.value.error_code == 2001
 
     def test_counts_across_multiple_bursts(self):
         # Depth is measured from a single burst; extra bursts don't inflate the count.
@@ -563,7 +563,7 @@ class TestCreateForwardModeNetwork:
         )
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
             pge_runconfig._create_forward_mode_network(3, cslc_file_list=files)
-        assert exc_info.value.error_code == 2002
+        assert exc_info.value.error_code == 2001
 
 
 class TestAssertNoLargeTemporalGaps:
@@ -613,3 +613,67 @@ class TestAssertForwardModeCompressed:
             Path("s_20200101.h5"),
         ]
         assert _assert_forward_mode_compressed(files) is None
+
+
+class TestBurstGroupingFallback:
+    """The prechecks must not crash on filenames without a parseable burst ID.
+
+    `opera_utils.group_by_burst` raises a bare `ValueError` on such names.
+    Real OPERA CSLC/CCSLC filenames always carry a burst ID, but a precheck
+    that dies with an uncoded exception before it runs defeats its own
+    purpose, so the grouping falls back to a single pooled group instead.
+    """
+
+    NO_BURST_ID = [
+        Path("compressed_20170430_20170217_20170430.tif"),
+        Path("s_20200101.h5"),
+        Path("s_20200113.h5"),
+    ]
+
+    def test_group_by_burst_falls_back_to_single_group(self):
+        grouped = main._group_by_burst(self.NO_BURST_ID)
+        assert list(grouped) == [None]
+        assert grouped[None] == self.NO_BURST_ID
+
+    def test_group_by_burst_uses_real_ids_when_parseable(self):
+        files = _make_cslc_names(2, burst="T042-088905-IW1")
+        assert list(main._group_by_burst(files)) == ["t042_088905_iw1"]
+
+    def test_group_by_burst_empty_list(self):
+        # group_by_burst itself does not handle an empty list.
+        assert main._group_by_burst([]) == {}
+
+    @pytest.mark.parametrize(
+        "func",
+        [
+            _assert_no_large_temporal_gaps,
+            _assert_forward_mode_compressed,
+            main._assert_no_compressed_slc_conflicts,
+        ],
+    )
+    def test_checks_do_not_raise_valueerror_on_unparseable_names(self, func):
+        # Must pass cleanly, not die with "Could not parse burst id from ...".
+        assert func(self.NO_BURST_ID) is None
+
+    def test_pooled_grouping_still_detects_conflicts(self):
+        # Falling back to one group must not silently disable the checks:
+        # the real SLC here sits on the CCSLC's own reference date (1001).
+        files = [
+            Path("compressed_20170430_20170217_20170430.tif"),
+            Path("s_20170430.h5"),
+        ]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            main._assert_no_compressed_slc_conflicts(files)
+        assert exc_info.value.error_code == 1001
+
+    def test_mixed_parseability_pools_both_sides(self):
+        # CCSLC name parses, real name does not. Grouping them separately would
+        # leave no bursts in common and skip the check entirely; both must be
+        # pooled so the 1002 conflict is still caught.
+        files = [
+            Path("compressed_t042_088905_iw1_20200601_20200101_20200601.h5"),
+            Path("s_20200101.h5"),
+        ]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            main._assert_no_compressed_slc_conflicts(files, "DISP_S1_FORWARD")
+        assert exc_info.value.error_code == 1002

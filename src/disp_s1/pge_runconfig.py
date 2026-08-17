@@ -633,9 +633,7 @@ def _create_forward_mode_network(
         burst_to_file_list = group_by_burst(cslc_file_list)
         burst_id = next(iter(burst_to_file_list))
         burst_files = sort_files_by_date(burst_to_file_list[burst_id])[0]
-        num_real_slc = sum(
-            1 for f in burst_files if "compressed" not in str(f).lower()
-        )
+        num_real_slc = sum(1 for f in burst_files if "compressed" not in str(f).lower())
         if num_real_slc < min_slc:
             raise InputValidationError(
                 f"Forward mode nearest-{nearest_n} network requires at least"

@@ -439,6 +439,61 @@ def _assert_no_duplicate_dates(input_file_list: Sequence[Path]) -> None:
             raise ValueError(msg)
 
 
+def _group_by_burst(
+    file_list: Sequence[Path],
+) -> dict[str | None, list[Path]]:
+    """Group files by burst ID, pooling them all together if that isn't possible.
+
+    ``opera_utils.group_by_burst`` raises a bare ``ValueError`` on any filename
+    it can't parse a burst ID out of. Real inputs are always OPERA CSLC/CCSLC
+    names, so that path shouldn't be hit in production — but these prechecks
+    exist to turn a malformed input stack into a clear, coded error, and they'd
+    defeat that purpose by crashing with an unrelated exception before they
+    ever run. Fall back to a single unnamed group, which restores the
+    burst-agnostic behavior these checks had before they were scoped per burst.
+
+    Returns an empty mapping for an empty list rather than calling through,
+    since the grouping helpers don't handle that case.
+    """
+    if not file_list:
+        return {}
+    try:
+        return dict(group_by_burst(file_list))
+    except ValueError:
+        logger.debug(
+            "Could not parse burst IDs from the input file list; checking it as"
+            " a single pooled group.",
+            exc_info=True,
+        )
+        return {None: list(file_list)}
+
+
+def _burst_prefix(burst_id: str | None) -> str:
+    """Label a per-burst message, or nothing when the files were pooled."""
+    return f"burst {burst_id}: " if burst_id is not None else ""
+
+
+def _group_pair_by_burst(
+    real_files: Sequence[Path], compressed_files: Sequence[Path]
+) -> tuple[dict[str | None, list[Path]], dict[str | None, list[Path]]]:
+    """Group real and compressed file lists by burst, keeping their keys comparable.
+
+    The checks that use this compare the two groupings burst by burst, so the
+    two must agree on how they're keyed. If only one list falls back to a
+    pooled group, the other's real burst IDs would share no keys with it and
+    every check would quietly find nothing to compare — passing a malformed
+    stack instead of rejecting it. Pool both in that case.
+    """
+    grouped_real = _group_by_burst(real_files)
+    grouped_compressed = _group_by_burst(compressed_files)
+    if (None in grouped_real) != (None in grouped_compressed):
+        return (
+            {None: list(real_files)} if real_files else {},
+            {None: list(compressed_files)} if compressed_files else {},
+        )
+    return grouped_real, grouped_compressed
+
+
 def _assert_no_large_temporal_gaps(
     input_file_list: Sequence[Path],
     max_gap_days: float = 2 * 365.25,
@@ -468,18 +523,16 @@ def _assert_no_large_temporal_gaps(
         more than ``max_gap_days`` apart.
 
     """
-    non_compressed = [
-        f for f in input_file_list if "compressed" not in str(f).lower()
-    ]
+    non_compressed = [f for f in input_file_list if "compressed" not in str(f).lower()]
 
     messages = []
-    for burst_id, file_list in group_by_burst(non_compressed).items():
+    for burst_id, file_list in _group_by_burst(non_compressed).items():
         real_dates = sorted({get_dates(f)[0] for f in file_list})
         for earlier, later in zip(real_dates, real_dates[1:]):
             gap_days = (later - earlier).total_seconds() / 86400
             if gap_days > max_gap_days:
                 messages.append(
-                    f"burst {burst_id}: {gap_days:.0f}-day"
+                    f"{_burst_prefix(burst_id)}{gap_days:.0f}-day"
                     f" ({gap_days / 365.25:.2f}-year) gap between"
                     f" {earlier:%Y-%m-%d} and {later:%Y-%m-%d}"
                 )
@@ -552,8 +605,9 @@ def _assert_no_compressed_slc_conflicts(
         return
 
     non_compressed = [f for f, c in zip(input_file_list, is_compressed) if not c]
-    non_compressed_by_burst = group_by_burst(non_compressed)
-    compressed_by_burst = group_by_burst(compressed)
+    non_compressed_by_burst, compressed_by_burst = _group_pair_by_burst(
+        non_compressed, compressed
+    )
     real_burst_ids = set(non_compressed_by_burst)
     compressed_burst_ids = set(compressed_by_burst)
 
@@ -577,8 +631,8 @@ def _assert_no_compressed_slc_conflicts(
         real_dates = {get_dates(f)[0] for f in non_compressed_by_burst[burst_id]}
         if ref_date in real_dates:
             overlap_messages.append(
-                f"burst {burst_id}: real SLC date {ref_date:%Y-%m-%d} overlaps"
-                " with its most recent compressed SLC's reference date"
+                f"{_burst_prefix(burst_id)}real SLC date {ref_date:%Y-%m-%d}"
+                " overlaps with its most recent compressed SLC's reference date"
             )
 
         # `main.py`'s own `date_to_files = group_by_date(cslc_file_list, date_idx=0)`
@@ -594,16 +648,18 @@ def _assert_no_compressed_slc_conflicts(
         # output for.
         if real_dates:
             boundary_date = (
-                max(real_dates) if product_type == "DISP_S1_FORWARD"
+                max(real_dates)
+                if product_type == "DISP_S1_FORWARD"
                 else min(real_dates)
             )
             if ref_date > boundary_date:
                 which = (
-                    "the latest" if product_type == "DISP_S1_FORWARD"
+                    "the latest"
+                    if product_type == "DISP_S1_FORWARD"
                     else "the earliest"
                 )
                 future_ref_messages.append(
-                    f"burst {burst_id}: compressed SLC reference date"
+                    f"{_burst_prefix(burst_id)}compressed SLC reference date"
                     f" {ref_date:%Y-%m-%d} is later than {which} real SLC date"
                     f" {boundary_date:%Y-%m-%d}"
                 )
@@ -673,8 +729,9 @@ def _assert_forward_mode_compressed(
         )
 
     non_compressed = [f for f, c in zip(input_file_list, is_compressed) if not c]
-    non_compressed_by_burst = group_by_burst(non_compressed)
-    compressed_by_burst = group_by_burst(compressed)
+    non_compressed_by_burst, compressed_by_burst = _group_pair_by_burst(
+        non_compressed, compressed
+    )
     real_burst_ids = set(non_compressed_by_burst)
     compressed_burst_ids = set(compressed_by_burst)
     missing_burst_ids = sorted(real_burst_ids - compressed_burst_ids)

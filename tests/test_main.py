@@ -8,7 +8,10 @@ from dolphin.workflows.displacement import OutputPaths
 from disp_s1._log import InputValidationError
 from disp_s1._reference import ReferencePoint
 from disp_s1.cli.run import run_main
-from disp_s1.main import _assert_no_compressed_slc_conflicts, _filter_before_last_processed
+from disp_s1.main import (
+    _assert_no_compressed_slc_conflicts,
+    _filter_before_last_processed,
+)
 
 TEST_DATA_DIR = Path(__file__).parent / "data/delivery_data_small"
 

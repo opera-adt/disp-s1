@@ -383,7 +383,8 @@ def create_products(
             for burst_id, files in out_paths.comp_slc_dict.items()
         }
         logger.info(
-            f"Saving {len(out_paths.comp_slc_dict.items())} compressed SLCs"
+            f"Saving {sum(len(v) for v in out_paths.comp_slc_dict.values())}"
+            " compressed SLCs"
             " (reference date(s) by burst:"
             f" {ref_dates_by_burst})"
         )
@@ -429,11 +430,11 @@ def _assert_no_duplicate_dates(input_file_list: Sequence[Path]) -> None:
     non_compressed_slcs = [
         f for f, is_comp in zip(input_file_list, is_compressed) if not is_comp
     ]
-    for burst_id, file_list in group_by_burst(non_compressed_slcs).items():
+    for burst_id, file_list in _group_by_burst(non_compressed_slcs).items():
         sensing_date_list = [get_dates(f)[0] for f in file_list]
         # Use a set to check for duplicate dates
         if len(sensing_date_list) > len(set(sensing_date_list)):
-            msg = f"Duplicate dates passed for {burst_id}:\n"
+            msg = f"Duplicate dates passed for {burst_id or 'input CSLC list'}:\n"
             file_string = "\n".join(file_list)
             msg += file_string
             raise ValueError(msg)
@@ -631,7 +632,18 @@ def _assert_no_compressed_slc_conflicts(
         # date in the ministack it summarizes -- which is also its end date. So
         # one value serves both the overlap check below and the boundary check
         # after it.
-        ranges = [get_dates(f)[:3] for f in compressed_by_burst[burst_id]]
+        # A CCSLC name yields (reference, start, end). A path that merely
+        # contains "compressed" (e.g. a real CSLC staged under a directory of
+        # that name) yields fewer, and would crash this check with an uncoded
+        # IndexError -- exactly what these prechecks exist to avoid. Skip
+        # those rather than fail on them; they aren't CCSLCs to validate.
+        ranges = [
+            dates[:3]
+            for dates in (get_dates(f) for f in compressed_by_burst[burst_id])
+            if len(dates) >= 3
+        ]
+        if not ranges:
+            continue
         ref_date, _start_date, _end_date = max(ranges, key=lambda r: r[2])
         real_dates = {get_dates(f)[0] for f in non_compressed_by_burst[burst_id]}
         if ref_date in real_dates:

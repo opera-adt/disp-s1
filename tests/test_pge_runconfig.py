@@ -677,3 +677,53 @@ class TestBurstGroupingFallback:
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
             main._assert_no_compressed_slc_conflicts(files, "DISP_S1_FORWARD")
         assert exc_info.value.error_code == 1002
+
+
+class TestCodeReviewRegressions:
+    """Regressions for issues found in the independent review of this branch."""
+
+    def test_2001_checks_every_burst_not_just_the_first(self):
+        # The first burst is deep enough, a later one is not. Sampling only the
+        # first burst let this through to an IndexError in
+        # dolphin.interferogram._make_ifg_pairs.
+        files = _make_cslc_names(4, burst="T042-088905-IW1") + _make_cslc_names(
+            2, burst="T042-088906-IW2"
+        )
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            pge_runconfig._create_forward_mode_network(3, cslc_file_list=files)
+        assert exc_info.value.error_code == 2001
+        # The short burst must be named, not the healthy one.
+        assert "088906" in str(exc_info.value)
+
+    def test_2001_passes_when_every_burst_is_deep_enough(self):
+        files = _make_cslc_names(4, burst="T042-088905-IW1") + _make_cslc_names(
+            4, burst="T042-088906-IW2"
+        )
+        assert pge_runconfig._create_forward_mode_network(
+            3, cslc_file_list=files
+        ).indexes
+
+    def test_compressed_in_directory_name_does_not_crash_prechecks(self):
+        # `is_compressed` matches on the whole path, so a real CSLC staged under
+        # a directory containing "compressed" is misread as a CCSLC. Its name
+        # yields only one date, which used to IndexError out of the very check
+        # that exists to raise coded errors.
+        files = [
+            Path("compressed_slcs/T042-088905-IW1_20220101_20240624.h5"),
+            Path("T042-088905-IW1_20220113_20240624.h5"),
+        ]
+        assert main._assert_no_compressed_slc_conflicts(files) is None
+        assert (
+            main._assert_no_compressed_slc_conflicts(files, "DISP_S1_FORWARD") is None
+        )
+
+    def test_real_ccslc_still_validated_alongside_an_unparseable_one(self):
+        # The skip must not swallow a genuine conflict sitting next to it.
+        files = [
+            Path("compressed_slcs/T042-088905-IW1_20220101_20240624.h5"),
+            Path("compressed_t042_088905_iw1_20220301_20220101_20220301.h5"),
+            Path("T042-088905-IW1_20220301_20240624.h5"),
+        ]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            main._assert_no_compressed_slc_conflicts(files)
+        assert exc_info.value.error_code == 1001

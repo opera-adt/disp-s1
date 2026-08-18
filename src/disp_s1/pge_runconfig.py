@@ -628,17 +628,25 @@ def _create_forward_mode_network(
     # so the phase-linked (real-only) stack needs at least ``nearest_n + 1`` SLCs.
     min_slc = nearest_n + 1
     if cslc_file_list is not None:
-        # Use a single burst as the template for the stack depth (all bursts
-        # share the same set of acquisition dates).
-        burst_to_file_list = group_by_burst(cslc_file_list)
-        burst_id = next(iter(burst_to_file_list))
-        burst_files = sort_files_by_date(burst_to_file_list[burst_id])[0]
-        num_real_slc = sum(1 for f in burst_files if "compressed" not in str(f).lower())
-        if num_real_slc < min_slc:
+        # Every burst is phase-linked and unwrapped independently, so the
+        # depth has to hold for each of them. Sampling only the first burst
+        # (on the assumption that all bursts share the same acquisition dates)
+        # lets a short non-first burst through to the IndexError this check
+        # exists to prevent.
+        shallow = {}
+        for burst_id, files in group_by_burst(cslc_file_list).items():
+            burst_files = sort_files_by_date(files)[0]
+            num_real_slc = sum(
+                1 for f in burst_files if "compressed" not in str(f).lower()
+            )
+            if num_real_slc < min_slc:
+                shallow[burst_id] = num_real_slc
+        if shallow:
+            found = ", ".join(f"{b}: {n}" for b, n in sorted(shallow.items()))
             raise InputValidationError(
                 f"Forward mode nearest-{nearest_n} network requires at least"
-                f" {min_slc} real CSLCs (CCSLCs don't count toward this"
-                f" depth) in the input stack, but only {num_real_slc} were found.",
+                f" {min_slc} real CSLCs (CCSLCs don't count toward this depth)"
+                f" in every burst, but found only -- {found}.",
                 error_code=2001,
             )
 

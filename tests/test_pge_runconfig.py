@@ -8,7 +8,8 @@ import opera_utils
 import pytest
 from dolphin.stack import CompressedSlcPlan
 
-from disp_s1 import pge_runconfig
+from disp_s1 import main, pge_runconfig
+from disp_s1._log import InputValidationError
 from disp_s1.main import (
     _assert_forward_mode_compressed,
     _assert_no_large_temporal_gaps,
@@ -550,11 +551,11 @@ class TestCreateForwardModeNetwork:
 
     @pytest.mark.parametrize("nearest_n", [3, 4])
     def test_too_few_slcs_raises(self, nearest_n):
-        # One short of the minimum -> InputValidationError with code 2002.
+        # One short of the minimum -> InputValidationError with code 2001.
         files = _make_cslc_names(nearest_n)  # nearest_n < nearest_n + 1
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
             pge_runconfig._create_forward_mode_network(nearest_n, cslc_file_list=files)
-        assert exc_info.value.error_code == 2002
+        assert exc_info.value.error_code == 2001
 
     def test_counts_across_multiple_bursts(self):
         # Depth is measured from a single burst; extra bursts don't inflate the count.
@@ -563,7 +564,108 @@ class TestCreateForwardModeNetwork:
         )
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
             pge_runconfig._create_forward_mode_network(3, cslc_file_list=files)
-        assert exc_info.value.error_code == 2002
+        assert exc_info.value.error_code == 2001
+
+
+class TestRunInputPrechecksToggle:
+    """``run_input_prechecks`` (default true) gates every numbered precheck.
+
+    Lives here rather than in ``test_main.py`` so the ``runconfig_minimum``
+    fixture chain can be reused: the flag is a ``RunConfig`` field, and two of
+    the three behaviors under test are only observable through a real runconfig.
+    """
+
+    def test_default_is_on(self, runconfig_minimum):
+        assert runconfig_minimum.run_input_prechecks is True
+
+    def test_missing_from_yaml_defaults_to_on(self, tmp_path, runconfig_minimum):
+        # A runconfig written before this option existed must still load, with
+        # the prechecks on -- the flag must never be effectively opt-in.
+        f = tmp_path / "no_flag.yaml"
+        runconfig_minimum.to_yaml(f)
+        text = f.read_text()
+        assert "run_input_prechecks" in text
+        f.write_text(
+            "\n".join(ln for ln in text.splitlines() if "run_input_prechecks" not in ln)
+        )
+        assert RunConfig.from_yaml(f).run_input_prechecks is True
+
+    def test_yaml_roundtrip_when_off(self, tmp_path, runconfig_minimum):
+        f = tmp_path / "off.yaml"
+        runconfig_minimum.model_copy(update={"run_input_prechecks": False}).to_yaml(f)
+        assert RunConfig.from_yaml(f).run_input_prechecks is False
+
+    @pytest.fixture
+    def shallow_forward_runconfig(self, runconfig_minimum):
+        """Forward mode with a stack one date too shallow for nearest-3."""
+        group = runconfig_minimum.input_file_group
+        return runconfig_minimum.model_copy(
+            update={
+                "input_file_group": group.model_copy(
+                    update={"cslc_file_list": group.cslc_file_list[:3]}
+                ),
+                "primary_executable": PrimaryExecutable(product_type="DISP_S1_FORWARD"),
+            }
+        )
+
+    def test_2001_raised_when_on(self, shallow_forward_runconfig):
+        # 2001 is the one precheck that runs in `to_workflow`, not `main.run`.
+        with pytest.raises(InputValidationError) as excinfo:
+            shallow_forward_runconfig.to_workflow()
+        assert excinfo.value.error_code == 2001
+
+    def test_2001_skipped_when_off(self, shallow_forward_runconfig):
+        w = shallow_forward_runconfig.model_copy(
+            update={"run_input_prechecks": False}
+        ).to_workflow()
+        # Same network as always -- only the depth check is withheld.
+        assert w.interferogram_network.indexes == [
+            (-2, -1),
+            (-3, -1),
+            (-4, -1),
+            (-3, -2),
+            (-4, -2),
+            (-4, -3),
+        ]
+
+    @staticmethod
+    def _run_to_first_workflow_call(monkeypatch, cfg, pge_runconfig):
+        """Call ``main.run``, recording prechecks and stopping at the workflow."""
+        called: list[str] = []
+        for name in (
+            "_assert_no_compressed_slc_conflicts",
+            "_assert_forward_mode_compressed",
+            "_assert_no_large_temporal_gaps",
+        ):
+            monkeypatch.setattr(
+                main, name, lambda *_a, _n=name, **_k: called.append(_n)
+            )
+
+        class _StopBeforeProcessing(Exception):
+            pass
+
+        def _stop(*_args, **_kwargs):
+            raise _StopBeforeProcessing
+
+        monkeypatch.setattr(main, "run_displacement", _stop)
+        with pytest.raises(_StopBeforeProcessing):
+            main.run(cfg, pge_runconfig=pge_runconfig)
+        return called
+
+    def test_main_run_calls_prechecks_when_on(self, monkeypatch, runconfig_minimum):
+        called = self._run_to_first_workflow_call(
+            monkeypatch, runconfig_minimum.to_workflow(), runconfig_minimum
+        )
+        # Historical, so the forward-only 2000 check is not among them.
+        assert called == [
+            "_assert_no_compressed_slc_conflicts",
+            "_assert_no_large_temporal_gaps",
+        ]
+
+    def test_main_run_skips_prechecks_when_off(self, monkeypatch, runconfig_minimum):
+        cfg = runconfig_minimum.to_workflow()
+        off = runconfig_minimum.model_copy(update={"run_input_prechecks": False})
+        assert self._run_to_first_workflow_call(monkeypatch, cfg, off) == []
 
 
 class TestAssertNoLargeTemporalGaps:
@@ -613,3 +715,117 @@ class TestAssertForwardModeCompressed:
             Path("s_20200101.h5"),
         ]
         assert _assert_forward_mode_compressed(files) is None
+
+
+class TestBurstGroupingFallback:
+    """The prechecks must not crash on filenames without a parseable burst ID.
+
+    `opera_utils.group_by_burst` raises a bare `ValueError` on such names.
+    Real OPERA CSLC/CCSLC filenames always carry a burst ID, but a precheck
+    that dies with an uncoded exception before it runs defeats its own
+    purpose, so the grouping falls back to a single pooled group instead.
+    """
+
+    NO_BURST_ID = [
+        Path("compressed_20170430_20170217_20170430.tif"),
+        Path("s_20200101.h5"),
+        Path("s_20200113.h5"),
+    ]
+
+    def test_group_by_burst_falls_back_to_single_group(self):
+        grouped = main._group_by_burst(self.NO_BURST_ID)
+        assert list(grouped) == [None]
+        assert grouped[None] == self.NO_BURST_ID
+
+    def test_group_by_burst_uses_real_ids_when_parseable(self):
+        files = _make_cslc_names(2, burst="T042-088905-IW1")
+        assert list(main._group_by_burst(files)) == ["t042_088905_iw1"]
+
+    def test_group_by_burst_empty_list(self):
+        # group_by_burst itself does not handle an empty list.
+        assert main._group_by_burst([]) == {}
+
+    @pytest.mark.parametrize(
+        "func",
+        [
+            _assert_no_large_temporal_gaps,
+            _assert_forward_mode_compressed,
+            main._assert_no_compressed_slc_conflicts,
+        ],
+    )
+    def test_checks_do_not_raise_valueerror_on_unparseable_names(self, func):
+        # Must pass cleanly, not die with "Could not parse burst id from ...".
+        assert func(self.NO_BURST_ID) is None
+
+    def test_pooled_grouping_still_detects_conflicts(self):
+        # Falling back to one group must not silently disable the checks:
+        # the real SLC here sits on the CCSLC's own reference date (1001).
+        files = [
+            Path("compressed_20170430_20170217_20170430.tif"),
+            Path("s_20170430.h5"),
+        ]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            main._assert_no_compressed_slc_conflicts(files)
+        assert exc_info.value.error_code == 1001
+
+    def test_mixed_parseability_pools_both_sides(self):
+        # CCSLC name parses, real name does not. Grouping them separately would
+        # leave no bursts in common and skip the check entirely; both must be
+        # pooled so the 1002 conflict is still caught.
+        files = [
+            Path("compressed_t042_088905_iw1_20200601_20200101_20200601.h5"),
+            Path("s_20200101.h5"),
+        ]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            main._assert_no_compressed_slc_conflicts(files, "DISP_S1_FORWARD")
+        assert exc_info.value.error_code == 1002
+
+
+class TestCodeReviewRegressions:
+    """Regressions for issues found in the independent review of this branch."""
+
+    def test_2001_checks_every_burst_not_just_the_first(self):
+        # The first burst is deep enough, a later one is not. Sampling only the
+        # first burst let this through to an IndexError in
+        # dolphin.interferogram._make_ifg_pairs.
+        files = _make_cslc_names(4, burst="T042-088905-IW1") + _make_cslc_names(
+            2, burst="T042-088906-IW2"
+        )
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            pge_runconfig._create_forward_mode_network(3, cslc_file_list=files)
+        assert exc_info.value.error_code == 2001
+        # The short burst must be named, not the healthy one.
+        assert "088906" in str(exc_info.value)
+
+    def test_2001_passes_when_every_burst_is_deep_enough(self):
+        files = _make_cslc_names(4, burst="T042-088905-IW1") + _make_cslc_names(
+            4, burst="T042-088906-IW2"
+        )
+        assert pge_runconfig._create_forward_mode_network(
+            3, cslc_file_list=files
+        ).indexes
+
+    def test_compressed_in_directory_name_does_not_crash_prechecks(self):
+        # `is_compressed` matches on the whole path, so a real CSLC staged under
+        # a directory containing "compressed" is misread as a CCSLC. Its name
+        # yields only one date, which used to IndexError out of the very check
+        # that exists to raise coded errors.
+        files = [
+            Path("compressed_slcs/T042-088905-IW1_20220101_20240624.h5"),
+            Path("T042-088905-IW1_20220113_20240624.h5"),
+        ]
+        assert main._assert_no_compressed_slc_conflicts(files) is None
+        assert (
+            main._assert_no_compressed_slc_conflicts(files, "DISP_S1_FORWARD") is None
+        )
+
+    def test_real_ccslc_still_validated_alongside_an_unparseable_one(self):
+        # The skip must not swallow a genuine conflict sitting next to it.
+        files = [
+            Path("compressed_slcs/T042-088905-IW1_20220101_20240624.h5"),
+            Path("compressed_t042_088905_iw1_20220301_20220101_20220301.h5"),
+            Path("T042-088905-IW1_20220301_20240624.h5"),
+        ]
+        with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
+            main._assert_no_compressed_slc_conflicts(files)
+        assert exc_info.value.error_code == 1001

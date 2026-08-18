@@ -283,6 +283,18 @@ class RunConfig(YamlModel):
         default=Path("output/disp_s1_workflow.log"),
         description="Path to the output log file in addition to logging to stderr.",
     )
+
+    run_input_prechecks: bool = Field(
+        True,
+        description=(
+            "Run the numbered input-validation prechecks (error codes 1000-2001)"
+            " on the input CSLC list before processing. Leave this on: they turn"
+            " a malformed input list into a clear, coded failure in seconds,"
+            " where the same input would otherwise fail deep inside dolphin, or"
+            " not at all. Set false only to force a run whose inputs a precheck"
+            " rejects. The duplicate-date check is always run regardless."
+        ),
+    )
     model_config = ConfigDict(extra="forbid")
 
     @classmethod
@@ -387,9 +399,12 @@ class RunConfig(YamlModel):
         param_dict["output_options"]["extra_reference_date"] = extra_reference_date
 
         if self.primary_executable.product_type == "DISP_S1_FORWARD":
+            # Withholding `cslc_file_list` builds the same network but skips the
+            # 2001 stack-depth check, which is the only precheck that runs here
+            # rather than in `disp_s1.main.run`.
             param_dict["interferogram_network"] = _create_forward_mode_network(
                 algo_params.forward_mode_network_size,
-                cslc_file_list=cslc_file_list,
+                cslc_file_list=cslc_file_list if self.run_input_prechecks else None,
             )
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
@@ -612,22 +627,42 @@ def _create_forward_mode_network(
     When ``cslc_file_list`` is given, assert the stack is deep enough: the
     manual indexes reach back ``nearest_n + 1`` positions from the last date,
     so the ministack must contain at least that many SLCs.
+
+    That depth is counted in *real* SLCs only, not compressed ones. When
+    compressed SLCs are present, `dolphin.workflows.wrapped_phase.run` phase-
+    links each real date against them and collects the manual-index network's
+    input list by globbing only the real-date outputs (`"2*.tif"`) --
+    compressed-SLC outputs are globbed separately (`"compressed*.tif"`) and
+    never enter that list. So a compressed SLC doesn't add depth toward the
+    manual indexes; only real dates do, regardless of how many compressed
+    SLCs (0-5) are also in the stack. Undercounting this by including
+    compressed SLCs in the depth produces an `IndexError` deep in
+    `dolphin.interferogram._make_ifg_pairs` instead of failing here.
     """
     # The deepest index used is ``-(nearest_n + 1)`` (e.g. -4 for nearest-3),
-    # so the phase-linked stack needs at least ``nearest_n + 1`` SLCs.
+    # so the phase-linked (real-only) stack needs at least ``nearest_n + 1`` SLCs.
     min_slc = nearest_n + 1
     if cslc_file_list is not None:
-        # Use a single burst as the template for the stack depth (all bursts
-        # share the same set of acquisition dates).
-        burst_to_file_list = group_by_burst(cslc_file_list)
-        burst_id = next(iter(burst_to_file_list))
-        num_slc = len(sort_files_by_date(burst_to_file_list[burst_id])[0])
-        if num_slc < min_slc:
+        # Every burst is phase-linked and unwrapped independently, so the
+        # depth has to hold for each of them. Sampling only the first burst
+        # (on the assumption that all bursts share the same acquisition dates)
+        # lets a short non-first burst through to the IndexError this check
+        # exists to prevent.
+        shallow = {}
+        for burst_id, files in group_by_burst(cslc_file_list).items():
+            burst_files = sort_files_by_date(files)[0]
+            num_real_slc = sum(
+                1 for f in burst_files if "compressed" not in str(f).lower()
+            )
+            if num_real_slc < min_slc:
+                shallow[burst_id] = num_real_slc
+        if shallow:
+            found = ", ".join(f"{b}: {n}" for b, n in sorted(shallow.items()))
             raise InputValidationError(
                 f"Forward mode nearest-{nearest_n} network requires at least"
-                f" {min_slc} CSLCs in the input stack (including compressed CSLCs),"
-                f" but only {num_slc} were found.",
-                error_code=2002,
+                f" {min_slc} real CSLCs (CCSLCs don't count toward this depth)"
+                f" in every burst, but found only -- {found}.",
+                error_code=2001,
             )
 
     indexes = [

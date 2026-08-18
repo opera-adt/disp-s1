@@ -79,15 +79,24 @@ def run(
     date_to_files = group_by_date(cfg.cslc_file_list, date_idx=0)
 
     # Fail fast on a malformed input stack before the expensive workflow runs.
-    # Compressed-SLC date conflicts apply in any mode that's handed CCSLCs
-    # (historical accepts them as prior baselines too, not just forward).
-    _assert_no_compressed_slc_conflicts(
-        cfg.cslc_file_list, pge_runconfig.primary_executable.product_type
-    )
-    if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
-        _assert_forward_mode_compressed(cfg.cslc_file_list)
+    # `run_input_prechecks` (default true) gates every numbered check; 2001 is
+    # gated in `RunConfig.to_workflow`, which has already run by this point.
+    if pge_runconfig.run_input_prechecks:
+        # Compressed-SLC date conflicts apply in any mode that's handed CCSLCs
+        # (historical accepts them as prior baselines too, not just forward).
+        _assert_no_compressed_slc_conflicts(
+            cfg.cslc_file_list, pge_runconfig.primary_executable.product_type
+        )
+        if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
+            _assert_forward_mode_compressed(cfg.cslc_file_list)
 
-    _assert_no_large_temporal_gaps(cfg.cslc_file_list)
+        _assert_no_large_temporal_gaps(cfg.cslc_file_list)
+    else:
+        logger.warning(
+            "run_input_prechecks is false: skipping input-validation prechecks"
+            " 1000-2001. A malformed input CSLC list will now fail inside the"
+            " workflow, or not at all."
+        )
 
     datetimes_present = list(date_to_files.keys())
     # For forward mode, assume that the last processed was the second-to-last date

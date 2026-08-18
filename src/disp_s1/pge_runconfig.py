@@ -283,6 +283,18 @@ class RunConfig(YamlModel):
         default=Path("output/disp_s1_workflow.log"),
         description="Path to the output log file in addition to logging to stderr.",
     )
+
+    run_input_prechecks: bool = Field(
+        True,
+        description=(
+            "Run the numbered input-validation prechecks (error codes 1000-2001)"
+            " on the input CSLC list before processing. Leave this on: they turn"
+            " a malformed input list into a clear, coded failure in seconds,"
+            " where the same input would otherwise fail deep inside dolphin, or"
+            " not at all. Set false only to force a run whose inputs a precheck"
+            " rejects. The duplicate-date check is always run regardless."
+        ),
+    )
     model_config = ConfigDict(extra="forbid")
 
     @classmethod
@@ -387,9 +399,12 @@ class RunConfig(YamlModel):
         param_dict["output_options"]["extra_reference_date"] = extra_reference_date
 
         if self.primary_executable.product_type == "DISP_S1_FORWARD":
+            # Withholding `cslc_file_list` builds the same network but skips the
+            # 2001 stack-depth check, which is the only precheck that runs here
+            # rather than in `disp_s1.main.run`.
             param_dict["interferogram_network"] = _create_forward_mode_network(
                 algo_params.forward_mode_network_size,
-                cslc_file_list=cslc_file_list,
+                cslc_file_list=cslc_file_list if self.run_input_prechecks else None,
             )
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow

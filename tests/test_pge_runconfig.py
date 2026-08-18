@@ -9,6 +9,7 @@ import pytest
 from dolphin.stack import CompressedSlcPlan
 
 from disp_s1 import main, pge_runconfig
+from disp_s1._log import InputValidationError
 from disp_s1.main import (
     _assert_forward_mode_compressed,
     _assert_no_large_temporal_gaps,
@@ -564,6 +565,107 @@ class TestCreateForwardModeNetwork:
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
             pge_runconfig._create_forward_mode_network(3, cslc_file_list=files)
         assert exc_info.value.error_code == 2001
+
+
+class TestRunInputPrechecksToggle:
+    """``run_input_prechecks`` (default true) gates every numbered precheck.
+
+    Lives here rather than in ``test_main.py`` so the ``runconfig_minimum``
+    fixture chain can be reused: the flag is a ``RunConfig`` field, and two of
+    the three behaviors under test are only observable through a real runconfig.
+    """
+
+    def test_default_is_on(self, runconfig_minimum):
+        assert runconfig_minimum.run_input_prechecks is True
+
+    def test_missing_from_yaml_defaults_to_on(self, tmp_path, runconfig_minimum):
+        # A runconfig written before this option existed must still load, with
+        # the prechecks on -- the flag must never be effectively opt-in.
+        f = tmp_path / "no_flag.yaml"
+        runconfig_minimum.to_yaml(f)
+        text = f.read_text()
+        assert "run_input_prechecks" in text
+        f.write_text(
+            "\n".join(ln for ln in text.splitlines() if "run_input_prechecks" not in ln)
+        )
+        assert RunConfig.from_yaml(f).run_input_prechecks is True
+
+    def test_yaml_roundtrip_when_off(self, tmp_path, runconfig_minimum):
+        f = tmp_path / "off.yaml"
+        runconfig_minimum.model_copy(update={"run_input_prechecks": False}).to_yaml(f)
+        assert RunConfig.from_yaml(f).run_input_prechecks is False
+
+    @pytest.fixture
+    def shallow_forward_runconfig(self, runconfig_minimum):
+        """Forward mode with a stack one date too shallow for nearest-3."""
+        group = runconfig_minimum.input_file_group
+        return runconfig_minimum.model_copy(
+            update={
+                "input_file_group": group.model_copy(
+                    update={"cslc_file_list": group.cslc_file_list[:3]}
+                ),
+                "primary_executable": PrimaryExecutable(product_type="DISP_S1_FORWARD"),
+            }
+        )
+
+    def test_2001_raised_when_on(self, shallow_forward_runconfig):
+        # 2001 is the one precheck that runs in `to_workflow`, not `main.run`.
+        with pytest.raises(InputValidationError) as excinfo:
+            shallow_forward_runconfig.to_workflow()
+        assert excinfo.value.error_code == 2001
+
+    def test_2001_skipped_when_off(self, shallow_forward_runconfig):
+        w = shallow_forward_runconfig.model_copy(
+            update={"run_input_prechecks": False}
+        ).to_workflow()
+        # Same network as always -- only the depth check is withheld.
+        assert w.interferogram_network.indexes == [
+            (-2, -1),
+            (-3, -1),
+            (-4, -1),
+            (-3, -2),
+            (-4, -2),
+            (-4, -3),
+        ]
+
+    @staticmethod
+    def _run_to_first_workflow_call(monkeypatch, cfg, pge_runconfig):
+        """Call ``main.run``, recording prechecks and stopping at the workflow."""
+        called: list[str] = []
+        for name in (
+            "_assert_no_compressed_slc_conflicts",
+            "_assert_forward_mode_compressed",
+            "_assert_no_large_temporal_gaps",
+        ):
+            monkeypatch.setattr(
+                main, name, lambda *_a, _n=name, **_k: called.append(_n)
+            )
+
+        class _StopBeforeProcessing(Exception):
+            pass
+
+        def _stop(*_args, **_kwargs):
+            raise _StopBeforeProcessing
+
+        monkeypatch.setattr(main, "run_displacement", _stop)
+        with pytest.raises(_StopBeforeProcessing):
+            main.run(cfg, pge_runconfig=pge_runconfig)
+        return called
+
+    def test_main_run_calls_prechecks_when_on(self, monkeypatch, runconfig_minimum):
+        called = self._run_to_first_workflow_call(
+            monkeypatch, runconfig_minimum.to_workflow(), runconfig_minimum
+        )
+        # Historical, so the forward-only 2000 check is not among them.
+        assert called == [
+            "_assert_no_compressed_slc_conflicts",
+            "_assert_no_large_temporal_gaps",
+        ]
+
+    def test_main_run_skips_prechecks_when_off(self, monkeypatch, runconfig_minimum):
+        cfg = runconfig_minimum.to_workflow()
+        off = runconfig_minimum.model_copy(update={"run_input_prechecks": False})
+        assert self._run_to_first_workflow_call(monkeypatch, cfg, off) == []
 
 
 class TestAssertNoLargeTemporalGaps:

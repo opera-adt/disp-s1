@@ -9,6 +9,31 @@ list fails in seconds instead of after minutes-to-hours of processing.
 See [disp-s1-operations.md](disp-s1-operations.md) for the
 mechanism behind the compressed-SLC-related checks (1001, 1002, 2001).
 
+## Turning the prechecks off
+
+Every numbered check below is gated by one runconfig field, on by default:
+
+```yaml
+disp_s1_workflow:
+  run_input_prechecks: true   # default; set false to skip 1000-2001
+```
+
+Leave it on. It exists as an operational escape hatch -- forcing a run whose
+inputs a precheck rejects -- and set to `false` it skips all five checks, so a
+malformed input CSLC list fails deep inside `dolphin` (see 1001 for what that
+costs) or not at all. A runconfig that predates the field loads with the
+prechecks on, and the flag is never inferred from anything else.
+
+Two details worth knowing:
+
+- 2001 is the only check that runs in `RunConfig.to_workflow` rather than
+  `disp_s1.main.run`. It is gated by withholding `cslc_file_list` from
+  `_create_forward_mode_network`, so the interferogram network built is
+  identical either way -- only the depth assertion is skipped.
+- The duplicate-date check (`_assert_no_duplicate_dates`, an uncoded
+  `ValueError`) is *not* gated. Two real CSLCs for one date in one burst is an
+  ambiguity no later step can resolve, so it always runs.
+
 ## Summary table
 
 | Code | Function | Applies to | Condition |

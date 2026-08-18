@@ -6,7 +6,7 @@ numeric `.error_code` so the PGE can map failures to a specific cause. These
 checks run *before* the expensive `dolphin` workflow starts, so a bad input
 list fails in seconds instead of after minutes-to-hours of processing.
 
-See [compressed-slc-operations.md](compressed-slc-operations.md) for the
+See [disp-s1-operations.md](disp-s1-operations.md) for the
 mechanism behind the compressed-SLC-related checks (1001, 1002, 2001).
 
 ## Summary table
@@ -25,7 +25,7 @@ Numbering convention: **1xxx** = checks that apply regardless of
 ## 1000 — temporal gap
 
 ```
-Temporal gap(s) exceeding the {N}-year limit for input SLCs:
+Temporal gap(s) exceeding the {N}-year limit for input CSLCs:
 burst {burst_id}: {gap}-day ({gap:.2f}-year) gap between {earlier} and {later}
 ```
 
@@ -103,7 +103,7 @@ A compressed CSLC must summarize *prior* history — it should never reach
 into (or past) the real dates it's paired with in the same run. The
 boundary depends on `product_type`, because the two modes produce different
 numbers of output products (see
-[compressed-slc-operations.md](compressed-slc-operations.md) for why):
+[disp-s1-operations.md](disp-s1-operations.md) for why):
 
 - **`DISP_S1_FORWARD`**: the CCSLC's reference date must predate the
   **latest** real CSLC date in its burst. Forward mode only ever outputs one
@@ -145,15 +145,15 @@ list.
 
 ```
 Forward mode nearest-{N} network requires at least {N+1} real CSLCs
-(CCSLCs don't count toward this depth) in the input stack, but
-only {count} were found.
+(CCSLCs don't count toward this depth) in every burst, but found
+only -- {burst_id}: {count}, ...
 ```
 
 Forward mode's manual-index network (nearest-3 or nearest-4, from
 `forward_mode_network_size`) reaches back `nearest_n + 1` positions from the
 latest date — but only into `dolphin`'s **real-date-only** phase-linked
 list (compressed SLCs are globbed separately and never enter it; see
-[compressed-slc-operations.md](compressed-slc-operations.md)). So the
+[disp-s1-operations.md](disp-s1-operations.md)). So the
 required depth is counted in real CSLCs alone, regardless of how many
 compressed SLCs (0–5 operationally) are also present. That 0–5 is set by the
 triggering logic that assembles the input list, not by the SAS: the

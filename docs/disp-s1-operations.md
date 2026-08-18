@@ -1,14 +1,14 @@
-# Compressed SLCs: operational logic
+# Compressed CSLCs: operational logic
 
-This page explains how compressed SLCs (CCSLCs) are used in forward and
+This page explains how compressed CSLCs (CCSLCs) are used in forward and
 historical processing, and why the two modes have different requirements.
 It reflects the behavior of `dolphin` (phase linking, ministack planning,
 interferogram formation) and `disp_s1` (input validation, output
 re-referencing).
 
-## Why compressed SLCs exist
+## Why compressed CSLCs exist
 
-A compressed SLC summarizes a prior "ministack" of real SLCs as a single
+A compressed CSLC summarizes a prior "ministack" of real CSLCs as a single
 phase-linked reference. Processing a new acquisition against one CCSLC is
 far cheaper than re-processing it against every prior real SLC individually
 — that's the entire point of the sequential/StBAS algorithm this pipeline
@@ -193,13 +193,39 @@ Don't conflate the phase-linking reference (above) with `main.py`'s
 ```python
 *_, (second_to_last_date,), (_last_date,) = datetimes_present
 ...
-final_ts_paths, final_residual_paths = _redo_reference(..., second_to_last_date, ...)
+if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
+    final_ts_paths, final_residual_paths = _redo_reference(
+        ..., second_to_last_date, ...
+    )
 ```
 
-This re-references the already-inverted time series to the second-to-last
-date in the batch, for output packaging. It's independent of whether a CCSLC
-is involved at all, and independent of which file phase-linking used as its
-base.
+In forward mode, this re-references the already-inverted time series to the
+second-to-last date in the batch, for output packaging. It's independent of
+whether a CCSLC is involved at all, and independent of which file
+phase-linking used as its base.
+
+The `_redo_reference` call is **forward-only**: there is no historical branch
+and no `else`, so a historical run packages the time series with whatever
+reference the inversion produced. That follows from the product counts in the
+next section — forward emits one product, for the newest date, so pinning it
+to the second-to-last date makes that product a nearest-neighbor pair;
+historical emits one product per new real date, and collapsing them all onto
+a single date inside the batch would be meaningless.
+
+Two adjacent details are *not* forward-gated, despite sitting next to code
+that is:
+
+- `second_to_last_date` is unpacked from `datetimes_present`
+  unconditionally, before any product-type check. Only its two *uses* are
+  gated (the `last_processed` consistency check, and `_redo_reference`), so
+  the unpack's implicit "at least two distinct dates in the batch"
+  requirement applies in historical mode too.
+- A second, database-driven output re-reference runs in both modes:
+  `_compute_reference_dates` always sets
+  `output_options.extra_reference_date` from the reference date database
+  json, and `dolphin` shifts every pair whose secondary falls after that
+  date (`wrapped_phase.py`, then `timeseries.py`). So "re-reference the
+  output" is not uniquely forward — only the *second-to-last-date* one is.
 
 ## Why forward's and historical's date-boundary checks differ
 

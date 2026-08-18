@@ -444,7 +444,7 @@ def _assert_no_duplicate_dates(input_file_list: Sequence[Path]) -> None:
         # Use a set to check for duplicate dates
         if len(sensing_date_list) > len(set(sensing_date_list)):
             msg = f"Duplicate dates passed for {burst_id or 'input CSLC list'}:\n"
-            file_string = "\n".join(file_list)
+            file_string = "\n".join(str(f) for f in file_list)
             msg += file_string
             raise ValueError(msg)
 
@@ -556,8 +556,8 @@ def _assert_no_large_temporal_gaps(
             else f"{max_gap_days:.0f}-day"
         )
         msg = (
-            f"Temporal gap(s) exceeding the {limit} limit"
-            " for input CSLCs:\n" + "\n".join(messages)
+            f"Temporal gap(s) exceeding the {limit} limit for input CSLCs:\n"
+            + "\n".join(messages)
         )
         raise InputValidationError(msg, error_code=1000)
 
@@ -630,7 +630,8 @@ def _assert_no_compressed_slc_conflicts(
     # check here, per burst, so a bad input fails fast with a clear message.
     overlap_messages = []
     future_ref_messages = []
-    for burst_id in sorted(real_burst_ids & compressed_burst_ids):
+    # `key=str` because a pooled group's ID is None, which is not orderable.
+    for burst_id in sorted(real_burst_ids & compressed_burst_ids, key=str):
         # A compressed SLC is named ``compressed_<ref>_<start>_<end>``, so
         # get_dates returns (reference_date, start_date, end_date, ...).
         # A CCSLC's reference date is always its own end date by construction:
@@ -694,7 +695,8 @@ def _assert_no_compressed_slc_conflicts(
             "Input CSLC list has real CSLC(s) sharing a date with their own"
             " burst's CCSLC reference date. The CCSLC already represents that"
             " epoch, so no real CSLC for the same date should also be"
-            " included:\n" + "\n".join(overlap_messages),
+            " included:\n"
+            + "\n".join(overlap_messages),
             error_code=1001,
         )
     if future_ref_messages:
@@ -758,12 +760,12 @@ def _assert_forward_mode_compressed(
     )
     real_burst_ids = set(non_compressed_by_burst)
     compressed_burst_ids = set(compressed_by_burst)
-    missing_burst_ids = sorted(real_burst_ids - compressed_burst_ids)
+    missing_burst_ids = sorted(real_burst_ids - compressed_burst_ids, key=str)
     if missing_burst_ids:
         raise InputValidationError(
             "Forward mode requires a compressed CSLC (CCSLC) for every burst in"
             " the input CSLC list, but no CCSLC was found for burst(s):"
-            f" {', '.join(missing_burst_ids)}.",
+            f" {', '.join(b or 'input CSLC list' for b in missing_burst_ids)}.",
             error_code=2000,
         )
 

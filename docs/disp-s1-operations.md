@@ -262,7 +262,7 @@ saved every 15th forward run. In between, up to 15 real CSLCs accumulate
 uncompressed in front of the existing CCSLC(s) — the compressed SLC does
 *not* move to stay pinned at "second-to-last" every round; instead, the
 distance between it and the newest date grows by one each round until the
-next compression event resets it. 
+next compression event resets it.
 
 **Does the sliding window re-feed already-compressed dates?** For the real
 CSLCs, yes: `get_forward_batch` selects by plain index position

@@ -675,7 +675,13 @@ def _create_forward_mode_network(
     ]
     if nearest_n == 4:
         indexes.extend([(-5, -1), (-5, -2), (-5, -3), (-5, -4)])
-    return InterferogramNetwork(indexes=indexes)
+    # The manual indexes address real dates only. When the compressed SLC's
+    # reference epoch is the second-to-last date -- the run right after a
+    # compression -- the product's one interval would otherwise have no
+    # interferogram. dolphin keeps the (reference -> real) ifgs it already
+    # formed whenever that epoch falls inside this window, and adds nothing in
+    # the normal case where the epoch predates it.
+    return InterferogramNetwork(indexes=indexes, include_compressed_reference=True)
 
 
 def _nested_update(base: dict, updates: dict):

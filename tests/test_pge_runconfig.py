@@ -505,6 +505,13 @@ def _make_cslc_names(n, burst="T042-088905-IW1"):
 class TestCreateForwardModeNetwork:
     """Tests for `_create_forward_mode_network` and its stack-depth guard."""
 
+    def test_keeps_the_compressed_reference_ifgs(self):
+        """Without them, the run after a compression reports an interval that
+        no interferogram spans (its start exists only as the compressed epoch)."""
+        for n in (3, 4):
+            net = pge_runconfig._create_forward_mode_network(n)
+            assert net.include_compressed_reference is True
+
     def test_nearest_3_indexes(self):
         net = pge_runconfig._create_forward_mode_network(3)
         assert net.indexes == [

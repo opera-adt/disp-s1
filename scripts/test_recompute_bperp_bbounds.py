@@ -11,7 +11,7 @@ import shapely
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from recompute_bperp_bbounds import recompute_bperp_bbounds
-from recompute_product_bounds import BOUNDING_POLYGON_PATH
+from recompute_product_bounds import BOUNDING_POLYGON_PATH, compute_bounding_polygon
 
 # Default test product (downloaded from ASF if not present locally). Override
 # with a local file via the DISP_S1_TEST_FILE environment variable.
@@ -77,6 +77,32 @@ def test_bounding_polygon_is_rotated_rectangle(recomputed_file):
 
     assert geom.geom_type == "MultiPolygon"
     assert len(geom.geoms[0].exterior.coords) == 5
+
+
+def test_bounding_polygon_matches_computed_wkt(test_file, recomputed_file):
+    """The stored WKT must exactly match what compute_bounding_polygon produced.
+
+    Regression test for a bug where the forward-produced bounding_polygon
+    dataset (a fixed-length HDF5 string sized to the original WKT) silently
+    truncated a longer recomputed WKT written via plain in-place assignment.
+    """
+    expected_wkt = compute_bounding_polygon(test_file)
+    with h5py.File(recomputed_file) as f:
+        stored_wkt = f[BOUNDING_POLYGON_PATH][()].decode("utf-8")
+
+    assert stored_wkt == expected_wkt
+
+
+def test_baseline_dataset_compression_preserved(test_file, recomputed_file):
+    """Repacking the output must not drop the baseline's compression filter."""
+    with h5py.File(test_file) as f:
+        orig = f[BASELINE_PATH]
+        orig_compression = orig.compression
+        orig_chunks = orig.chunks
+    with h5py.File(recomputed_file) as f:
+        new = f[BASELINE_PATH]
+        assert new.compression == orig_compression
+        assert new.chunks == orig_chunks
 
 
 def test_displacement_preserved(test_file, recomputed_file):

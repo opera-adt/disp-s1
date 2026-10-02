@@ -45,6 +45,56 @@ DISPLACEMENT_DATASET = "displacement"
 BOUNDING_POLYGON_PATH = "/identification/bounding_polygon"
 
 
+def write_h5_string(f: h5py.File, path: str, value: str) -> None:
+    """Overwrite a scalar fixed-length HDF5 string dataset, growing it if needed.
+
+    Forward production (``disp_s1.product._create_dataset``) writes scalar
+    string variables as *fixed*-length HDF5 strings sized to the exact byte
+    length of the value at creation time (``np.bytes_(s)`` -> dtype
+    ``|S<len(s)>``), with no headroom. A plain in-place
+    ``dataset[()] = new_bytes`` silently truncates any longer replacement
+    value to that original fixed width -- e.g. a forward-produced
+    single-ring ``POLYGON`` bounding box later recomputed as a longer
+    antimeridian-split ``MULTIPOLYGON``. This recreates the dataset instead
+    of truncating whenever the new value doesn't fit, preserving its
+    attributes (description, units, ...).
+    """
+    encoded = value.encode("utf-8")
+    dset = f[path]
+
+    if dset.dtype.itemsize >= len(encoded):
+        dset[()] = encoded
+        return
+
+    attrs = dict(dset.attrs)
+    del f[path]
+    new_dset = f.create_dataset(path, data=np.bytes_(value))
+    new_dset.attrs.update(attrs)
+
+
+def repack_h5_file(path: Path) -> None:
+    """Repack an HDF5 file in place to reclaim fragmented free space.
+
+    Rewriting the contents of an existing chunked+compressed dataset (e.g.
+    the full ``perpendicular_baseline`` grid) can grow the file: whenever a
+    rewritten chunk recompresses to more bytes than its original slot, HDF5
+    allocates new storage for it and does not reclaim the old slot without a
+    repack. This copies every object into a freshly created file (via HDF5's
+    object copy, which preserves each dataset's original chunk shape and
+    compression filters) and swaps it in for ``path`` -- equivalent to
+    running the ``h5repack`` command-line tool, but only depends on h5py.
+    """
+    path = Path(path)
+    tmp_path = path.with_suffix(f"{path.suffix}.repack_tmp")
+
+    with h5py.File(path, "r") as src, h5py.File(tmp_path, "w") as dst:
+        for key in src.keys():
+            src.copy(key, dst)
+        dst.attrs.update(src.attrs)
+
+    tmp_path.replace(path)
+
+
 def compute_bounding_polygon(input_file: Path) -> str:
     """Recompute the bounding polygon from a product's ``/displacement`` layer.
 
@@ -147,7 +197,7 @@ def update_metadata_timestamps(
 
             old_version = f["/identification/product_version"][()].decode("utf-8")
             logger.info(f"Updating product_version from {old_version} to {new_version}")
-            f["/identification/product_version"][()] = new_version.encode("utf-8")
+            write_h5_string(f, "/identification/product_version", new_version)
 
 
 def recompute_product_bounds(
@@ -156,6 +206,7 @@ def recompute_product_bounds(
     update_metadata: bool = True,
     update_version: bool = False,
     new_version: str | None = None,
+    repack: bool = True,
 ) -> Path:
     """Recompute product bounds from the displacement layer and update metadata.
 
@@ -174,6 +225,10 @@ def recompute_product_bounds(
     new_version : str, optional
         New version string to replace in /identification/product_version.
         Required if update_version=True.
+    repack : bool
+        Whether to repack the output file afterwards to reclaim any
+        fragmented free space left behind by the in-place edits.
+        Default = True
 
     Returns
     -------
@@ -200,7 +255,7 @@ def recompute_product_bounds(
         logger.info(f"Updating {BOUNDING_POLYGON_PATH}")
         logger.info(f"  old: {old_polygon}")
         logger.info(f"  new: {footprint_wkt}")
-        f[BOUNDING_POLYGON_PATH][()] = footprint_wkt.encode("utf-8")
+        write_h5_string(f, BOUNDING_POLYGON_PATH, footprint_wkt)
 
     logger.info("Updating metadata timestamps")
     update_metadata_timestamps(
@@ -210,6 +265,10 @@ def recompute_product_bounds(
         update_version=update_version,
         new_version=new_version,
     )
+
+    if repack:
+        logger.info(f"Repacking {output_file} to reclaim fragmented free space")
+        repack_h5_file(output_file)
 
     logger.info(f"Successfully wrote recomputed product bounds to {output_file}")
     return output_file

@@ -32,6 +32,54 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+def write_h5_string(f: h5py.File, path: str, value: str) -> None:
+    """Overwrite a scalar fixed-length HDF5 string dataset, growing it if needed.
+
+    Forward production (``disp_s1.product._create_dataset``) writes scalar
+    string variables as *fixed*-length HDF5 strings sized to the exact byte
+    length of the value at creation time (``np.bytes_(s)`` -> dtype
+    ``|S<len(s)>``), with no headroom. A plain in-place
+    ``dataset[()] = new_bytes`` silently truncates any longer replacement
+    value to that original fixed width. This recreates the dataset instead
+    of truncating whenever the new value doesn't fit, preserving its
+    attributes (description, units, ...).
+    """
+    encoded = value.encode("utf-8")
+    dset = f[path]
+
+    if dset.dtype.itemsize >= len(encoded):
+        dset[()] = encoded
+        return
+
+    attrs = dict(dset.attrs)
+    del f[path]
+    new_dset = f.create_dataset(path, data=np.bytes_(value))
+    new_dset.attrs.update(attrs)
+
+
+def repack_h5_file(path: Path) -> None:
+    """Repack an HDF5 file in place to reclaim fragmented free space.
+
+    Rewriting the contents of an existing chunked+compressed dataset (e.g.
+    the full ``perpendicular_baseline`` grid) can grow the file: whenever a
+    rewritten chunk recompresses to more bytes than its original slot, HDF5
+    allocates new storage for it and does not reclaim the old slot without a
+    repack. This copies every object into a freshly created file (via HDF5's
+    object copy, which preserves each dataset's original chunk shape and
+    compression filters) and swaps it in for ``path`` -- equivalent to
+    running the ``h5repack`` command-line tool, but only depends on h5py.
+    """
+    path = Path(path)
+    tmp_path = path.with_suffix(f"{path.suffix}.repack_tmp")
+
+    with h5py.File(path, "r") as src, h5py.File(tmp_path, "w") as dst:
+        for key in src.keys():
+            src.copy(key, dst)
+        dst.attrs.update(src.attrs)
+
+    tmp_path.replace(path)
+
+
 def load_orbit_from_netcdf(
     nc_file: Path,
     orbit_group: str,
@@ -288,7 +336,7 @@ def update_metadata_timestamps(
 
             old_version = f["/identification/product_version"][()].decode("utf-8")
             logger.info(f"Updating product_version from {old_version} to {new_version}")
-            f["/identification/product_version"][()] = new_version.encode("utf-8")
+            write_h5_string(f, "/identification/product_version", new_version)
 
 
 def recompute_perpendicular_baseline(
@@ -298,6 +346,7 @@ def recompute_perpendicular_baseline(
     update_metadata: bool = True,
     update_version: bool = False,
     new_version: str | None = None,
+    repack: bool = True,
 ) -> Path:
     """Recompute perpendicular baseline from saved orbit data.
 
@@ -318,6 +367,11 @@ def recompute_perpendicular_baseline(
     new_version : str, optional
         New version string to replace in /identification/product_version.
         Required if update_version=True.
+    repack : bool
+        Whether to repack the output file afterwards to reclaim any
+        fragmented free space left behind by rewriting the baseline grid
+        in place.
+        Default = True
 
     Returns
     -------
@@ -396,6 +450,10 @@ def recompute_perpendicular_baseline(
         update_version=update_version,
         new_version=new_version,
     )
+
+    if repack:
+        logger.info(f"Repacking {output_file} to reclaim fragmented free space")
+        repack_h5_file(output_file)
 
     logger.info(f"Successfully wrote perpendicular baseline to {output_file}")
     return output_file

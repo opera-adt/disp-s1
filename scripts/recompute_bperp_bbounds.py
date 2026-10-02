@@ -31,7 +31,9 @@ from recompute_perpendicular_baseline import recompute_perpendicular_baseline
 from recompute_product_bounds import (
     BOUNDING_POLYGON_PATH,
     compute_bounding_polygon,
+    repack_h5_file,
     update_metadata_timestamps,
+    write_h5_string,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,7 @@ def recompute_bperp_bbounds(
     update_metadata: bool = True,
     update_version: bool = False,
     new_version: str | None = None,
+    repack: bool = True,
 ) -> Path:
     """Recompute perpendicular baseline + bounding polygon and update the NetCDF.
 
@@ -66,6 +69,10 @@ def recompute_bperp_bbounds(
     new_version : str, optional
         New version string to replace in /identification/product_version.
         Required if update_version=True.
+    repack : bool
+        Whether to repack the output file afterwards to reclaim any
+        fragmented free space left behind by the in-place edits.
+        Default = True
 
     Returns
     -------
@@ -79,8 +86,9 @@ def recompute_bperp_bbounds(
     output_file = Path(output_file)
 
     # 1) Perpendicular baseline. This copies input -> output and rewrites
-    #    /corrections/perpendicular_baseline. Defer the metadata/version bump to
-    #    the single update at the end so it is not applied twice.
+    #    /corrections/perpendicular_baseline. Defer the metadata/version bump
+    #    (and the repack) to the single update at the end so neither is
+    #    applied twice.
     logger.info("=== Recomputing perpendicular baseline ===")
     recompute_perpendicular_baseline(
         input_file,
@@ -88,6 +96,7 @@ def recompute_bperp_bbounds(
         subsample=subsample,
         update_metadata=False,
         update_version=False,
+        repack=False,
     )
 
     # 2) Bounding polygon, recomputed from the (untouched) displacement layer.
@@ -98,7 +107,7 @@ def recompute_bperp_bbounds(
         logger.info(f"Updating {BOUNDING_POLYGON_PATH}")
         logger.info(f"  old: {old_polygon}")
         logger.info(f"  new: {footprint_wkt}")
-        f[BOUNDING_POLYGON_PATH][()] = footprint_wkt.encode("utf-8")
+        write_h5_string(f, BOUNDING_POLYGON_PATH, footprint_wkt)
 
     # 3) Single metadata / version update covering both edits.
     logger.info("Updating metadata timestamps")
@@ -109,6 +118,10 @@ def recompute_bperp_bbounds(
         update_version=update_version,
         new_version=new_version,
     )
+
+    if repack:
+        logger.info(f"Repacking {output_file} to reclaim fragmented free space")
+        repack_h5_file(output_file)
 
     logger.info(f"Successfully recomputed baseline + bounding polygon -> {output_file}")
     return output_file

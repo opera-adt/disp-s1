@@ -658,7 +658,7 @@ class DataStager:
         )
         runconfig["static_ancillary_file_group"][
             "algorithm_parameters_overrides_json"
-        ] = (str(override_file.resolve()) if override_file else "")
+        ] = str(override_file.resolve()) if override_file else ""
 
         # Update output paths with absolute paths
         runconfig["product_path_group"]["product_path"] = str(

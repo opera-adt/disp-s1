@@ -192,14 +192,7 @@ class ProductPathGroup(YamlModel):
 
 
 class _InterferogramNetwork(InterferogramNetwork):
-    """dolphin's network options without `compressed_reference_anchor`.
-
-    The anchor edge exists only to serve `forward_reference_reset`, and the PGE
-    builds the forward network itself from that one setting, so a second knob
-    in the parameter file could only disagree with it. The field stays in
-    dolphin, which is how the PGE asks for the edge; here it is left out of
-    the YAML and the schema, and setting it is an error.
-    """
+    """dolphin's network options; the anchor is set from `forward_redo_reference`."""
 
     compressed_reference_anchor: SkipJsonSchema[bool] = Field(False, exclude=True)
 
@@ -207,10 +200,7 @@ class _InterferogramNetwork(InterferogramNetwork):
     @classmethod
     def _not_settable(cls, v: bool) -> bool:
         if v:
-            msg = (
-                "compressed_reference_anchor is set by the PGE; use the top-level"
-                " `forward_reference_reset` instead"
-            )
+            msg = "Set `forward_redo_reference: false` instead"
             raise ValueError(msg)
         return v
 
@@ -237,22 +227,13 @@ class AlgorithmParameters(YamlModel):
             " the latest date. Valid choices are 3 (default) and 4"
         ),
     )
-    forward_reference_reset: bool = Field(
-        False,
+    forward_redo_reference: bool = Field(
+        True,
         description=(
-            "Forward mode only. When false (the default, and what the PGE has always"
-            " done) the product is re-referenced to the second-to-last date, so it is"
-            " a single-step increment and a time series is built by summing. Summing"
-            " never forgets: one decorrelated scene becomes a permanent offset in"
-            " every later value.\n\n"
-            "When true the product keeps the reference phase linking already gave it"
-            " -- the newest compressed SLC's epoch -- which advances once per"
-            " compression, the same arrangement historical uses. A bad scene then"
-            " spoils its own product and at most its own compression cycle. To make"
-            " the epoch a node of the unwrapped network this also keeps one"
-            " interferogram from it at every run, to the earliest in-window date"
-            " after it. That edge is formed only when this is on, and has no"
-            " separate setting."
+            "Forward mode only. True: re-reference the product to the second-to-last"
+            " date (single-step increment). False: keep the compressed SLC epoch as"
+            " the reference, as historical does, and add one interferogram from that"
+            " epoch at every run so it is a node of the unwrapped network."
         ),
     )
     recommended_temporal_coherence_threshold: float = Field(
@@ -448,7 +429,7 @@ class RunConfig(YamlModel):
             param_dict["interferogram_network"] = _create_forward_mode_network(
                 algo_params.forward_mode_network_size,
                 cslc_file_list=cslc_file_list if self.run_input_prechecks else None,
-                reference_reset=algo_params.forward_reference_reset,
+                redo_reference=algo_params.forward_redo_reference,
             )
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
@@ -501,9 +482,8 @@ class RunConfig(YamlModel):
         # Load the algorithm parameters from the file
         algo_keys = set(AlgorithmParameters.model_fields.keys())
         alg_param_dict = workflow.model_dump(include=algo_keys)
-        # The anchor edge is how `forward_reference_reset` reaches dolphin; map it
-        # back rather than carry it as a setting of its own.
-        alg_param_dict["forward_reference_reset"] = alg_param_dict[
+        # The anchor is how `forward_redo_reference` reaches dolphin.
+        alg_param_dict["forward_redo_reference"] = not alg_param_dict[
             "interferogram_network"
         ].pop("compressed_reference_anchor", False)
         AlgorithmParameters(**alg_param_dict).to_yaml(algorithm_parameters_file)
@@ -661,7 +641,7 @@ def _parse_algorithm_overrides(
 def _create_forward_mode_network(
     nearest_n: int = 3,
     cslc_file_list: Iterable[PathOrStr] | None = None,
-    reference_reset: bool = False,
+    redo_reference: bool = True,
 ) -> InterferogramNetwork:
     """Create a smaller interferogram network using only the last date.
 
@@ -725,18 +705,9 @@ def _create_forward_mode_network(
     ]
     if nearest_n == 4:
         indexes.extend([(-5, -1), (-5, -2), (-5, -3), (-5, -4)])
-    # The manual indexes address real dates only. When the compressed SLC's
-    # reference epoch is the second-to-last date -- the run right after a
-    # compression -- the product's one interval would otherwise have no
-    # interferogram. dolphin keeps the (reference -> real) ifgs it already
-    # formed whenever that epoch falls inside this window, and adds nothing in
-    # the normal case where the epoch predates it.
-    # `reference_reset` keeps one (epoch -> earliest in-window date) ifg at every
-    # run instead, so a product can stay referenced to the compressed epoch.
+    # Without re-referencing, the compressed epoch must be a network node.
     return InterferogramNetwork(
-        indexes=indexes,
-        include_compressed_reference=True,
-        compressed_reference_anchor=reference_reset,
+        indexes=indexes, compressed_reference_anchor=not redo_reference
     )
 
 

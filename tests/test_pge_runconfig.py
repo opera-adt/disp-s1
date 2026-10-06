@@ -505,25 +505,12 @@ def _make_cslc_names(n, burst="T042-088905-IW1"):
 class TestCreateForwardModeNetwork:
     """Tests for `_create_forward_mode_network` and its stack-depth guard."""
 
-    def test_keeps_the_compressed_reference_ifgs(self):
-        """Without them, the run after a compression reports an interval that
-        no interferogram spans (its start exists only as the compressed epoch)."""
-        for n in (3, 4):
-            net = pge_runconfig._create_forward_mode_network(n)
-            assert net.include_compressed_reference is True
-
-    def test_reference_reset_off_by_default(self):
+    def test_anchor_follows_redo_reference(self):
         for n in (3, 4):
             net = pge_runconfig._create_forward_mode_network(n)
             assert net.compressed_reference_anchor is False
-
-    def test_reference_reset_keeps_the_anchor_edge(self):
-        """A product can only stay on the compressed epoch if the epoch is a
-        node of the unwrapped network at every run."""
-        for n in (3, 4):
-            net = pge_runconfig._create_forward_mode_network(n, reference_reset=True)
+            net = pge_runconfig._create_forward_mode_network(n, redo_reference=False)
             assert net.compressed_reference_anchor is True
-            assert net.include_compressed_reference is True
 
     def test_nearest_3_indexes(self):
         net = pge_runconfig._create_forward_mode_network(3)
@@ -851,17 +838,17 @@ class TestCodeReviewRegressions:
         assert exc_info.value.error_code == 1001
 
 
-class TestForwardReferenceReset:
-    """`forward_reference_reset`: keep a forward product on the compressed epoch."""
+class TestForwardRedoReference:
+    """`forward_redo_reference: false` keeps a forward product on the cCSLC epoch."""
 
-    def test_off_by_default(self):
-        assert AlgorithmParameters().forward_reference_reset is False
+    def test_on_by_default(self):
+        assert AlgorithmParameters().forward_redo_reference is True
 
     @pytest.fixture
     def forward_runconfig(self, runconfig_minimum, tmp_path):
-        def _make(reset: bool):
-            f = tmp_path / f"algo_reset_{reset}.yaml"
-            AlgorithmParameters(forward_reference_reset=reset).to_yaml(f)
+        def _make(redo: bool):
+            f = tmp_path / f"algo_redo_{redo}.yaml"
+            AlgorithmParameters(forward_redo_reference=redo).to_yaml(f)
             dyn = runconfig_minimum.dynamic_ancillary_file_group.model_copy(
                 update={"algorithm_parameters_file": f}
             )
@@ -878,14 +865,14 @@ class TestForwardReferenceReset:
 
         return _make
 
-    @pytest.mark.parametrize("reset", [False, True])
-    def test_reaches_the_workflow_network(self, forward_runconfig, reset):
-        w = forward_runconfig(reset).to_workflow()
-        assert w.interferogram_network.compressed_reference_anchor is reset
+    @pytest.mark.parametrize("redo", [False, True])
+    def test_reaches_the_workflow_network(self, forward_runconfig, redo):
+        w = forward_runconfig(redo).to_workflow()
+        assert w.interferogram_network.compressed_reference_anchor is (not redo)
 
     def test_historical_is_untouched(self, runconfig_minimum, tmp_path):
         f = tmp_path / "algo.yaml"
-        AlgorithmParameters(forward_reference_reset=True).to_yaml(f)
+        AlgorithmParameters(forward_redo_reference=False).to_yaml(f)
         dyn = runconfig_minimum.dynamic_ancillary_file_group.model_copy(
             update={"algorithm_parameters_file": f}
         )
@@ -894,14 +881,13 @@ class TestForwardReferenceReset:
         ).to_workflow()
         assert w.interferogram_network.compressed_reference_anchor is False
 
-    @pytest.mark.parametrize("reset", [False, True])
-    def test_main_skips_the_re_reference_only_when_on(
-        self, monkeypatch, forward_runconfig, reset
-    ):
-        import dolphin.timeseries
+    @pytest.mark.parametrize("redo", [False, True])
+    def test_main_re_references_only_when_on(self, monkeypatch, forward_runconfig, redo):
         from types import SimpleNamespace
 
-        rc = forward_runconfig(reset)
+        import dolphin.timeseries
+
+        rc = forward_runconfig(redo)
         cfg = rc.to_workflow()
         redone: list = []
 
@@ -927,27 +913,25 @@ class TestForwardReferenceReset:
         monkeypatch.setattr(main, "_filter_before_last_processed", _stop)
         with pytest.raises(_Stop):
             main.run(cfg, pge_runconfig=rc)
-        assert len(redone) == (0 if reset else 1)
+        assert len(redone) == int(redo)
 
     def test_anchor_is_not_a_parameter(self):
-        """One setting, not two: the anchor follows the reset."""
         import io
 
         buf = io.StringIO()
         AlgorithmParameters().to_yaml(buf)
         assert "compressed_reference_anchor" not in buf.getvalue()
         schema = AlgorithmParameters.model_json_schema()
-        net = schema["$defs"][schema["properties"]["interferogram_network"]["$ref"].split("/")[-1]]
-        assert "compressed_reference_anchor" not in net["properties"]
-        assert "include_compressed_reference" in net["properties"]
-        with pytest.raises(ValueError, match="forward_reference_reset"):
+        ref = schema["properties"]["interferogram_network"]["$ref"].split("/")[-1]
+        assert "compressed_reference_anchor" not in schema["$defs"][ref]["properties"]
+        with pytest.raises(ValueError, match="forward_redo_reference"):
             AlgorithmParameters(
                 interferogram_network={"compressed_reference_anchor": True}
             )
 
-    @pytest.mark.parametrize("reset", [False, True])
-    def test_from_workflow_keeps_the_reset(self, forward_runconfig, tmp_path, reset):
-        rc = forward_runconfig(reset)
+    @pytest.mark.parametrize("redo", [False, True])
+    def test_from_workflow_keeps_the_setting(self, forward_runconfig, tmp_path, redo):
+        rc = forward_runconfig(redo)
         algo_file = tmp_path / "roundtrip.yaml"
         RunConfig.from_workflow(
             rc.to_workflow(),
@@ -955,4 +939,4 @@ class TestForwardReferenceReset:
             processing_mode="forward",
             algorithm_parameters_file=algo_file,
         )
-        assert AlgorithmParameters.from_yaml(algo_file).forward_reference_reset is reset
+        assert AlgorithmParameters.from_yaml(algo_file).forward_redo_reference is redo

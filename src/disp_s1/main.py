@@ -157,17 +157,9 @@ def run(
     assert out_paths.timeseries_paths is not None
     assert out_paths.timeseries_residual_paths is not None
     is_forward = pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD"
-    # `forward_reference_reset` reaches `cfg` as dolphin's anchor flag, after
-    # per-frame overrides, so that is the one place to read it back from.
+    # `forward_redo_reference: false` arrives here as dolphin's anchor flag.
     if is_forward and cfg.interferogram_network.compressed_reference_anchor:
-        # The product keeps the reference phase linking gave it -- the newest
-        # compressed SLC -- which advances once per compression. A decorrelated
-        # scene then spoils its own product and at most its own cycle, rather
-        # than every later value of a summed series.
-        logger.info(
-            "forward_reference_reset is on: leaving the time series referenced"
-            " to the compressed SLC epoch"
-        )
+        logger.info("Keeping the time series referenced to the compressed SLC epoch")
     elif is_forward:
         from dolphin.timeseries import _redo_reference
 

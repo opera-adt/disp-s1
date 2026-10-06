@@ -502,15 +502,40 @@ def _make_cslc_names(n, burst="T042-088905-IW1"):
     return [Path(f"{burst}_202201{i + 1:02d}_20240624.h5") for i in range(n)]
 
 
+_needs_anchor = pytest.mark.skipif(
+    not pge_runconfig._DOLPHIN_HAS_ANCHOR,
+    reason="dolphin lacks InterferogramNetwork.compressed_reference_anchor",
+)
+
+
+def _anchor(net) -> bool:
+    return getattr(net, "compressed_reference_anchor", False)
+
+
+def _skip_without_anchor(redo: bool) -> None:
+    if not redo and not pge_runconfig._DOLPHIN_HAS_ANCHOR:
+        pytest.skip("dolphin lacks InterferogramNetwork.compressed_reference_anchor")
+
+
 class TestCreateForwardModeNetwork:
     """Tests for `_create_forward_mode_network` and its stack-depth guard."""
 
-    def test_anchor_follows_redo_reference(self):
+    def test_no_anchor_by_default(self):
         for n in (3, 4):
-            net = pge_runconfig._create_forward_mode_network(n)
-            assert net.compressed_reference_anchor is False
+            assert _anchor(pge_runconfig._create_forward_mode_network(n)) is False
+
+    @_needs_anchor
+    def test_anchor_when_not_re_referencing(self):
+        for n in (3, 4):
             net = pge_runconfig._create_forward_mode_network(n, redo_reference=False)
             assert net.compressed_reference_anchor is True
+
+    @pytest.mark.skipif(
+        pge_runconfig._DOLPHIN_HAS_ANCHOR, reason="only for older dolphin"
+    )
+    def test_older_dolphin_rejects_no_re_reference(self):
+        with pytest.raises(ValueError, match="compressed_reference_anchor"):
+            pge_runconfig._create_forward_mode_network(3, redo_reference=False)
 
     def test_nearest_3_indexes(self):
         net = pge_runconfig._create_forward_mode_network(3)
@@ -867,8 +892,9 @@ class TestForwardRedoReference:
 
     @pytest.mark.parametrize("redo", [False, True])
     def test_reaches_the_workflow_network(self, forward_runconfig, redo):
+        _skip_without_anchor(redo)
         w = forward_runconfig(redo).to_workflow()
-        assert w.interferogram_network.compressed_reference_anchor is (not redo)
+        assert _anchor(w.interferogram_network) is (not redo)
 
     def test_historical_is_untouched(self, runconfig_minimum, tmp_path):
         f = tmp_path / "algo.yaml"
@@ -879,14 +905,17 @@ class TestForwardRedoReference:
         w = runconfig_minimum.model_copy(
             update={"dynamic_ancillary_file_group": dyn}
         ).to_workflow()
-        assert w.interferogram_network.compressed_reference_anchor is False
+        assert _anchor(w.interferogram_network) is False
 
     @pytest.mark.parametrize("redo", [False, True])
-    def test_main_re_references_only_when_on(self, monkeypatch, forward_runconfig, redo):
+    def test_main_re_references_only_when_on(
+        self, monkeypatch, forward_runconfig, redo
+    ):
         from types import SimpleNamespace
 
         import dolphin.timeseries
 
+        _skip_without_anchor(redo)
         rc = forward_runconfig(redo)
         cfg = rc.to_workflow()
         redone: list = []
@@ -931,6 +960,7 @@ class TestForwardRedoReference:
 
     @pytest.mark.parametrize("redo", [False, True])
     def test_from_workflow_keeps_the_setting(self, forward_runconfig, tmp_path, redo):
+        _skip_without_anchor(redo)
         rc = forward_runconfig(redo)
         algo_file = tmp_path / "roundtrip.yaml"
         RunConfig.from_workflow(

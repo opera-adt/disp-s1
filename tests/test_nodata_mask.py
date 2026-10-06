@@ -14,11 +14,15 @@ from disp_s1.product import nodata_mask
 
 def _raster():
     """A 3x3 unwrapped patch: one true nodata pixel, one exact-zero pixel."""
-    data = np.array([[1.5, -2.0, 0.5],
-                     [0.3, 0.0, -1.1],      # centre is the reference pixel
-                     [9.9, 0.7, 2.2]])
+    data = np.array(
+        [
+            [1.5, -2.0, 0.5],
+            [0.3, 0.0, -1.1],  # centre is the reference pixel
+            [9.9, 0.7, 2.2],
+        ]
+    )
     mask = np.zeros_like(data, dtype=bool)
-    mask[0, 0] = True                        # the only pixel with no data
+    mask[0, 0] = True  # the only pixel with no data
     return np.ma.MaskedArray(data, mask=mask)
 
 

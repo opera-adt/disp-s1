@@ -191,6 +191,10 @@ class ProductPathGroup(YamlModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# dolphin releases before the forward-mode fixes lack the anchor option.
+_DOLPHIN_HAS_ANCHOR = "compressed_reference_anchor" in InterferogramNetwork.model_fields
+
+
 class _InterferogramNetwork(InterferogramNetwork):
     """dolphin's network options; the anchor is set from `forward_redo_reference`."""
 
@@ -705,10 +709,16 @@ def _create_forward_mode_network(
     ]
     if nearest_n == 4:
         indexes.extend([(-5, -1), (-5, -2), (-5, -3), (-5, -4)])
+    if redo_reference:
+        return InterferogramNetwork(indexes=indexes)
     # Without re-referencing, the compressed epoch must be a network node.
-    return InterferogramNetwork(
-        indexes=indexes, compressed_reference_anchor=not redo_reference
-    )
+    if not _DOLPHIN_HAS_ANCHOR:
+        msg = (
+            "forward_redo_reference: false needs a dolphin version with"
+            " InterferogramNetwork.compressed_reference_anchor"
+        )
+        raise ValueError(msg)
+    return InterferogramNetwork(indexes=indexes, compressed_reference_anchor=True)
 
 
 def _nested_update(base: dict, updates: dict):

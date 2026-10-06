@@ -212,6 +212,23 @@ class AlgorithmParameters(YamlModel):
             " the latest date. Valid choices are 3 (default) and 4"
         ),
     )
+    forward_reference_reset: bool = Field(
+        False,
+        description=(
+            "Forward mode only. When false (the default, and what the PGE has always"
+            " done) the product is re-referenced to the second-to-last date, so it is"
+            " a single-step increment and a time series is built by summing. Summing"
+            " never forgets: one decorrelated scene becomes a permanent offset in"
+            " every later value.\n\n"
+            "When true the product keeps the reference phase linking already gave it"
+            " -- the newest compressed SLC's epoch -- which advances once per"
+            " compression, the same arrangement historical uses. A bad scene then"
+            " spoils its own product and at most its own compression cycle. To make"
+            " the epoch a node of the unwrapped network this also keeps one"
+            " interferogram from it at every run, to the earliest in-window date"
+            " after it (dolphin's `compressed_reference_anchor`)."
+        ),
+    )
     recommended_temporal_coherence_threshold: float = Field(
         0.6,
         description=(
@@ -405,6 +422,7 @@ class RunConfig(YamlModel):
             param_dict["interferogram_network"] = _create_forward_mode_network(
                 algo_params.forward_mode_network_size,
                 cslc_file_list=cslc_file_list if self.run_input_prechecks else None,
+                reference_reset=algo_params.forward_reference_reset,
             )
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
@@ -612,6 +630,7 @@ def _parse_algorithm_overrides(
 def _create_forward_mode_network(
     nearest_n: int = 3,
     cslc_file_list: Iterable[PathOrStr] | None = None,
+    reference_reset: bool = False,
 ) -> InterferogramNetwork:
     """Create a smaller interferogram network using only the last date.
 
@@ -681,7 +700,13 @@ def _create_forward_mode_network(
     # interferogram. dolphin keeps the (reference -> real) ifgs it already
     # formed whenever that epoch falls inside this window, and adds nothing in
     # the normal case where the epoch predates it.
-    return InterferogramNetwork(indexes=indexes, include_compressed_reference=True)
+    # `reference_reset` keeps one (epoch -> earliest in-window date) ifg at every
+    # run instead, so a product can stay referenced to the compressed epoch.
+    return InterferogramNetwork(
+        indexes=indexes,
+        include_compressed_reference=True,
+        compressed_reference_anchor=reference_reset,
+    )
 
 
 def _nested_update(base: dict, updates: dict):

@@ -512,6 +512,19 @@ class TestCreateForwardModeNetwork:
             net = pge_runconfig._create_forward_mode_network(n)
             assert net.include_compressed_reference is True
 
+    def test_reference_reset_off_by_default(self):
+        for n in (3, 4):
+            net = pge_runconfig._create_forward_mode_network(n)
+            assert net.compressed_reference_anchor is False
+
+    def test_reference_reset_keeps_the_anchor_edge(self):
+        """A product can only stay on the compressed epoch if the epoch is a
+        node of the unwrapped network at every run."""
+        for n in (3, 4):
+            net = pge_runconfig._create_forward_mode_network(n, reference_reset=True)
+            assert net.compressed_reference_anchor is True
+            assert net.include_compressed_reference is True
+
     def test_nearest_3_indexes(self):
         net = pge_runconfig._create_forward_mode_network(3)
         assert net.indexes == [
@@ -836,3 +849,82 @@ class TestCodeReviewRegressions:
         with pytest.raises(pge_runconfig.InputValidationError) as exc_info:
             main._assert_no_compressed_slc_conflicts(files)
         assert exc_info.value.error_code == 1001
+
+
+class TestForwardReferenceReset:
+    """`forward_reference_reset`: keep a forward product on the compressed epoch."""
+
+    def test_off_by_default(self):
+        assert AlgorithmParameters().forward_reference_reset is False
+
+    @pytest.fixture
+    def forward_runconfig(self, runconfig_minimum, tmp_path):
+        def _make(reset: bool):
+            f = tmp_path / f"algo_reset_{reset}.yaml"
+            AlgorithmParameters(forward_reference_reset=reset).to_yaml(f)
+            dyn = runconfig_minimum.dynamic_ancillary_file_group.model_copy(
+                update={"algorithm_parameters_file": f}
+            )
+            return runconfig_minimum.model_copy(
+                update={
+                    "dynamic_ancillary_file_group": dyn,
+                    "primary_executable": PrimaryExecutable(
+                        product_type="DISP_S1_FORWARD"
+                    ),
+                    # The fixture stack has no compressed SLCs (error 2000).
+                    "run_input_prechecks": False,
+                }
+            )
+
+        return _make
+
+    @pytest.mark.parametrize("reset", [False, True])
+    def test_reaches_the_workflow_network(self, forward_runconfig, reset):
+        w = forward_runconfig(reset).to_workflow()
+        assert w.interferogram_network.compressed_reference_anchor is reset
+
+    def test_historical_is_untouched(self, runconfig_minimum, tmp_path):
+        f = tmp_path / "algo.yaml"
+        AlgorithmParameters(forward_reference_reset=True).to_yaml(f)
+        dyn = runconfig_minimum.dynamic_ancillary_file_group.model_copy(
+            update={"algorithm_parameters_file": f}
+        )
+        w = runconfig_minimum.model_copy(
+            update={"dynamic_ancillary_file_group": dyn}
+        ).to_workflow()
+        assert w.interferogram_network.compressed_reference_anchor is False
+
+    @pytest.mark.parametrize("reset", [False, True])
+    def test_main_skips_the_re_reference_only_when_on(
+        self, monkeypatch, forward_runconfig, reset
+    ):
+        import dolphin.timeseries
+        from types import SimpleNamespace
+
+        rc = forward_runconfig(reset)
+        cfg = rc.to_workflow()
+        redone: list = []
+
+        def _fake_redo(ts, res, ref_date, **_kw):
+            redone.append(ref_date)
+            return ts, res
+
+        class _Stop(Exception):
+            pass
+
+        def _stop(*_a, **_k):
+            raise _Stop
+
+        monkeypatch.setattr(
+            main,
+            "run_displacement",
+            lambda **_k: SimpleNamespace(
+                timeseries_paths=[], timeseries_residual_paths=[]
+            ),
+        )
+        monkeypatch.setattr(dolphin.timeseries, "_redo_reference", _fake_redo)
+        # The first step after the re-reference in forward mode.
+        monkeypatch.setattr(main, "_filter_before_last_processed", _stop)
+        with pytest.raises(_Stop):
+            main.run(cfg, pge_runconfig=rc)
+        assert len(redone) == (0 if reset else 1)

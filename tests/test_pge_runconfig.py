@@ -928,3 +928,31 @@ class TestForwardReferenceReset:
         with pytest.raises(_Stop):
             main.run(cfg, pge_runconfig=rc)
         assert len(redone) == (0 if reset else 1)
+
+    def test_anchor_is_not_a_parameter(self):
+        """One setting, not two: the anchor follows the reset."""
+        import io
+
+        buf = io.StringIO()
+        AlgorithmParameters().to_yaml(buf)
+        assert "compressed_reference_anchor" not in buf.getvalue()
+        schema = AlgorithmParameters.model_json_schema()
+        net = schema["$defs"][schema["properties"]["interferogram_network"]["$ref"].split("/")[-1]]
+        assert "compressed_reference_anchor" not in net["properties"]
+        assert "include_compressed_reference" in net["properties"]
+        with pytest.raises(ValueError, match="forward_reference_reset"):
+            AlgorithmParameters(
+                interferogram_network={"compressed_reference_anchor": True}
+            )
+
+    @pytest.mark.parametrize("reset", [False, True])
+    def test_from_workflow_keeps_the_reset(self, forward_runconfig, tmp_path, reset):
+        rc = forward_runconfig(reset)
+        algo_file = tmp_path / "roundtrip.yaml"
+        RunConfig.from_workflow(
+            rc.to_workflow(),
+            frame_id=rc.input_file_group.frame_id,
+            processing_mode="forward",
+            algorithm_parameters_file=algo_file,
+        )
+        assert AlgorithmParameters.from_yaml(algo_file).forward_reference_reset is reset

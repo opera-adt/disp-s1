@@ -31,6 +31,7 @@ from opera_utils import (
     sort_files_by_date,
 )
 from pydantic import ConfigDict, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from ._log import InputValidationError
 from .enums import ProcessingMode
@@ -190,14 +191,38 @@ class ProductPathGroup(YamlModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class _InterferogramNetwork(InterferogramNetwork):
+    """dolphin's network options without `compressed_reference_anchor`.
+
+    The anchor edge exists only to serve `forward_reference_reset`, and the PGE
+    builds the forward network itself from that one setting, so a second knob
+    in the parameter file could only disagree with it. The field stays in
+    dolphin, which is how the PGE asks for the edge; here it is left out of
+    the YAML and the schema, and setting it is an error.
+    """
+
+    compressed_reference_anchor: SkipJsonSchema[bool] = Field(False, exclude=True)
+
+    @field_validator("compressed_reference_anchor")
+    @classmethod
+    def _not_settable(cls, v: bool) -> bool:
+        if v:
+            msg = (
+                "compressed_reference_anchor is set by the PGE; use the top-level"
+                " `forward_reference_reset` instead"
+            )
+            raise ValueError(msg)
+        return v
+
+
 class AlgorithmParameters(YamlModel):
     """Class containing all the other `DisplacementWorkflow` parameters."""
 
     # Options for each step in the workflow
     ps_options: PsOptions = Field(default_factory=PsOptions)
     phase_linking: PhaseLinkingOptions = Field(default_factory=PhaseLinkingOptions)
-    interferogram_network: InterferogramNetwork = Field(
-        default_factory=InterferogramNetwork
+    interferogram_network: _InterferogramNetwork = Field(
+        default_factory=_InterferogramNetwork
     )
     unwrap_options: UnwrapOptions = Field(default_factory=UnwrapOptions)
     timeseries_options: TimeseriesOptions = Field(default_factory=TimeseriesOptions)
@@ -226,7 +251,8 @@ class AlgorithmParameters(YamlModel):
             " spoils its own product and at most its own compression cycle. To make"
             " the epoch a node of the unwrapped network this also keeps one"
             " interferogram from it at every run, to the earliest in-window date"
-            " after it (dolphin's `compressed_reference_anchor`)."
+            " after it. That edge is formed only when this is on, and has no"
+            " separate setting."
         ),
     )
     recommended_temporal_coherence_threshold: float = Field(
@@ -475,6 +501,11 @@ class RunConfig(YamlModel):
         # Load the algorithm parameters from the file
         algo_keys = set(AlgorithmParameters.model_fields.keys())
         alg_param_dict = workflow.model_dump(include=algo_keys)
+        # The anchor edge is how `forward_reference_reset` reaches dolphin; map it
+        # back rather than carry it as a setting of its own.
+        alg_param_dict["forward_reference_reset"] = alg_param_dict[
+            "interferogram_network"
+        ].pop("compressed_reference_anchor", False)
         AlgorithmParameters(**alg_param_dict).to_yaml(algorithm_parameters_file)
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
 

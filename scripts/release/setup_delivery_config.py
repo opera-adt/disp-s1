@@ -15,30 +15,38 @@ from disp_s1.enums import ProcessingMode
 def setup_delivery(cfg_dir: Path, mode: ProcessingMode):
     """Set up the dolphin config file for the delivery for one mode."""
     cfg_dir.mkdir(exist_ok=True)
-    single_flag = "--single" if mode == ProcessingMode.FORWARD else ""
     outfile = f"{cfg_dir}/dolphin_config_{mode.value}.yaml"
     cmd = (
         "dolphin config "
-        f" --keep-paths-relative --work scratch/{mode.value} --strides 6 3"
+        f" --keep-paths-relative --work-directory scratch/{mode.value}"
+        " --sx 6 --sy 3"
         # Inputs:
         " --slc-files ./input_slcs/*h5 --subdataset /data/VV"
         # Phase linking stuff
-        f" --ministack-size 15 {single_flag}"
+        # (dolphin dropped the old flat `--single` toggle: the single-update vs.
+        # sequential distinction is now handled automatically from the input
+        # stack, not a CLI flag -- see CHANGELOG's "Removed `WorkflowName` for
+        # separating `stack` vs `single`".)
+        " --ms 15"
         # Dynamic ancillary files #
         ###########################
         # TODO # seasonal coherence averages
-        # Ionosphere files:
-        " --ionosphere-files ./dynamic_ancillary_files/ionosphere_files/*"
-        # Geometry files/static layers
-        " --geometry-files ./dynamic_ancillary_files/static_layers/*"
+        # Ionosphere/geometry files are no longer part of the dolphin config;
+        # they're passed to `convert_config.py` below instead.
         " --mask-file ./dynamic_ancillary_files/water_mask.tif"
         #
         # Unwrapping stuff
-        " --unwrap-method snaphu --ntiles 5 5 --downsample 5 5 --run-interpolation"
+        # (dropped the old flat `--downsample 5 5`: that only maps to
+        # `unwrap-options.tophu-options.downsample-factor` now, which doesn't
+        # apply to the `snaphu` method used here.)
+        " --unwrap-options.unwrap-method SNAPHU"
+        " --unwrap-options.snaphu-options.ntiles 5 5"
+        " --unwrap-options.run-interpolation"
         # Worker stuff
-        " --threads-per-worker 16 --n-parallel-bursts 4 --n-parallel-unwrap 4 "
+        " --worker-settings.threads-per-worker 16 --n-parallel-bursts 4"
+        " --unwrap-options.n-parallel-jobs 4"
         f" --log-file scratch/{mode.value}/log_sas.log"
-        f" -o {outfile}"
+        f" --outfile {outfile}"
     )
     print(cmd)
     subprocess.run(cmd, shell=True, check=False)
@@ -69,6 +77,8 @@ if __name__ == "__main__":
             f" --processing-mode {mode.value} --save-compressed-slc -o"
             f" {cfg_dir}/runconfig_{mode.value}.yaml  -a"
             f" {cfg_dir}/algorithm_parameters_{mode.value}.yaml"
+            " --ionosphere-files ./dynamic_ancillary_files/ionosphere_files/*"
+            " --geometry-files ./dynamic_ancillary_files/static_layers/*"
         )
         cmd = f"python {convert_config} {dolphin_cfg_file} {arg_string}"
         print(cmd)

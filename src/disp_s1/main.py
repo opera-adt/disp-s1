@@ -156,7 +156,12 @@ def run(
 
     assert out_paths.timeseries_paths is not None
     assert out_paths.timeseries_residual_paths is not None
-    if pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD":
+    is_forward = pge_runconfig.primary_executable.product_type == "DISP_S1_FORWARD"
+    # `forward_redo_reference: false` arrives here as dolphin's anchor flag.
+    anchored = getattr(cfg.interferogram_network, "compressed_reference_anchor", False)
+    if is_forward and anchored:
+        logger.info("Keeping the time series referenced to the compressed SLC epoch")
+    elif is_forward:
         from dolphin.timeseries import _redo_reference
 
         logger.info(f"Re-referencing time series rasters {out_paths.timeseries_paths}")

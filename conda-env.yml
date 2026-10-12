@@ -29,6 +29,6 @@ dependencies:
   - pip:
     # dolphin/opera-utils installed via pip: conda-forge lags PyPI and doesn't
     # yet have dolphin>=0.42.7 / opera-utils>=0.25.7.
-    - dolphin>=0.42.7
-    - opera-utils>=0.25.7  # dolphin>=0.42.7 needs is_remote_url (added in 0.25.7)
+    - dolphin>=0.42.8
+    - opera-utils>=0.25.9  # dolphin>=0.42.7 needs is_remote_url (added in 0.25.7)
     - spurt>=0.1.0

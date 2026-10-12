@@ -223,9 +223,7 @@ def test_reference_changeover(
 
     # Check a that non-exact match to the reference still works,
     # AFTER the reference request
-    hawaii_slc_list[7] = (
-        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180717T161534Z_20240428T062045Z_S1B_VV_v1.1.h5"
-    )
+    hawaii_slc_list[7] = "OPERA_L2_CSLC-S1_T087-185680-IW1_20180717T161534Z_20240428T062045Z_S1B_VV_v1.1.h5"
     rc = RunConfig(
         input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
         primary_executable=PrimaryExecutable(product_type="DISP_S1_HISTORICAL"),
@@ -237,9 +235,7 @@ def test_reference_changeover(
     assert cfg.output_options.extra_reference_date == datetime.datetime(2018, 7, 17)
 
     # ...but not BEFORE the reference request
-    hawaii_slc_list[7] = (
-        "OPERA_L2_CSLC-S1_T087-185680-IW1_20180715T161534Z_20240428T062045Z_S1B_VV_v1.1.h5"
-    )
+    hawaii_slc_list[7] = "OPERA_L2_CSLC-S1_T087-185680-IW1_20180715T161534Z_20240428T062045Z_S1B_VV_v1.1.h5"
     rc = RunConfig(
         input_file_group=InputFileGroup(cslc_file_list=hawaii_slc_list, frame_id=23210),
         primary_executable=PrimaryExecutable(product_type="DISP_S1_HISTORICAL"),

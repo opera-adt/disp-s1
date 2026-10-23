@@ -114,9 +114,7 @@ def run(
                     " second-to-last.This is not allowed for forward mode."
                 )
         else:
-            pge_runconfig.input_file_group.last_processed = (
-                second_to_last_date + timedelta(days=1)
-            )
+            pge_runconfig.input_file_group.last_processed = second_to_last_date
 
     # Setup the binary mask as dolphin expects
     if pge_runconfig.dynamic_ancillary_file_group.mask_file:
@@ -219,8 +217,9 @@ def _filter_before_last_processed(
     """Filter `out_paths` to products with secondary datetime > `last_processed`."""
     # For the following attributes, filter based on last_processed
     out_dict = asdict(out_paths)
-    # We can add a time buffer of a day, since the minimum repeat is 6 days
-    time_buffer = timedelta(days=1)
+    # We can add a time buffer of 1 day, since the minimum repeat is 6 days
+    # (This is not true anymore with S1C and S1D being 1 day apart)
+    time_buffer = timedelta(hours=10)
     for attr in [
         "stitched_ifg_paths",
         "stitched_cor_paths",

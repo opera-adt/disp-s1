@@ -31,6 +31,7 @@ from opera_utils import (
     sort_files_by_date,
 )
 from pydantic import ConfigDict, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from ._log import InputValidationError
 from .enums import ProcessingMode
@@ -190,14 +191,32 @@ class ProductPathGroup(YamlModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# dolphin releases before the forward-mode fixes lack the anchor option.
+_DOLPHIN_HAS_ANCHOR = "compressed_reference_anchor" in InterferogramNetwork.model_fields
+
+
+class _InterferogramNetwork(InterferogramNetwork):
+    """dolphin's network options; the anchor is set from `forward_redo_reference`."""
+
+    compressed_reference_anchor: SkipJsonSchema[bool] = Field(False, exclude=True)
+
+    @field_validator("compressed_reference_anchor")
+    @classmethod
+    def _not_settable(cls, v: bool) -> bool:
+        if v:
+            msg = "Set `forward_redo_reference: false` instead"
+            raise ValueError(msg)
+        return v
+
+
 class AlgorithmParameters(YamlModel):
     """Class containing all the other `DisplacementWorkflow` parameters."""
 
     # Options for each step in the workflow
     ps_options: PsOptions = Field(default_factory=PsOptions)
     phase_linking: PhaseLinkingOptions = Field(default_factory=PhaseLinkingOptions)
-    interferogram_network: InterferogramNetwork = Field(
-        default_factory=InterferogramNetwork
+    interferogram_network: _InterferogramNetwork = Field(
+        default_factory=_InterferogramNetwork
     )
     unwrap_options: UnwrapOptions = Field(default_factory=UnwrapOptions)
     timeseries_options: TimeseriesOptions = Field(default_factory=TimeseriesOptions)
@@ -210,6 +229,15 @@ class AlgorithmParameters(YamlModel):
         description=(
             "When running forward mode, size of the interferogram network for form with"
             " the latest date. Valid choices are 3 (default) and 4"
+        ),
+    )
+    forward_redo_reference: bool = Field(
+        True,
+        description=(
+            "Forward mode only. True: re-reference the product to the second-to-last"
+            " date (single-step increment). False: keep the compressed SLC epoch as"
+            " the reference, as historical does, and add one interferogram from that"
+            " epoch at every run so it is a node of the unwrapped network."
         ),
     )
     recommended_temporal_coherence_threshold: float = Field(
@@ -405,6 +433,7 @@ class RunConfig(YamlModel):
             param_dict["interferogram_network"] = _create_forward_mode_network(
                 algo_params.forward_mode_network_size,
                 cslc_file_list=cslc_file_list if self.run_input_prechecks else None,
+                redo_reference=algo_params.forward_redo_reference,
             )
 
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
@@ -457,6 +486,10 @@ class RunConfig(YamlModel):
         # Load the algorithm parameters from the file
         algo_keys = set(AlgorithmParameters.model_fields.keys())
         alg_param_dict = workflow.model_dump(include=algo_keys)
+        # The anchor is how `forward_redo_reference` reaches dolphin.
+        alg_param_dict["forward_redo_reference"] = not alg_param_dict[
+            "interferogram_network"
+        ].pop("compressed_reference_anchor", False)
         AlgorithmParameters(**alg_param_dict).to_yaml(algorithm_parameters_file)
         # unpacked to load the rest of the parameters for the DisplacementWorkflow
 
@@ -612,6 +645,7 @@ def _parse_algorithm_overrides(
 def _create_forward_mode_network(
     nearest_n: int = 3,
     cslc_file_list: Iterable[PathOrStr] | None = None,
+    redo_reference: bool = True,
 ) -> InterferogramNetwork:
     """Create a smaller interferogram network using only the last date.
 
@@ -675,7 +709,16 @@ def _create_forward_mode_network(
     ]
     if nearest_n == 4:
         indexes.extend([(-5, -1), (-5, -2), (-5, -3), (-5, -4)])
-    return InterferogramNetwork(indexes=indexes)
+    if redo_reference:
+        return InterferogramNetwork(indexes=indexes)
+    # Without re-referencing, the compressed epoch must be a network node.
+    if not _DOLPHIN_HAS_ANCHOR:
+        msg = (
+            "forward_redo_reference: false needs a dolphin version with"
+            " InterferogramNetwork.compressed_reference_anchor"
+        )
+        raise ValueError(msg)
+    return InterferogramNetwork(indexes=indexes, compressed_reference_anchor=True)
 
 
 def _nested_update(base: dict, updates: dict):

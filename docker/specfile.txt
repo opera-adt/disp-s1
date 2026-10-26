@@ -238,7 +238,6 @@ https://conda.anaconda.org/conda-forge/noarch/dask-core-2026.8.0-pyhc364b38_0.co
 https://conda.anaconda.org/conda-forge/noarch/dateparser-1.4.3-pyh5ded981_0.conda#1ff16017992b6683a6b4d0ace93992c7
 https://conda.anaconda.org/conda-forge/noarch/distributed-2026.8.0-pyhc364b38_0.conda#f382c4eed5376ee372a6e67a0f6cd4d9
 https://conda.anaconda.org/conda-forge/noarch/docstring_parser-0.18.0-pyhd8ed1ab_0.conda#b0c7c29a60c82d57c5b4c4c38f0642c8
-https://conda.anaconda.org/conda-forge/noarch/dolphin-0.42.8-pyhd8ed1ab_0.conda#cbd841df32981f968f554bc77647e179
 https://conda.anaconda.org/conda-forge/noarch/donfig-0.8.1.post1-pyhd8ed1ab_1.conda#c56a7fa5597ad78b62e1f5d21f7f8b8f
 https://conda.anaconda.org/conda-forge/noarch/fonts-conda-ecosystem-1-0.tar.bz2#fee5683a3f04bd15cbd8318b096a27ab
 https://conda.anaconda.org/conda-forge/noarch/fonts-conda-forge-1-hc364b38_1.conda#a7970cd949a077b7cb9696379d338681

@@ -26,9 +26,10 @@ dependencies:
   - tophu
   # - cxx-compiler # for whirlwind
   - rich  # opera_utils.missing_data imports this but doesn't declare it as a dep
-  - dolphin>=0.42.8
   - opera-utils>=0.25.9  # dolphin>=0.42.7 needs is_remote_url (added in 0.25.7)
   - pip:
     # spurt isn't on conda-forge; only installable via pip (from GitHub in the
     # Dockerfile, since there's no PyPI release either).
     - spurt>=0.1.0
+    # conda-forge only has dolphin 0.42.8; use the GitHub tag until it catches up.
+    - git+https://github.com/isce-framework/dolphin@v0.42.9

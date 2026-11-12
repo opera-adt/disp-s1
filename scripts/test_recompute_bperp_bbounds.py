@@ -94,7 +94,7 @@ def test_bounding_polygon_matches_computed_wkt(test_file, recomputed_file):
 
 
 def test_baseline_dataset_compression_preserved(test_file, recomputed_file):
-    """Repacking the output must not drop the baseline's compression filter."""
+    """The baseline keeps its original compression and chunking, plus shuffle."""
     with h5py.File(test_file) as f:
         orig = f[BASELINE_PATH]
         orig_compression = orig.compression
@@ -103,6 +103,16 @@ def test_baseline_dataset_compression_preserved(test_file, recomputed_file):
         new = f[BASELINE_PATH]
         assert new.compression == orig_compression
         assert new.chunks == orig_chunks
+        assert new.shuffle
+
+
+@pytest.mark.filterwarnings("ignore:numpy.ndarray size changed:RuntimeWarning")
+def test_output_opens_with_netcdf4(recomputed_file):
+    """Dimension scales must survive so netCDF4/xarray can open the output."""
+    import netCDF4
+
+    with netCDF4.Dataset(recomputed_file) as ds:
+        assert "perpendicular_baseline" in ds["corrections"].variables
 
 
 def test_displacement_preserved(test_file, recomputed_file):

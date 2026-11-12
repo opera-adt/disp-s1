@@ -61,11 +61,30 @@ GLOBAL_ATTRS = {
 # https://docs.h5py.org/en/stable/high/file.html#h5py.File
 # Page size should be larger than the largest chunk in the file
 FILE_OPTS = {"fs_strategy": "page", "fs_page_size": 4 * 1024 * 1024}
+# Fallback chunk shape for products with no algorithm parameters file
+# (e.g. the compressed SLCs). The displacement products use
+# `output_options.hdf5_creation_options` instead.
 CHUNK_SHAPE = (256, 256)
 
-# Convert chunks to a tuple or h5py errors
-HDF5_OPTS = io.DEFAULT_HDF5_OPTIONS.copy()
-HDF5_OPTS["chunks"] = tuple(CHUNK_SHAPE)  # type: ignore
+
+def _hdf5_options(
+    creation_options: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Get the h5py dataset options from `output_options.hdf5_creation_options`.
+
+    If `creation_options` is None, uses dolphin's defaults with `CHUNK_SHAPE`.
+    """
+    if creation_options is None:
+        options = dict(io.DEFAULT_HDF5_OPTIONS)
+        options["chunks"] = CHUNK_SHAPE
+    else:
+        options = dict(creation_options)
+    # Convert chunks to a tuple or h5py errors
+    if options.get("chunks") is not None:
+        options["chunks"] = tuple(options["chunks"])
+    return options
+
+
 # The GRID_MAPPING_DSET variable is used to store the name of the dataset containing
 # the grid mapping information, which includes the coordinate reference system (CRS)
 # and the GeoTransform. This is in accordance with the CF 1.8 conventions for adding
@@ -159,6 +178,9 @@ def create_output_product(
         corrections = {}
     algorithm_parameters = AlgorithmParameters.from_yaml(
         pge_runconfig.dynamic_ancillary_file_group.algorithm_parameters_file
+    )
+    hdf5_options = _hdf5_options(
+        algorithm_parameters.output_options.hdf5_creation_options
     )
 
     crs = io.get_raster_crs(unw_filename)
@@ -345,6 +367,7 @@ def create_output_product(
                 description=info.description,
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
+                hdf5_options=hdf5_options,
             )
 
         make_browse_image_from_arr(
@@ -369,6 +392,7 @@ def create_output_product(
             long_name=info.long_name,
             fillvalue=info.fillvalue,
             attrs=info.attrs,
+            hdf5_options=hdf5_options,
         )
 
         # For the others, load and save each individually
@@ -401,6 +425,7 @@ def create_output_product(
                 long_name=info.long_name,
                 fillvalue=info.fillvalue,
                 attrs=info.attrs,
+                hdf5_options=hdf5_options,
             )
 
     if los_east_file is not None and los_north_file is not None:
@@ -430,6 +455,7 @@ def create_output_product(
         crs=crs,
         secondary_start_time=secondary_start_time,
         reference_point=reference_point,
+        hdf5_options=hdf5_options,
     )
 
     reference_orbit_type = _get_orbit_type(reference_cslc_files[0])
@@ -479,6 +505,7 @@ def _create_corrections_group(
     crs: pyproj.CRS,
     secondary_start_time: datetime.datetime,
     reference_point: ReferencePoint | None,
+    hdf5_options: Optional[Mapping[str, Any]] = None,
 ) -> None:
     keep_bits = 10
     logger.debug("Rounding mantissa in corrections to %s bits", keep_bits)
@@ -517,6 +544,7 @@ def _create_corrections_group(
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
+            hdf5_options=hdf5_options,
         )
         solid_earth = corrections.get("solid_earth", empty_arr)
         _create_geo_dataset(
@@ -531,6 +559,7 @@ def _create_corrections_group(
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
+            hdf5_options=hdf5_options,
         )
         baseline = corrections.get("baseline", empty_arr)
         _create_geo_dataset(
@@ -544,6 +573,7 @@ def _create_corrections_group(
             ),
             fillvalue=np.nan,
             attrs={"units": "meters"},
+            hdf5_options=hdf5_options,
         )
         # Make a scalar dataset for the reference point
         if reference_point is not None:
@@ -1479,6 +1509,7 @@ def _create_dataset(
     long_name: str | None = None,
     attrs: Optional[dict[str, Any]] = None,
     dtype: Optional[DTypeLike] = None,
+    hdf5_options: Optional[Mapping[str, Any]] = None,
 ) -> h5netcdf.Variable:
     if attrs is None:
         attrs = {}
@@ -1486,7 +1517,7 @@ def _create_dataset(
     if long_name:
         attrs["long_name"] = long_name
 
-    options = HDF5_OPTS
+    options = _hdf5_options(hdf5_options)
     if isinstance(data, str):
         options = {}
         # This is a string, so we need to convert it to bytes or it will fail
@@ -1519,6 +1550,7 @@ def _create_geo_dataset(
     x_name: str = "x",
     y_name: str = "y",
     grid_mapping_dset_name=GRID_MAPPING_DSET,
+    hdf5_options: Optional[Mapping[str, Any]] = None,
 ) -> h5netcdf.Variable:
     if include_time:
         dimensions = ["time", y_name, x_name]
@@ -1535,6 +1567,7 @@ def _create_geo_dataset(
         description=description,
         fillvalue=fillvalue,
         attrs=attrs,
+        hdf5_options=hdf5_options,
     )
     dset.attrs["grid_mapping"] = grid_mapping_dset_name
     return dset

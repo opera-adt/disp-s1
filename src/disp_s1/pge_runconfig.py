@@ -190,6 +190,22 @@ class ProductPathGroup(YamlModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# Chunk shape of the output NetCDF layers (dolphin's default is 128 x 128).
+# Must stay below the 4 MiB page size set in `product.FILE_OPTS`.
+OUTPUT_CHUNK_SHAPE = [256, 256]
+
+
+def _default_output_options() -> OutputOptions:
+    """Dolphin's default `OutputOptions`, but with `OUTPUT_CHUNK_SHAPE` chunks."""
+    default = OutputOptions()
+    return OutputOptions(
+        hdf5_creation_options={
+            **default.hdf5_creation_options,
+            "chunks": list(OUTPUT_CHUNK_SHAPE),
+        }
+    )
+
+
 class AlgorithmParameters(YamlModel):
     """Class containing all the other `DisplacementWorkflow` parameters."""
 
@@ -201,7 +217,7 @@ class AlgorithmParameters(YamlModel):
     )
     unwrap_options: UnwrapOptions = Field(default_factory=UnwrapOptions)
     timeseries_options: TimeseriesOptions = Field(default_factory=TimeseriesOptions)
-    output_options: OutputOptions = Field(default_factory=OutputOptions)
+    output_options: OutputOptions = Field(default_factory=_default_output_options)
 
     forward_mode_network_size: int = Field(
         3,

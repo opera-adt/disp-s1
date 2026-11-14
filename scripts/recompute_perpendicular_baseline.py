@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -27,6 +28,8 @@ from dolphin import baseline
 from isce3.core import DateTime, Orbit, StateVector
 from pyproj import CRS, Transformer
 from scipy.interpolate import RegularGridInterpolator
+
+from disp_s1.product import CHUNK_SHAPE
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -57,26 +60,54 @@ def write_h5_string(f: h5py.File, path: str, value: str) -> None:
     new_dset.attrs.update(attrs)
 
 
-def repack_h5_file(path: Path) -> None:
-    """Repack an HDF5 file in place to reclaim fragmented free space.
+def apply_product_storage(
+    path: Path,
+    baseline_path: str,
+    chunk_shape: tuple[int, int] | None = CHUNK_SHAPE,
+    gzip_level: int = 6,
+) -> None:
+    """Rewrite ``path`` with the storage layout used in forward production.
 
-    Rewriting the contents of an existing chunked+compressed dataset (e.g.
-    the full ``perpendicular_baseline`` grid) can grow the file: whenever a
-    rewritten chunk recompresses to more bytes than its original slot, HDF5
-    allocates new storage for it and does not reclaim the old slot without a
-    repack. This copies every object into a freshly created file (via HDF5's
-    object copy, which preserves each dataset's original chunk shape and
-    compression filters) and swaps it in for ``path`` -- equivalent to
-    running the ``h5repack`` command-line tool, but only depends on h5py.
+    HDF5 cannot change a dataset's filters or chunks in place, and copying
+    objects with h5py drops the netCDF dimension scales, so this runs the
+    ``h5repack`` CLI (as forward production does) in a single pass:
+
+    - ``baseline_path`` gets shuffle + gzip, which lets gzip compress the
+      smooth float32 baseline roughly 4x better.
+    - If ``chunk_shape`` is given, every chunked 2D layer whose chunks differ
+      is re-chunked to it (clipped to the dataset shape), matching
+      ``disp_s1.product.CHUNK_SHAPE``. Their other filters are preserved.
+      Pass ``None`` to keep the input's chunking.
     """
     path = Path(path)
     tmp_path = path.with_suffix(f"{path.suffix}.repack_tmp")
 
-    with h5py.File(path, "r") as src, h5py.File(tmp_path, "w") as dst:
-        for key in src.keys():
-            src.copy(key, dst)
-        dst.attrs.update(src.attrs)
+    cmd = [
+        "h5repack",
+        "-f",
+        f"{baseline_path}:SHUF",
+        "-f",
+        f"{baseline_path}:GZIP={gzip_level}",
+    ]
+    if chunk_shape is not None:
+        rechunk: list[str] = []
 
+        def _collect(name: str, obj: object) -> None:
+            if not isinstance(obj, h5py.Dataset) or obj.chunks is None:
+                return
+            if obj.ndim != len(chunk_shape):
+                return
+            target = tuple(min(c, n) for c, n in zip(chunk_shape, obj.shape))
+            if obj.chunks != target:
+                rechunk.append(f"/{name}:CHUNK={'x'.join(map(str, target))}")
+
+        with h5py.File(path, "r") as f:
+            f.visititems(_collect)
+        for spec in rechunk:
+            cmd += ["-l", spec]
+        logger.info(f"Re-chunking {len(rechunk)} dataset(s) to {tuple(chunk_shape)}")
+
+    subprocess.run([*cmd, str(path), str(tmp_path)], check=True)
     tmp_path.replace(path)
 
 
@@ -343,10 +374,10 @@ def recompute_perpendicular_baseline(
     input_file: Path,
     output_file: Path | None = None,
     subsample: int = 50,
+    chunk_shape: tuple[int, int] | None = CHUNK_SHAPE,
     update_metadata: bool = True,
     update_version: bool = False,
     new_version: str | None = None,
-    repack: bool = True,
 ) -> Path:
     """Recompute perpendicular baseline from saved orbit data.
 
@@ -358,6 +389,9 @@ def recompute_perpendicular_baseline(
         Path to the output file. If not provided, will add "_corrected" suffix.
     subsample : int
         Subsampling factor for baseline computation, default 50.
+    chunk_shape : tuple[int, int], optional
+        Chunk shape for the 2D layers. Defaults to ``disp_s1.product.CHUNK_SHAPE``
+        so the output matches forward production. Use None to keep the input's.
     update_metadata : bool
         Whether to update the processing_start_datetime field.
         Default = True
@@ -367,11 +401,6 @@ def recompute_perpendicular_baseline(
     new_version : str, optional
         New version string to replace in /identification/product_version.
         Required if update_version=True.
-    repack : bool
-        Whether to repack the output file afterwards to reclaim any
-        fragmented free space left behind by rewriting the baseline grid
-        in place.
-        Default = True
 
     Returns
     -------
@@ -442,6 +471,11 @@ def recompute_perpendicular_baseline(
     with h5py.File(output_file, "a") as hf:
         hf["/corrections/perpendicular_baseline"][:] = baseline_full
 
+    logger.info("Applying product storage layout (baseline shuffle, chunk shape)")
+    apply_product_storage(
+        output_file, "/corrections/perpendicular_baseline", chunk_shape
+    )
+
     logger.info("Updating metadata timestamps")
     update_metadata_timestamps(
         output_file,
@@ -450,10 +484,6 @@ def recompute_perpendicular_baseline(
         update_version=update_version,
         new_version=new_version,
     )
-
-    if repack:
-        logger.info(f"Repacking {output_file} to reclaim fragmented free space")
-        repack_h5_file(output_file)
 
     logger.info(f"Successfully wrote perpendicular baseline to {output_file}")
     return output_file

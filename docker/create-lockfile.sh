@@ -32,7 +32,7 @@ install_packages() {
     local PKGLIST
     PKGLIST=$(docker run --rm --network=host \
         -v "$ENVFILE:/tmp/$(basename "$ENVFILE"):ro" \
-        mambaorg/micromamba:1.1.0 bash -c "\
+        mambaorg/micromamba:1.5.8 bash -c "\
             micromamba install -y -n base $FILE_ARG $PKGS_ARGS > /dev/null && \
             micromamba env export --explicit")
 

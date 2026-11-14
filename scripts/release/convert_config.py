@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from dolphin.workflows.config import DisplacementWorkflow
+from dolphin.workflows.config import CorrectionOptions, DisplacementWorkflow
 
 from disp_s1.enums import ProcessingMode
 from disp_s1.pge_runconfig import RunConfig
@@ -19,10 +19,23 @@ def convert_to_runconfig(
     algorithm_parameters_file: Path = Path("algorithm_parameters.yaml"),
     output_directory: Path | None = None,
     save_compressed_slc: bool = True,
+    ionosphere_files: list[Path] | None = None,
+    geometry_files: list[Path] | None = None,
+    dem_file: Path | None = None,
     outfile: str | Path = "runconfig.yaml",
 ):
     """Run the conversion CLI."""
     workflow = DisplacementWorkflow.from_yaml(dolphin_config_file)
+    # Current `dolphin` no longer carries correction-related files in its own
+    # config (they're passed directly to the separate corrections step), so
+    # `RunConfig.from_workflow`'s read of `workflow.correction_options` needs
+    # it attached here from CLI args. `DisplacementWorkflow` allows extra
+    # attributes, so this is a normal attribute assignment, not a model field.
+    workflow.correction_options = CorrectionOptions(
+        ionosphere_files=ionosphere_files or [],
+        geometry_files=geometry_files or [],
+        dem_file=dem_file,
+    )
     rc = RunConfig.from_workflow(
         workflow,
         frame_id=frame_id,
@@ -92,6 +105,33 @@ def main():
             " output. Note that for the historical mode, this will only save the"
         ),
     )
+    parser.add_argument(
+        "--ionosphere-files",
+        type=Path,
+        nargs="*",
+        default=[],
+        help=(
+            "Paths to TEC files (1 per date) in IONEX format for ionosphere"
+            " correction. Not part of the dolphin config itself."
+        ),
+    )
+    parser.add_argument(
+        "--geometry-files",
+        type=Path,
+        nargs="*",
+        default=[],
+        help=(
+            "Paths to the CSLC static_layer files (1 per burst) with line-of-sight"
+            " unit vectors, used for corrections. Not part of the dolphin config"
+            " itself."
+        ),
+    )
+    parser.add_argument(
+        "--dem-file",
+        type=Path,
+        default=None,
+        help="Path to the DEM file covering the full frame, used for corrections.",
+    )
 
     args = parser.parse_args()
 
@@ -103,6 +143,9 @@ def main():
         reference_date_database_json=args.reference_date_database_json,
         algorithm_parameters_file=args.algorithm_parameters_file,
         save_compressed_slc=args.save_compressed_slc,
+        ionosphere_files=args.ionosphere_files,
+        geometry_files=args.geometry_files,
+        dem_file=args.dem_file,
         output_directory=args.output_directory,
         outfile=args.outfile,
     )

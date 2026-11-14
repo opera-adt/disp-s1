@@ -19,6 +19,8 @@ def _resize_to_max_pixel_dim(arr: ArrayLike, max_dim_allowed=2048) -> np.ndarray
     """Scale shape of a given array."""
     if max_dim_allowed < 1:
         raise ValueError(f"{max_dim_allowed} is not a valid max image dimension")
+    # scipy.ndimage can't handle float16 (e.g. the static layers' los_enu)
+    arr = np.ma.filled(arr, np.nan).astype(np.promote_types(arr.dtype, np.float32))
     input_shape = arr.shape
     scaling_ratio = max([max_dim_allowed / xy for xy in input_shape])
     nan_mask = np.isnan(arr)

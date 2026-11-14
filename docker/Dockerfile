@@ -2,7 +2,7 @@
 ARG BASE=ubuntu:22.04@sha256:7a57c69fe1e9d5b97c5fe649849e79f2cfc3bf11d10bbd5218b4eb61716aebe6
 
 # bring in the micromamba image so we can copy files from it
-FROM mambaorg/micromamba:1.1.0@sha256:53697a4bae2d9a4407463b8f314d370e201c58f6b5e5ff7c1f24699ed7e37a41 AS micromamba
+FROM mambaorg/micromamba:1.5.8@sha256:475730daef12ff9c0733e70092aeeefdf4c373a584c952dac3f7bdb739601990 AS micromamba
 
 FROM $BASE
 
@@ -68,10 +68,13 @@ RUN micromamba install --yes --channel conda-forge -n base -f /tmp/specfile.txt 
 # Activate, otherwise python will not be found
 # https://github.com/mamba-org/micromamba-docker#running-commands-in-dockerfile-within-the-conda-environment
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
+# spurt isn't on conda-forge or PyPI; only installable via pip from GitHub.
+# opera-utils and dolphin's dependencies come from specfile.txt (conda-forge).
 RUN pip install git+https://github.com/isce-framework/spurt@v0.1.1
-# --no-deps because they are installed with conda
-RUN pip install --no-deps git+https://github.com/opera-adt/opera-utils@v0.25.6
-RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.42.5
+# dolphin v0.42.9 isn't on conda-forge yet (latest there is 0.42.8), so install
+# the tagged release from GitHub. --no-deps because its deps are in specfile.txt.
+# TODO: move back into specfile.txt once conda-forge has dolphin 0.42.9.
+RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.42.9
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .

@@ -13,7 +13,6 @@ from recompute_product_bounds import (
     BOUNDING_POLYGON_PATH,
     compute_bounding_polygon,
     recompute_product_bounds,
-    repack_h5_file,
     write_h5_string,
 )
 
@@ -85,36 +84,6 @@ def test_write_h5_string_grows_dataset_without_truncating(tmp_path):
         assert dset.attrs["units"] == "degrees"
 
     assert readback == long_wkt
-
-
-def test_repack_h5_file_preserves_data_and_filters(tmp_path):
-    """repack_h5_file must keep the dataset's data, chunking, and compression."""
-    import numpy as np
-
-    path = tmp_path / "sample.h5"
-    with h5py.File(path, "w") as f:
-        f.create_dataset(
-            "/data",
-            data=np.zeros((64, 64), dtype="float32"),
-            chunks=(32, 32),
-            compression="gzip",
-            compression_opts=4,
-            shuffle=True,
-        )
-
-    new_data = np.random.default_rng(0).random((64, 64)).astype("float32")
-    with h5py.File(path, "a") as f:
-        f["/data"][:] = new_data
-
-    repack_h5_file(path)
-
-    with h5py.File(path, "r") as f:
-        dset = f["/data"]
-        assert dset.compression == "gzip"
-        assert dset.compression_opts == 4
-        assert dset.shuffle is True
-        assert dset.chunks == (32, 32)
-        np.testing.assert_array_equal(dset[:], new_data)
 
 
 def test_recomputed_polygon_matches_computed_wkt(test_file, recomputed_file):

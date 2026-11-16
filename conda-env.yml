@@ -32,4 +32,4 @@ dependencies:
     # Dockerfile, since there's no PyPI release either).
     - spurt>=0.1.0
     # conda-forge only has dolphin 0.42.8; use the GitHub tag until it catches up.
-    - git+https://github.com/isce-framework/dolphin@v0.42.9
+    - git+https://github.com/isce-framework/dolphin@v0.43.0

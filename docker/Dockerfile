@@ -74,7 +74,7 @@ RUN pip install git+https://github.com/isce-framework/spurt@v0.1.1
 # dolphin v0.42.9 isn't on conda-forge yet (latest there is 0.42.8), so install
 # the tagged release from GitHub. --no-deps because its deps are in specfile.txt.
 # TODO: move back into specfile.txt once conda-forge has dolphin 0.42.9.
-RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.42.9
+RUN pip install --no-deps git+https://github.com/isce-framework/dolphin@v0.43.0
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER . .
 RUN python -m pip install --no-deps .
